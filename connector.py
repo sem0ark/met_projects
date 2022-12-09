@@ -11,11 +11,8 @@ The module implements solutions to the tasks:
 2. Connect to the public API's
 3. Query information from the API
 4. Process JSON data and return as object
-"""
 
-import requests
 
-"""
 Possible sites to connect to:
 https://www.accuweather.com/en/rs/belgrade/298198/air-quality-index/298198
 https://aqicn.org/map/serbia/
@@ -32,16 +29,48 @@ https://spokanecleanair.org/air-quality/current-air-quality/
 https://www.aqi.in/
 """
 
+
+import requests
+
+
+class Cacher:
+    def __init__(self, filename='cached.txt'):
+        pass
+
+
 class Connector:
-    URL = 'url'
+    """Abstract class for the whole bunch of conectors to the API's"""
 
-    def get_key():
-        key = ''
-        with open('keys.txt', f):
-            key = f.read()
-        return key
+    URL = 'URL'
+    _key = 'key'
 
-    def get_info(key):
-        return data
+    def req_txt(self, req_url, headers=''):
+        response = requests.get(link, headers=headers)
 
-class Connector
+        if response.ok:
+            return response.text
+        else:
+            raise ValueError(
+                f'Something went worng, error {response.status_code}')
+
+
+    def get_data(self):
+        pass
+
+    def cache_data(self):
+        pass
+
+
+class ConnectorAW(Connector):
+    """Connector to the AccuWeather API"""
+    URL = ''
+
+    def __init__(self):
+        with open('key_aw.txt', 'r') as f:
+            _key = f.read()
+
+    def get_data(self):
+        
+
+    def cache_data(self):
+        pass
