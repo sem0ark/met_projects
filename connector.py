@@ -70,7 +70,7 @@ class ConnectorAW(Connector):
             _key = f.read()
 
     def get_data(self):
-        
+        pass
 
     def cache_data(self):
         pass
