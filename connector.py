@@ -29,13 +29,18 @@ https://spokanecleanair.org/air-quality/current-air-quality/
 https://www.aqi.in/
 """
 
+import logging
 
 import requests
 
 
+logging.basicConfig(
+    filename='connection.log',
+    level=logging.DEBUG,
+    format='%(asctime)s:%(levelname)s:%(message)s')
+
 class Cacher:
-    def __init__(self, filename='cached.txt'):
-        pass
+    """The class is responsible for """
 
 
 class Connector:
@@ -45,13 +50,15 @@ class Connector:
     _key = 'key'
 
     def req_txt(self, req_url, headers=''):
-        response = requests.get(link, headers=headers)
-
+        """
+        General method for getting text data from specified url and headers
+        """
+        response = requests.get(req_url, headers=headers, timeout=1000)
+        
         if response.ok:
             return response.text
-        else:
-            raise ValueError(
-                f'Something went worng, error {response.status_code}')
+        raise ValueError(
+            f'Something went worng, error {response.status_code}')
 
 
     def get_data(self):
@@ -67,7 +74,7 @@ class ConnectorAW(Connector):
 
     def __init__(self):
         with open('key_aw.txt', 'r') as f:
-            _key = f.read()
+            self._key = f.read()
 
     def get_data(self):
         pass
