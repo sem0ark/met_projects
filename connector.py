@@ -30,6 +30,7 @@ https://www.aqi.in/
 """
 
 import requests
+
 import json
 
 
@@ -49,13 +50,12 @@ def req_json(req_url, headers=''):
 def get_keys(filename='keys.txt'):
     keys = {}
     txt = ''
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf8') as f:
         txt = f.read().split('\n')
         for i in txt:
             (k, v) = i.split()
             keys[k] = v
     return keys
-
 
 class AWConnector:
     def __init__(self):
@@ -76,35 +76,87 @@ class AWConnector:
         })
         return data
 
-    def record_data(self):
-        with open(self._code+'.txt', 'r') as f:
-            pass
-
-
 class ACConnector:
-    def __init__(self):
+    def __init__(self, city=None):
         self._code = 'acqui'
         self._key = get_keys()[self._code]
-        self._location = 'Location'
-        self.m_url = 'https://api.waqi.info'
+        if city is None:
+            self._location = ['@8574', '@8094', '@9261', '@12893', '@10556', '@8575', '@8093', '@8761', '@8816', '@8766']
+            self._city = 'belgrade'
+            self._file = self._code + '_' + self._city + '.txt'
+            self.m_url = 'https://api.waqi.info'
+        else:
+            self._location = 'Location'
+            self._city = city
+            self._file = self._code + '_' + self._city + '.txt'
+            self.m_url = 'https://api.waqi.info'
 
-    def set_location_find(self, text):
-        data = req_json(f'https://api.waqi.info/search/?token={self._key}&keyword={text}', headers={
+            self.set_location_find()
+
+    def set_location_find(self):
+        data = req_json(f'https://api.waqi.info/search/?token={self._key}&keyword={self._city}', headers={
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
         })
-        self._location = '@' + str(data["data"][0]["uid"])
-        print(self._location)
+        if len(data) != 0:
+            self._location = ['@' + str(i["uid"]) for i in data["data"]]
+        else:
+            raise ValueError('Can\'t find information about this city')
+
+    def get_data_current(self):
+        data = req_json(self.m_url + f"/feed/{self._location[0]}/?token={self._key}")
+        return {
+            "iaqi": data["data"]["iaqi"],
+            "time": data["data"]["time"],
+        }
+
+    def record_data(self, data):
+        data_txt = []
+        try:
+            with open(self._file, 'r', encoding='utf8') as f:
+                data_txt = f.readlines()
+
+            if json.loads(data_txt[-1])['time']['s'] != data['time']['s']:
+                data_txt.append(json.dumps(data))
+        except FileNotFoundError:
+            data_txt.append(json.dumps(data))
+
+        with open(self._file, 'w', encoding='utf8') as f:
+            f.write('\n'.join(data_txt))
+
+    def update_data(self):
+        data_cur = self.get_data_current()
+        self.record_data(data_cur)
+
+    def structure_data(self, data):
+        d_v = {
+            "co": [],
+            "so2" : [],
+            "no2" : [],
+            "pm10" : [],
+            "pm25" : [],
+            "o3" : [],
+        }
+        for metric in data:
+            for (k, v) in d_v.items():
+                if k in metric["iaqi"]:
+                    v.append((metric["iaqi"], metric["time"]["s"]))
+        return d_v
 
     def get_data(self):
-        data = req_json(self.m_url + f"/feed/{self._location}/?token={self._key}")
-        return data
+        data_txt = ''
 
-    def record_data(self):
-        with open(self._code+'.txt', 'r') as f:
-            pass
+        # self.update_data()
+
+        with open(self._file, 'r', encoding='utf8') as f:
+            data_txt = f.readlines()
+
+        values = [json.loads(i) for i in data_txt]
+
+        return values
 
 
 if __name__ == "__main__":
     con2 = ACConnector()
-    con2.set_location_find('belgrade')
-    print(con2.get_data())
+    print(con2._location)
+    for i in con2.get_data():
+        print(i)
