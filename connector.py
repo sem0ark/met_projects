@@ -29,55 +29,82 @@ https://spokanecleanair.org/air-quality/current-air-quality/
 https://www.aqi.in/
 """
 
-import logging
-
 import requests
+import json
 
 
-logging.basicConfig(
-    filename='connection.log',
-    level=logging.DEBUG,
-    format='%(asctime)s:%(levelname)s:%(message)s')
+def req_json(req_url, headers=''):
+    """
+    General method for getting JSON data from specified url and headers
+    """
+    response = requests.get(req_url, headers=headers, timeout=1000)
 
-class Cacher:
-    """The class is responsible for """
+    if response.ok:
+        return json.loads(response.text)
 
-
-class Connector:
-    """Abstract class for the whole bunch of conectors to the API's"""
-
-    URL = 'URL'
-    _key = 'key'
-
-    def req_txt(self, req_url, headers=''):
-        """
-        General method for getting text data from specified url and headers
-        """
-        response = requests.get(req_url, headers=headers, timeout=1000)
-        
-        if response.ok:
-            return response.text
-        raise ValueError(
-            f'Something went worng, error {response.status_code}')
+    raise ValueError(
+        f'Something went worng, error {response.status_code}')
 
 
-    def get_data(self):
-        pass
+def get_keys(filename='keys.txt'):
+    keys = {}
+    txt = ''
+    with open(filename, 'r') as f:
+        txt = f.read().split('\n')
+        for i in txt:
+            (k, v) = i.split()
+            keys[k] = v
+    return keys
 
-    def cache_data(self):
-        pass
 
-
-class ConnectorAW(Connector):
-    """Connector to the AccuWeather API"""
-    URL = ''
-
+class AWConnector:
     def __init__(self):
-        with open('key_aw.txt', 'r') as f:
-            self._key = f.read()
+        self._code = 'accuweather'
+        self._key = get_keys()[self._code]
+        self._location = 'Location'
+        self.m_url = 'http://dataservice.accuweather.com'
+
+    def set_location_find(self, text):
+        data = req_json(self.m_url + f"/locations/v1/cities/autocomplete?apikey={self._key}&q={text}", headers={
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+        })
+        self._location = data[0]['Key']
 
     def get_data(self):
-        pass
+        data = req_json(self.m_url + f"/currentconditions/v1/{self._location}/historical/24?apikey={self._key}&details=true", headers={
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+        })
+        return data
 
-    def cache_data(self):
-        pass
+    def record_data(self):
+        with open(self._code+'.txt', 'r') as f:
+            pass
+
+
+class ACConnector:
+    def __init__(self):
+        self._code = 'acqui'
+        self._key = get_keys()[self._code]
+        self._location = 'Location'
+        self.m_url = 'https://api.waqi.info'
+
+    def set_location_find(self, text):
+        data = req_json(f'https://api.waqi.info/search/?token={self._key}&keyword={text}', headers={
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+        })
+        self._location = '@' + str(data["data"][0]["uid"])
+        print(self._location)
+
+    def get_data(self):
+        data = req_json(self.m_url + f"/feed/{self._location}/?token={self._key}")
+        return data
+
+    def record_data(self):
+        with open(self._code+'.txt', 'r') as f:
+            pass
+
+
+if __name__ == "__main__":
+    con2 = ACConnector()
+    con2.set_location_find('belgrade')
+    print(con2.get_data())
