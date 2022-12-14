@@ -32,6 +32,13 @@ def req_json(req_url, headers=''):
 
 
 def get_keys(filename='keys.txt'):
+    """
+    Reads the local file for keys for the APIs to later connect to them.
+    Returns a dictionary with:
+    - keys -> API keywords,
+    - values -> API keys.
+    """
+
     keys = {}
     txt = ''
     with open(filename, 'r', encoding='utf8') as f:
@@ -69,12 +76,11 @@ class ACConnector:
         """
         Initialisation of the class,
         it is thought that there would be only one instance used.
-        
-        If the city os not secified we 
+        If the city is not specified we use defaul info about belgrade and its stations.
         """
         self._code = 'acqui'
         self._key = get_keys()[self._code]
-        
+
         if city is None:
             self._location = ['@8574', '@8094', '@9261', '@12893', '@10556', '@8575', '@8093', '@8761', '@8816', '@8766']
             self._location_name = [''] * 12
@@ -93,7 +99,9 @@ class ACConnector:
     def set_location_find(self):
         """
         The mothod is searhing possible stations that correspond to the keyword
-        entered by the user to get data from the API list of possible stations
+        entered by the user to get data from the API list of possible stations.
+
+        Uses user-agend in case of bot detection.
         """
 
         data = req_json(
@@ -122,6 +130,11 @@ class ACConnector:
         }
 
     def record_data(self, data):
+        """
+        Reads teh cache file and checks if the data being recorded already in the file,
+        writes the data down if it is not found already. Checked by the time of recording.
+        """
+
         data_txt = []
         try:
             with open(self._file, 'r', encoding='utf8') as f:
@@ -136,23 +149,11 @@ class ACConnector:
             f.write('\n'.join(data_txt))
 
     def update_data(self):
+        """
+        High level method to get current conditions from the API and write it to the file.
+        """
         data_cur = self.get_data_current()
         self.record_data(data_cur)
-
-    def structure_data(self, data):
-        d_v = {
-            "co": [],
-            "so2" : [],
-            "no2" : [],
-            "pm10" : [],
-            "pm25" : [],
-            "o3" : [],
-        }
-        for metric in data:
-            for (k, v) in d_v.items():
-                if k in metric["iaqi"]:
-                    v.append((metric["iaqi"], metric["time"]["s"]))
-        return d_v
 
     def get_data(self):
         """
@@ -172,6 +173,28 @@ class ACConnector:
         values = [json.loads(i) for i in data_txt if i != '']
 
         return values
+
+
+    def structure_data(self, data):
+        """
+        Process data from a list of objects and writes it down into the dictionary for
+        later plot it on the graph.
+        """
+
+        d_v = {
+            "co": [],
+            "so2" : [],
+            "no2" : [],
+            "pm10" : [],
+            "pm25" : [],
+            "o3" : [],
+        }
+        for metric in data:
+            for (k, v) in d_v.items():
+                if k in metric["iaqi"]:
+                    v.append((metric["iaqi"], metric["time"]["s"]))
+        return d_v
+
 
 if __name__ == "__main__":
     con2 = ACConnector(city='belgrade')
