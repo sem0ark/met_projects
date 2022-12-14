@@ -11,10 +11,6 @@ The module implements solutions to the tasks:
 2. Connect to the public API's
 3. Query information from the API
 4. Process JSON data and return as object
-
-
-Possible sites to connect to:
-[~] https://aqicn.org/map/serbia/
 """
 
 import requests
@@ -65,9 +61,20 @@ def get_keys(filename='keys.txt'):
 #         return data
 
 class ACConnector:
+    """
+    Connector class for the API by https://aqicn.org/
+    """
+
     def __init__(self, city=None):
+        """
+        Initialisation of the class,
+        it is thought that there would be only one instance used.
+        
+        If the city os not secified we 
+        """
         self._code = 'acqui'
         self._key = get_keys()[self._code]
+        
         if city is None:
             self._location = ['@8574', '@8094', '@9261', '@12893', '@10556', '@8575', '@8093', '@8761', '@8816', '@8766']
             self._location_name = [''] * 12
@@ -84,6 +91,11 @@ class ACConnector:
             self.set_location_find()
 
     def set_location_find(self):
+        """
+        The mothod is searhing possible stations that correspond to the keyword
+        entered by the user to get data from the API list of possible stations
+        """
+
         data = req_json(
             f'https://api.waqi.info/search/?token={self._key}&keyword={self._city}',
             headers={
@@ -95,7 +107,14 @@ class ACConnector:
         else:
             raise ValueError('Can\'t find information about this city')
 
-    def get_data_current(self):    
+    def get_data_current(self):
+        """
+        Gets current data from the API by calling the API get current conditions
+        for the current hour.
+        """
+
+        #FIXME Create fuctions to write data from all stations in the self._location
+        # array to get a bigger amount of information
         data = req_json(self.m_url + f"/feed/{self._location[0]}/?token={self._key}")
         return {
             "iaqi": data["data"]["iaqi"],
@@ -106,7 +125,7 @@ class ACConnector:
         data_txt = []
         try:
             with open(self._file, 'r', encoding='utf8') as f:
-                data_txt = f.readlines()
+                data_txt += [i.strip('\n') for i in f.readlines()]
 
             if json.loads(data_txt[-1])['time']['s'] != data['time']['s']:
                 data_txt.append(json.dumps(data))
@@ -136,6 +155,10 @@ class ACConnector:
         return d_v
 
     def get_data(self):
+        """
+        Creates an array of object values of the information from stations.
+        The main public function of the class.
+        """
         data_txt = ''
 
         self.update_data()
@@ -143,10 +166,12 @@ class ACConnector:
         with open(self._file, 'r', encoding='utf8') as f:
             data_txt = f.readlines()
 
-        values = [json.loads(i) for i in data_txt]
+        # FIXME Possible bug with string writing,
+        # sometimes there are additional blank strings appear after running the program
+        # sem0ark: created a quick fix for the problem by just checking strings
+        values = [json.loads(i) for i in data_txt if i != '']
 
         return values
-
 
 if __name__ == "__main__":
     con2 = ACConnector(city='belgrade')
