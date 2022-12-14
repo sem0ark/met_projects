@@ -12,6 +12,7 @@ The module implements solutions to the tasks:
 3. Query information from the API
 4. Process JSON data and return as object
 """
+
 import json
 
 import requests
@@ -123,7 +124,12 @@ class ACConnector:
 
         #FIXME Create fuctions to write data from all stations in the self._location
         # array to get a bigger amount of information
-        data = req_json(self.m_url + f"/feed/{self._location[0]}/?token={self._key}")
+        data = req_json(
+            self.m_url + f"/feed/{self._location[0]}/?token={self._key}",
+            headers={
+            'user-agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+        })
         return {
             "iaqi": data["data"]["iaqi"],
             "time": data["data"]["time"],
