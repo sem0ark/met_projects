@@ -25,6 +25,7 @@ def req_json(req_url, headers=''):
     response = requests.get(req_url, headers=headers, timeout=1000)
 
     if response.ok:
+        print(response.text)
         return json.loads(response.text)
 
     raise ValueError(
@@ -52,17 +53,17 @@ def get_keys(filename='keys.txt'):
 #     def __init__(self):
 #         self._code = 'accuweather'
 #         self._key = get_keys()[self._code]
-#         self._location = 'Location'
+#         self._locations = 'Location'
 #         self.m_url = 'http://dataservice.accuweather.com'
 
 #     def set_location_find(self, text):
 #         data = req_json(self.m_url + f"/locations/v1/cities/autocomplete?apikey={self._key}&q={text}", headers={
 #             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
 #         })
-#         self._location = data[0]['Key']
+#         self._locations = data[0]['Key']
 
 #     def get_data(self):
-#         data = req_json(self.m_url + f"/currentconditions/v1/{self._location}/historical/24?apikey={self._key}&details=true", headers={
+#         data = req_json(self.m_url + f"/currentconditions/v1/{self._locations}/historical/24?apikey={self._key}&details=true", headers={
 #             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
 #         })
 #         return data
@@ -83,14 +84,14 @@ class ACConnector:
         self._key = get_keys()[self._code]
 
         if city is None:
-            self._location = ['@8574', '@8094', '@9261', '@12893', '@10556', '@8575', '@8093', '@8761', '@8816', '@8766']
-            self._location_name = [''] * 12
+            self._locations = ['@8574', '@8094', '@9261', '@12893', '@10556', '@8575', '@8093', '@8761', '@8816', '@8766']
+            self._locations_name = [''] * 12
             self._city = 'belgrade'
             self._file = self._code + '_' + self._city + '.txt'
             self.m_url = 'https://api.waqi.info'
         else:
-            self._location = []
-            self._location_name = []
+            self._locations = []
+            self._locations_name = []
             self._city = city
             self._file = self._code + '_' + self._city + '.txt'
             self.m_url = 'https://api.waqi.info'
@@ -111,10 +112,28 @@ class ACConnector:
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
         })
         if len(data) != 0:
-            self._location = ['@' + str(i["uid"]) for i in data["data"]]
-            self._location_name = [i["station"]["name"] for i in data["data"]]
+            self._locations = ['@' + str(i["uid"]) for i in data["data"]]
+            self._locations_name = [i["station"]["name"] for i in data["data"]]
         else:
             raise ValueError('Can\'t find information about this city')
+
+    def get_data_current_arr(self):
+        """
+        Gets current data from the API by calling the API get current conditions
+        for the current hour.
+        """
+
+        result_data = []
+
+        for loc in self._locations:
+            data = req_json(
+                self.m_url + f"/feed/{loc}/?token={self._key}",
+                headers={
+                'user-agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+            })
+
+        return 
 
     def get_data_current(self):
         """
@@ -122,18 +141,18 @@ class ACConnector:
         for the current hour.
         """
 
-        #FIXME Create fuctions to write data from all stations in the self._location
-        # array to get a bigger amount of information
         data = req_json(
-            self.m_url + f"/feed/{self._location[0]}/?token={self._key}",
+            self.m_url + f"/feed/{self._locations[0]}/?token={self._key}",
             headers={
             'user-agent':
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
         })
+
         return {
             "iaqi": data["data"]["iaqi"],
             "time": data["data"]["time"],
         }
+
 
     def record_data(self, data):
         """
@@ -204,6 +223,6 @@ class ACConnector:
 
 if __name__ == "__main__":
     con2 = ACConnector(city='belgrade')
-    print(con2._location_name)
+    print(con2._locations_name)
     for i in con2.get_data():
         print(i)
