@@ -25,7 +25,6 @@ def req_json(req_url, headers=''):
     response = requests.get(req_url, headers=headers, timeout=1000)
 
     if response.ok:
-        print(response.text)
         return json.loads(response.text)
 
     raise ValueError(
@@ -63,23 +62,46 @@ class ACConnector:
         """
         self._code = 'acqui'
         self._key = get_keys()[self._code]
+        self._data = []
 
         if city is None:
-            self._locations = ['@8574', '@8094', '@9261', '@12893', '@10556', '@8575', '@8093', '@8761', '@8816', '@8766']
-            self._locations_name = [''] * 12
+            self._locations = [
+                '@8574',
+                '@8094',
+                '@9261',
+                '@12893',
+                '@10556',
+                '@8575',
+                '@8093',
+                '@8761',
+                '@8816',
+                '@8766'
+            ]
+
+            self._location_names = [''] * 12
             self._city = 'belgrade'
             self._file = self._code + '_' + self._city + '.txt'
             self.m_url = 'https://api.waqi.info'
         else:
             self._locations = []
-            self._locations_name = []
+            self._location_names = []
             self._city = city
             self._file = self._code + '_' + self._city + '.txt'
             self.m_url = 'https://api.waqi.info'
 
-            self.set_location_find()
+            self.set_location_find(self._city)
 
-    def set_location_find(self):
+    def set_city(self, city):
+        self.set_location_find(city)
+        self._city = city
+
+    def get_city(self):
+        return self._city
+
+    def get_stations(self):
+        return (self._locations[:], self._location_names[:])
+
+    def set_location_find(self, city):
         """
         The mothod is searhing possible stations that correspond to the keyword
         entered by the user to get data from the API list of possible stations.
@@ -88,13 +110,13 @@ class ACConnector:
         """
 
         data = req_json(
-            f'https://api.waqi.info/search/?token={self._key}&keyword={self._city}',
+            f'https://api.waqi.info/search/?token={self._key}&keyword={city}',
             headers={
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
         })
         if len(data) != 0:
             self._locations = ['@' + str(i["uid"]) for i in data["data"]]
-            self._locations_name = [i["station"]["name"] for i in data["data"]]
+            self._location_names = [i["station"]["name"] for i in data["data"]]
         else:
             raise ValueError('Can\'t find information about this city')
 
@@ -132,37 +154,10 @@ class ACConnector:
                 result_data.append(data_station)
             except ValueError:
                 print("Couldn't get information from " + loc)
-
+        
         return result_data
 
-    def record_data(self, data):
-        """
-        Reads the cache file and checks if the data being recorded already in the file,
-        writes the data down if it is not found already. Checked by the time of recording.
-        """
-
-        data_txt = []
-        try:
-            with open(self._file, 'r', encoding='utf8') as f:
-                data_txt += [i.strip('\n') for i in f.readlines()]
-
-            if json.loads(data_txt[-1])['time']['s'] != data['time']['s']:
-                data_txt.append(json.dumps(data))
-        except FileNotFoundError:
-            data_txt.append(json.dumps(data))
-
-        with open(self._file, 'w', encoding='utf8') as f:
-            f.write('\n'.join(data_txt))
-
-    def update_data(self):
-        """
-        High level method to get current conditions from the API and write it to the file.
-        """
-        data_cur = self.get_data_current_arr()
-        self.record_data(data_cur)
-
-
 if __name__ == "__main__":
-    con2 = ACConnector(city='belgrade')
-    for i in con2.get_data():
-        print(i)
+    con2 = ACConnector()
+    for i in con2.get_data_current_arr():
+        print(i["station_code"])
