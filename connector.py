@@ -49,25 +49,6 @@ def get_keys(filename='keys.txt'):
             keys[k] = v
     return keys
 
-# class AWConnector:
-#     def __init__(self):
-#         self._code = 'accuweather'
-#         self._key = get_keys()[self._code]
-#         self._locations = 'Location'
-#         self.m_url = 'http://dataservice.accuweather.com'
-
-#     def set_location_find(self, text):
-#         data = req_json(self.m_url + f"/locations/v1/cities/autocomplete?apikey={self._key}&q={text}", headers={
-#             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-#         })
-#         self._locations = data[0]['Key']
-
-#     def get_data(self):
-#         data = req_json(self.m_url + f"/currentconditions/v1/{self._locations}/historical/24?apikey={self._key}&details=true", headers={
-#             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-#         })
-#         return data
-
 
 class ACConnector:
     """
