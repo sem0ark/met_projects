@@ -117,6 +117,26 @@ class ACConnector:
         else:
             raise ValueError('Can\'t find information about this city')
 
+    def get_data_current(self, station_code):
+        """
+        Gets current data from the API by calling the API get current conditions.
+        Uses location code of the station.
+        """
+        data = req_json(
+            self.m_url + f"/feed/{station_code}/?token={self._key}",
+            headers={
+            'user-agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+        })
+
+        return {
+            "station_code": data["data"]["idx"],
+            "time": data["data"]["time"]["iso"],
+            "iaqi": data["data"]["iaqi"],
+            "forecast": data["data"]["forecast"]["daily"],
+        }
+
+
     def get_data_current_arr(self):
         """
         Gets current data from the API by calling the API get current conditions
@@ -126,37 +146,17 @@ class ACConnector:
         result_data = []
 
         for loc in self._locations:
-            data = req_json(
-                self.m_url + f"/feed/{loc}/?token={self._key}",
-                headers={
-                'user-agent':
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-            })
+            try:
+                data_station = self.get_data_current(loc)
+                result_data.append(data_station)
+            except ValueError:
+                print("Couldn't get information from " + loc)
 
-        return 
-
-    def get_data_current(self):
-        """
-        Gets current data from the API by calling the API get current conditions
-        for the current hour.
-        """
-
-        data = req_json(
-            self.m_url + f"/feed/{self._locations[0]}/?token={self._key}",
-            headers={
-            'user-agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-        })
-
-        return {
-            "iaqi": data["data"]["iaqi"],
-            "time": data["data"]["time"],
-        }
-
+        return result_data
 
     def record_data(self, data):
         """
-        Reads teh cache file and checks if the data being recorded already in the file,
+        Reads the cache file and checks if the data being recorded already in the file,
         writes the data down if it is not found already. Checked by the time of recording.
         """
 
@@ -177,52 +177,11 @@ class ACConnector:
         """
         High level method to get current conditions from the API and write it to the file.
         """
-        data_cur = self.get_data_current()
+        data_cur = self.get_data_current_arr()
         self.record_data(data_cur)
-
-    def get_data(self):
-        """
-        Creates an array of object values of the information from stations.
-        The main public function of the class.
-        """
-        data_txt = ''
-
-        self.update_data()
-
-        with open(self._file, 'r', encoding='utf8') as f:
-            data_txt = f.readlines()
-
-        # FIXME Possible bug with string writing,
-        # sometimes there are additional blank strings appear after running the program
-        # sem0ark: created a quick fix for the problem by just checking strings
-        values = [json.loads(i) for i in data_txt if i != '']
-
-        return values
-
-
-    def structure_data(self, data):
-        """
-        Process data from a list of objects and writes it down into the dictionary for
-        later plot it on the graph.
-        """
-
-        d_v = {
-            "co": [],
-            "so2" : [],
-            "no2" : [],
-            "pm10" : [],
-            "pm25" : [],
-            "o3" : [],
-        }
-        for metric in data:
-            for (k, v) in d_v.items():
-                if k in metric["iaqi"]:
-                    v.append((metric["iaqi"], metric["time"]["s"]))
-        return d_v
 
 
 if __name__ == "__main__":
     con2 = ACConnector(city='belgrade')
-    print(con2._locations_name)
     for i in con2.get_data():
         print(i)
