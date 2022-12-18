@@ -120,6 +120,8 @@ class ACConnector:
         if not use_api:
             return
 
+        pollutions = ['o3', 'no2', 'so2', 'pm10', 'pm25']
+
         for loc in self._locations:
             try:
                 station_data = self.get_data_station(loc)
@@ -138,13 +140,23 @@ class ACConnector:
                     if loc not in self._data["day"][date]:
                         self._data["day"][date][loc] = {}
 
-                    print(date, loc, k)
-
                     self._data["day"][date][loc][k] = {
                         "avg": day["avg"],
                         "max": day["max"],
                         "min": day["min"],
                     }
+
+            for k in pollutions:
+                if k not in station_data["data"]["forecast"]["daily"] and \
+                        k in station_data["data"]["iaqi"]:
+                    date = station_data["data"]["time"]["iso"].split('T')[0]
+
+                    self._data["day"][date][loc][k] = {
+                        "avg": station_data["data"]["iaqi"][k]["v"],
+                        "max": station_data["data"]["iaqi"][k]["v"],
+                        "min": station_data["data"]["iaqi"][k]["v"]
+                    }
+
         self.record_data()
 
     def get_daily_data_pollution(self, station_code, pollution_code):
@@ -161,7 +173,6 @@ class ACConnector:
             if station_code not in self._data["day"][date]:
                 continue
 
-            print(date, self._data["day"][date].keys())
             result_data[date] = self._data["day"][date][station_code][pollution_code].copy()
         return result_data
 
@@ -171,9 +182,7 @@ class ACConnector:
         - date
         - [pollution code] -> array of averages
         """
-        result_data = {
-            "date": []
-        }
+        result_data = {}
 
         for date in sorted(self._data["day"]):
             if station_code not in self._data["day"][date]:
@@ -183,6 +192,7 @@ class ACConnector:
                 if pollution_code not in result_data:
                     result_data[pollution_code] = []
                 result_data[pollution_code].append(value["avg"])
+
         return result_data
 
     def get_daily_data_stations(self, pollution_code):
@@ -192,33 +202,22 @@ class ACConnector:
         - [station code] -> array of averages
         """
         result_data = {}
-        tmp = {}
 
-        dates = set()
+        dates = list(sorted(set(self._data["day"].keys())))
 
-        for date in sorted(self._data["day"]):
-            dates.add(date)
-
-            for (station_code, station_data) in self._data["day"][date].items():
-                if station_code not in result_data:
-                    tmp[station_code] = {}
-                if pollution_code not in station_data:
-                    continue
-                tmp[station_code][date] = station_data[pollution_code]["avg"]
-
-        print(tmp)
-
-        for (station_code, station_data) in tmp.items():
-            for date in sorted(dates):
+        for station_code in self.get_station_codes():
+            for date in dates:
                 if station_code not in result_data:
                     result_data[station_code] = []
+                if station_code not in self._data["day"][date]:
+                    result_data[station_code].append(0)
+                elif pollution_code not in self._data["day"][date][station_code]:
+                    result_data[station_code].append(0)
+                else:
+                    result_data[station_code].append(
+                        self._data["day"][date][station_code][pollution_code]["avg"])
 
-                result_data[station_code].append(station_data.get(date, 0))
-
-        result_data["date"] = sorted(dates)
-
-        for i in result_data:
-            print(i, result_data[i])
+        result_data["date"] = dates
 
         return result_data
 
@@ -270,4 +269,4 @@ if __name__ == "__main__":
     stations = con.get_station_codes()
     print(stations)
     # print(con._data["day"]['2022-12-18'][stations[0]])
-    print(con.get_daily_data_pollution(stations[0], "pm10"))
+    print(con.get_daily_data_pollution(stations[0], "o3"))

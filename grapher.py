@@ -47,7 +47,7 @@ class Grapher:
                 continue
             plt.plot(x, value, label=key)
 
-        plt.legend()
+        plt.legend(bbox_to_anchor=(1.5, 1.05))
         plt.tight_layout()
         plt.show()
 
@@ -84,5 +84,5 @@ if __name__ == "__main__":
 
     grapher = Grapher()
     # grapher.plot_values_margin(con.get_daily_data_averages(stations[0]))
-    # grapher.plot_values_average(con.get_daily_data_averages(stations[0]))
-    grapher.plot_values_average(con.get_daily_data_stations("pm10"))
+    # grapher.plot_values_average(con.get_daily_data_averages(stations[3]))
+    # grapher.plot_values_average(con.get_daily_data_stations("no2"))
