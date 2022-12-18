@@ -94,13 +94,24 @@ class Interpreter:
             com = com.split()
 
             if com[0] == "forecast":
-                if len(com) == 1: self.blame()
-                self.parse_forecast(com[1:])
-            if com[0] == 'get':
-                if len(com) == 1: self.blame()
-                self.parse_get(com[1:])
+                if len(com) == 1:
+                    self.blame()
+                else:
+                    self.parse_forecast(com[1:])
+            elif com[0] == 'get':
+                if len(com) == 1:
+                    self.blame()
+                else:
+                    self.parse_get(com[1:])
+            elif com[0] == 'set':
+                if len(com) == 1:
+                    self.blame()
+                else:
+                    self.parse_set(com[1:])
         except Exception as e:
             self.error("Inner error", e)
+
+        self.blame()
 
     def text(self):
         return self.status["text"]
@@ -115,38 +126,58 @@ class Interpreter:
         self.status["ok"] = True
         self.status["text"] = ''
         self.status["error"] = None
+        return True
 
     def blame(self, text="Bad command"):
         self.status["ok"] = False
         self.status["text"] = text
         self.status["error"] = None
+        return False
 
     def error(self, text, e):
         self.status["ok"] = False
         self.status["text"] = text
         self.status["error"] = e
+        return False
 
     def parse_get(self, com):
         if com[0] == 'city':
             print(f"Currently selected city is: {self.com_get_city()}")
-
-        if com[0] == 'stations':
+            return self.good()
+        elif com[0] == 'stations':
             data = self._connection.get_stations()
             print("Currently available stations:")
             for (i, j) in data:
                 print(i, j)
-            self.good()
+            return self.good()
+        else:
+            return self.blame()
+
+    def parse_set(self, com):
+        if com[0] == 'city':
+            if len(com) != 2:
+                return self.blame()
+            self.com_set_city(com[1])
+            return self.good()
 
     def parse_forecast(self, com):
         if com[0] == "plot":
             if len(com) != 3:
                 self.blame()
-
-            if com[1] == "all":
+            elif com[1] == "all":
                 if com[2] in self.com_get_stations():
                     self.com_plot_average_pollutions(com[2])
-                    self.ok()
+                    return self.good()
+                else:
+                    return self.blame("Bad station code")
+            elif com[2] in ['no2','so2','pm10','pm25','o3']:
+                if com[3] == "avg":
+                    self.com_plot_average_stations(com[2])
+                    return self.good()
+                elif com[3] in self.com_get_stations():
+                    self.com_plot_pollution_margin(com[2], com[3])
 
+            self.blame()
 
 
     def com_set_city(self, city):
