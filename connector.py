@@ -14,7 +14,7 @@ The module implements solutions to the tasks:
 """
 
 import json
-
+import pickle
 import requests
 
 
@@ -40,12 +40,10 @@ def get_keys(filename='keys.txt'):
     """
 
     keys = {}
-    txt = ''
-    with open(filename, 'r', encoding='utf8') as f:
-        txt = f.read().split('\n')
-        for i in txt:
-            (k, v) = i.split()
-            keys[k] = v
+    with open(filename, 'r', encoding='utf8') as stream:
+        for line in stream.read().split('\n'):
+            (code, key_value) = line.split()
+            keys[code] = key_value
     return keys
 
 
@@ -62,7 +60,7 @@ class ACConnector:
         """
         self._code = 'acqui'
         self._key = get_keys()[self._code]
-        self._data = []
+        self._data = {}
 
         if city is None:
             self._locations = [
@@ -89,10 +87,10 @@ class ACConnector:
             self._file = self._code + '_' + self._city + '.txt'
             self.m_url = 'https://api.waqi.info'
 
-            self.set_location_find(self._city)
+            self.update_location_data(self._city)
 
     def set_city(self, city):
-        self.set_location_find(city)
+        self.update_location_data(city)
         self._city = city
 
     def get_city(self):
@@ -101,7 +99,7 @@ class ACConnector:
     def get_stations(self):
         return (self._locations[:], self._location_names[:])
 
-    def set_location_find(self, city):
+    def update_location_data(self, city):
         """
         The mothod is searhing possible stations that correspond to the keyword
         entered by the user to get data from the API list of possible stations.
@@ -120,44 +118,55 @@ class ACConnector:
         else:
             raise ValueError('Can\'t find information about this city')
 
-    def get_data_current(self, station_code):
+    def get_data_station(self, station_code):
         """
         Gets current data from the API by calling the API get current conditions.
         Uses location code of the station.
         """
-        data = req_json(
-            self.m_url + f"/feed/{station_code}/?token={self._key}",
-            headers={
-            'user-agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-        })
+        data = req_json(self.m_url + f"/feed/{station_code}/?token={self._key}")
 
-        return {
-            "station_code": data["data"]["idx"],
-            "time": data["data"]["time"]["iso"],
-            "iaqi": data["data"]["iaqi"],
-            "forecast": data["data"]["forecast"]["daily"],
-        }
+        return data
 
+    def retrieve_data(self):
+        stream_file = open(self._file, 'rb')
+        self._data = pickle.load(stream_file)
+        stream_file.close()
 
-    def get_data_current_arr(self):
+    def record_data(self):        
+        file_stream = open(self._file, 'wb')
+        pickle.dump(self._data, file_stream)
+        file_stream.close()
+
+    def update_data(self):
         """
         Gets current data from the API by calling the API get current conditions
         for the current hour.
         """
-
-        result_data = []
-
+        station_data = None
         for loc in self._locations:
             try:
-                data_station = self.get_data_current(loc)
-                result_data.append(data_station)
+                station_data = self.get_data_station(loc)
             except ValueError:
                 print("Couldn't get information from " + loc)
-        
-        return result_data
+                continue
+
+            for k, days in station_data["data"]["forecast"]["daily"].items():
+                for day in days:
+                    date = day["day"]
+
+                    if "day" not in self._data:
+                        self._data["day"] = {}
+                    if date  not in self._data["day"]:
+                        self._data["day"][date] = {}
+                    if loc not in self._data["day"][date]:
+                        self._data["day"][date][loc] = {}
+
+                    self._data["day"][date][loc][k] = {
+                        "avg": day["avg"],
+                        "max": day["max"],
+                        "min": day["min"],
+                    }
+
 
 if __name__ == "__main__":
     con2 = ACConnector()
-    for i in con2.get_data_current_arr():
-        print(i["station_code"])
