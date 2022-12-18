@@ -65,18 +65,18 @@ class ACConnector:
         self._data = {}
 
         if city is None:
-            self._locations = [
+            self._station_codes = [
                 '@8574','@8094','@9261','@12893','@10556',
                 '@8575','@8093','@8761','@8816','@8766'
             ]
 
-            self._location_names = [''] * 12
+            self._station_names = [''] * 12
             self._city = 'belgrade'
             self._file = self._code + '_' + self._city + '.txt'
             self.m_url = 'https://api.waqi.info'
         else:
-            self._locations = []
-            self._location_names = []
+            self._station_codes = []
+            self._station_names = []
             self._city = city
             self._file = self._code + '_' + self._city + '.txt'
             self.m_url = 'https://api.waqi.info'
@@ -89,15 +89,20 @@ class ACConnector:
         self._city = city
 
 ####### Getters ################################################################
-
     def get_city(self):
+        """
+        Returns a code name of the city being examined.
+        """
         return self._city
 
     def get_station_codes(self):
-        return self._locations.copy()
+        """
+        Returns a list of station code 
+        """
+        return self._station_codes.copy()
 
     def get_station_names(self):
-        return self._location_names.copy()
+        return self._station_names.copy()
 
     def get_stations(self):
         return list(zip(
@@ -125,7 +130,7 @@ class ACConnector:
         if not use_api:
             return
 
-        for loc in self._locations:
+        for loc in self._station_codes:
             try:
                 station_data = self.get_data_station(loc)
             except ValueError:
@@ -245,8 +250,8 @@ class ACConnector:
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
         })
         if len(data) != 0:
-            self._locations = ['@' + str(i["uid"]) for i in data["data"]]
-            self._location_names = [i["station"]["name"] for i in data["data"]]
+            self._station_codes = ['@' + str(i["uid"]) for i in data["data"]]
+            self._station_names = [i["station"]["name"] for i in data["data"]]
         else:
             raise ValueError('Can\'t find information about this city')
 

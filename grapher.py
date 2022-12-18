@@ -26,6 +26,10 @@ class Grapher:
         self.style = style
 
     def plot_values_margin(self, data):
+        """
+        Receives data in a form of {[date]: {max ; min ; avg}.
+        Using plt, shows the plot with margins for the specific pollution / gas
+        """
         date_list  = []
         max_values = []
         min_values = []
@@ -48,6 +52,9 @@ class Grapher:
         plt.show()
 
     def plot_values_average(self, data):
+        """
+        Plots a data in a standard manner, creates a 
+        """
         plt.style.use(self.style)
 
         x = range(len(data["date"]))
@@ -57,8 +64,9 @@ class Grapher:
             if key == "date":
                 continue
             plt.plot(x, value, label=key)
-
-        plt.legend(bbox_to_anchor=(1.5, 1.05))
+        
+        plt.ylim(0, 400)
+        plt.legend(bbox_to_anchor=(-0.1, 1.05))
         plt.tight_layout()
         plt.show()
 
@@ -74,18 +82,93 @@ class Interpreter:
     def __init__(self):
         self._connection = ACConnector()
         self._grapher = Grapher()
+        
+        self.status = {
+            "ok": None,
+            "text": '',
+            "error": None,
+        }
 
-    def set_city(self, city):
+    def execute(self, com):
+        try:
+            com = com.split()
+
+            if com[0] == "forecast":
+                if len(com) == 1: self.blame()
+                self.parse_forecast(com[1:])
+            if com[0] == 'get':
+                if len(com) == 1: self.blame()
+                self.parse_get(com[1:])
+        except Exception as e:
+            self.error("Inner error", e)
+
+    def text(self):
+        return self.status["text"]
+
+    def is_ok(self):
+        return self.status["ok"]
+
+    def get_error(self):
+        return self.status["error"]
+
+    def good(self):
+        self.status["ok"] = True
+        self.status["text"] = ''
+        self.status["error"] = None
+
+    def blame(self, text="Bad command"):
+        self.status["ok"] = False
+        self.status["text"] = text
+        self.status["error"] = None
+
+    def error(self, text, e):
+        self.status["ok"] = False
+        self.status["text"] = text
+        self.status["error"] = e
+
+    def parse_get(self, com):
+        if com[0] == 'city':
+            print(f"Currently selected city is: {self.com_get_city()}")
+
+        if com[0] == 'stations':
+            data = self._connection.get_stations()
+            print("Currently available stations:")
+            for (i, j) in data:
+                print(i, j)
+            self.good()
+
+    def parse_forecast(self, com):
+        if com[0] == "plot":
+            if len(com) != 3:
+                self.blame()
+
+            if com[1] == "all":
+                if com[2] in self.com_get_stations():
+                    self.com_plot_average_pollutions(com[2])
+                    self.ok()
+
+
+
+    def com_set_city(self, city):
         self._connection.set_city(city)
 
-    def get_city(self):
+    def com_get_city(self):
         return self._connection.get_city()
 
-    def get_stations(self):
+    def com_get_stations(self):
         return self._connection.get_stations()
 
-    def forecast_plot(self, pollution_type):
-        pass
+    def com_plot_average_stations(self, pollution_type):
+        grapher.plot_values_average(
+            con.get_daily_data_stations(pollution_type))
+
+    def com_plot_average_pollutions(self, station_code):
+        grapher.plot_values_average(
+            con.get_daily_data_averages(station_code))
+
+    def com_plot_pollution_margin(self, station_code, pollution_type):
+        grapher.plot_values_margin(
+            con.get_daily_data_pollution(station_code, pollution_type))
 
 if __name__ == "__main__":
     con = ACConnector()
@@ -93,6 +176,7 @@ if __name__ == "__main__":
     stations = con.get_station_codes()
 
     grapher = Grapher()
-    grapher.plot_values_average(con.get_daily_data_averages(stations[0]))
+    # grapher.plot_values_average(con.get_daily_data_averages(stations[0]))
+    # grapher.plot_values_margin(con.get_daily_data_pollution(stations[3], "pm25"))
     # grapher.plot_values_average(con.get_daily_data_averages(stations[3]))
     # grapher.plot_values_average(con.get_daily_data_stations("pm10"))
