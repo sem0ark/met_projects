@@ -147,7 +147,7 @@ class ACConnector:
                     }
         self.record_data()
 
-    def get_daily_data(self, station_code, pollution_code):
+    def get_daily_data_pollution(self, station_code, pollution_code):
         """
         Result structure:
         - date
@@ -157,16 +157,71 @@ class ACConnector:
         """
         result_data = {}
 
-        for date in self._data["day"]:
+        for date in sorted(self._data["day"]):
             if station_code not in self._data["day"][date]:
                 continue
-            if station_code not in self._data["day"][date]:
-                self._data["day"][date] = {}
 
             print(date, self._data["day"][date].keys())
             result_data[date] = self._data["day"][date][station_code][pollution_code].copy()
-    
         return result_data
+
+    def get_daily_data_averages(self, station_code):
+        """
+        Result structure:
+        - date
+        - [pollution code] -> array of averages
+        """
+        result_data = {
+            "date": []
+        }
+
+        for date in sorted(self._data["day"]):
+            if station_code not in self._data["day"][date]:
+                continue
+            result_data["date"].append(date)
+            for (pollution_code, value) in self._data["day"][date][station_code].items():
+                if pollution_code not in result_data:
+                    result_data[pollution_code] = []
+                result_data[pollution_code].append(value["avg"])
+        return result_data
+
+    def get_daily_data_stations(self, pollution_code):
+        """
+        Result structure:
+        - date
+        - [station code] -> array of averages
+        """
+        result_data = {}
+        tmp = {}
+
+        dates = set()
+
+        for date in sorted(self._data["day"]):
+            dates.add(date)
+
+            for (station_code, station_data) in self._data["day"][date].items():
+                if station_code not in result_data:
+                    tmp[station_code] = {}
+                if pollution_code not in station_data:
+                    continue
+                tmp[station_code][date] = station_data[pollution_code]["avg"]
+
+        print(tmp)
+
+        for (station_code, station_data) in tmp.items():
+            for date in sorted(dates):
+                if station_code not in result_data:
+                    result_data[station_code] = []
+
+                result_data[station_code].append(station_data.get(date, 0))
+
+        result_data["date"] = sorted(dates)
+
+        for i in result_data:
+            print(i, result_data[i])
+
+        return result_data
+
 
 #####   Private   ##############################################################
 
@@ -215,4 +270,4 @@ if __name__ == "__main__":
     stations = con.get_station_codes()
     print(stations)
     # print(con._data["day"]['2022-12-18'][stations[0]])
-    print(con.get_daily_data(stations[0], "o3"))
+    print(con.get_daily_data_pollution(stations[0], "pm10"))

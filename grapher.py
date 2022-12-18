@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 from connector import ACConnector
 
 """
@@ -9,11 +11,45 @@ forecast (plot/bar) (all/no2/so2/pm10/pm25/co/o3) -> (type of the graph) (which 
 """
 
 class Grapher:
-    def __init__(self, style='deepocean'):
+    def __init__(self, style='classic'):
         self.style = style
 
-    def 
+    def plot_values_margin(self, data):
+        date_list  = []
+        max_values = []
+        min_values = []
+        avg_values = []
 
+        for (date, value) in data.items():
+            date_list.append(date)
+            max_values.append(value["max"])
+            min_values.append(value["min"])
+            avg_values.append(value["avg"])
+
+        x = range(len(date_list))
+
+        plt.style.use(self.style)
+        plt.fill_between(x, min_values, max_values, facecolor='lightgreen')
+        plt.plot(x, avg_values)
+        plt.ylim(0, 400)
+        plt.xticks(x, date_list, rotation=45)
+        plt.tight_layout()
+        plt.show()
+
+    def plot_values_average(self, data):
+        plt.style.use(self.style)
+
+        x = range(len(data["date"]))
+        plt.xticks(x, data["date"], rotation=45)
+
+        for (key, value) in data.items():
+            if key == "date":
+                continue
+            plt.plot(x, value, label=key)
+
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
 
 
 """
@@ -23,8 +59,6 @@ get
         -> their codes and locations
     get current city
         -> show current city code_name
-    get info
-        -> get info about current stations + city
 """
 class Interpreter:
     def __init__(self):
@@ -35,4 +69,20 @@ class Interpreter:
         self._connection.set_city(city)
 
     def get_city(self):
-        return self._connection.
+        return self._connection.get_city()
+
+    def get_stations(self):
+        return self._connection.get_stations()
+
+    def forecast_plot(self, pollution_type):
+        pass
+
+if __name__ == "__main__":
+    con = ACConnector()
+    con.update_weather_data(use_api=False)
+    stations = con.get_station_codes()
+
+    grapher = Grapher()
+    # grapher.plot_values_margin(con.get_daily_data_averages(stations[0]))
+    # grapher.plot_values_average(con.get_daily_data_averages(stations[0]))
+    grapher.plot_values_average(con.get_daily_data_stations("pm10"))
