@@ -233,7 +233,6 @@ class ACConnector:
 
 
 #####   Private   ##############################################################
-
     def update_location_data(self, city):
         """
         The mothod is searhing possible stations that correspond to the keyword
@@ -261,17 +260,14 @@ class ACConnector:
 
     def retrieve_data(self):
         try:
-            stream_file = open(self._file, 'rb')
-            self._data = pickle.load(stream_file)
-            stream_file.close()
+            with open(self._file, 'rb') as stream_file:
+                self._data = pickle.load(stream_file)
         except FileNotFoundError:
             print('Data file wasn\'t found')
 
     def record_data(self):
-        file_stream = open(self._file, 'wb')
-        pickle.dump(self._data, file_stream)
-        file_stream.close()
-
+        with open(self._file, 'wb') as stream_file:
+            pickle.dump(self._data, stream_file)
 
 if __name__ == "__main__":
     con = ACConnector()

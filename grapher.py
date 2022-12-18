@@ -1,15 +1,26 @@
+"""
+API connector module for CS100 PZ01,
+group 2, topic 14
+
+Completed by Arkadii Senemov, 5833
+Software Engineering, year 1
+
+Module description:
+The module implements solutions to the tasks:
+1. Get the commends from CLI
+2. Use connector.py to get nescessary data
+3. Execute commends provided by the CLI
+"""
+
 import matplotlib.pyplot as plt
 
 from connector import ACConnector
 
-"""
-forecast (plot/bar) (all/no2/so2/pm10/pm25/co/o3) -> (type of the graph) (which gas to use)
-    avg -> average through all stations
-    [@station_code] -> information for sepcific station
-        avg     -> show average for the day
-        max-min -> show min and max for the day
-"""
-
+# forecast (plot/bar) (all/no2/so2/pm10/pm25/co/o3) -> (type of the graph) (which gas to use)
+#     avg -> average through all stations
+#     [@station_code] -> information for sepcific station
+#         avg     -> show average for the day
+#         max-min -> show min and max for the day for the specific pollution
 class Grapher:
     def __init__(self, style='classic'):
         self.style = style
@@ -52,14 +63,13 @@ class Grapher:
         plt.show()
 
 
-"""
-get
-    get stations
-        -> shows the list of all possible stations,
-        -> their codes and locations
-    get current city
-        -> show current city code_name
-"""
+
+# get
+#     get stations
+#         -> shows the list of all possible stations,
+#         -> their codes and locations
+#     get current city
+#         -> show current city code_name
 class Interpreter:
     def __init__(self):
         self._connection = ACConnector()
