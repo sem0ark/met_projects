@@ -64,16 +64,8 @@ class ACConnector:
 
         if city is None:
             self._locations = [
-                '@8574',
-                '@8094',
-                '@9261',
-                '@12893',
-                '@10556',
-                '@8575',
-                '@8093',
-                '@8761',
-                '@8816',
-                '@8766'
+                '@8574','@8094','@9261','@12893','@10556',
+                '@8575','@8093','@8761','@8816','@8766'
             ]
 
             self._location_names = [''] * 12
@@ -96,53 +88,38 @@ class ACConnector:
     def get_city(self):
         return self._city
 
+    def get_station_codes(self):
+        return self._locations.copy()
+
+    def get_station_names(self):
+        return self._location_names.copy()
+
     def get_stations(self):
-        return (self._locations[:], self._location_names[:])
+        return list(zip(
+            self.get_station_codes(),
+            self.get_station_names()
+        ))
 
-    def update_location_data(self, city):
-        """
-        The mothod is searhing possible stations that correspond to the keyword
-        entered by the user to get data from the API list of possible stations.
-
-        Uses user-agend in case of bot detection.
-        """
-
-        data = req_json(
-            f'https://api.waqi.info/search/?token={self._key}&keyword={city}',
-            headers={
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-        })
-        if len(data) != 0:
-            self._locations = ['@' + str(i["uid"]) for i in data["data"]]
-            self._location_names = [i["station"]["name"] for i in data["data"]]
-        else:
-            raise ValueError('Can\'t find information about this city')
-
-    def get_data_station(self, station_code):
-        """
-        Gets current data from the API by calling the API get current conditions.
-        Uses location code of the station.
-        """
-        data = req_json(self.m_url + f"/feed/{station_code}/?token={self._key}")
-
-        return data
-
-    def retrieve_data(self):
-        stream_file = open(self._file, 'rb')
-        self._data = pickle.load(stream_file)
-        stream_file.close()
-
-    def record_data(self):        
-        file_stream = open(self._file, 'wb')
-        pickle.dump(self._data, file_stream)
-        file_stream.close()
-
-    def update_data(self):
+    def update_weather_data(self, use_api=True):
         """
         Gets current data from the API by calling the API get current conditions
-        for the current hour.
+        for the current daily forecast.
+
+        data structure:
+        - day
+            - [date]
+                - [station code]
+                    - [pollution type]
+                        - avg
+                        - min
+                        - max
         """
-        station_data = None
+
+        self.retrieve_data()
+
+        if not use_api:
+            return
+
         for loc in self._locations:
             try:
                 station_data = self.get_data_station(loc)
@@ -161,12 +138,81 @@ class ACConnector:
                     if loc not in self._data["day"][date]:
                         self._data["day"][date][loc] = {}
 
+                    print(date, loc, k)
+
                     self._data["day"][date][loc][k] = {
                         "avg": day["avg"],
                         "max": day["max"],
                         "min": day["min"],
                     }
+        self.record_data()
+
+    def get_daily_data(self, station_code, pollution_code):
+        """
+        Result structure:
+        - date
+            - avg
+            - max
+            - min
+        """
+        result_data = {}
+
+        for date in self._data["day"]:
+            if station_code not in self._data["day"][date]:
+                continue
+            if station_code not in self._data["day"][date]:
+                self._data["day"][date] = {}
+
+            print(date, self._data["day"][date].keys())
+            result_data[date] = self._data["day"][date][station_code][pollution_code].copy()
+    
+        return result_data
+
+#####   Private   ##############################################################
+
+    def update_location_data(self, city):
+        """
+        The mothod is searhing possible stations that correspond to the keyword
+        entered by the user to get data from the API list of possible stations.
+        Uses user-agend in case of bot detection.
+        """
+        data = req_json(
+            f'https://api.waqi.info/search/?token={self._key}&keyword={city}',
+            headers={
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+        })
+        if len(data) != 0:
+            self._locations = ['@' + str(i["uid"]) for i in data["data"]]
+            self._location_names = [i["station"]["name"] for i in data["data"]]
+        else:
+            raise ValueError('Can\'t find information about this city')
+
+    def get_data_station(self, station_code):
+        """
+        Gets current data from the API by calling the API get current conditions.
+        Uses location code of the station.
+        """
+        data = req_json(self.m_url + f"/feed/{station_code}/?token={self._key}")
+        return data
+
+    def retrieve_data(self):
+        try:
+            stream_file = open(self._file, 'rb')
+            self._data = pickle.load(stream_file)
+            stream_file.close()
+        except FileNotFoundError:
+            print('Data file wasn\'t found')
+
+    def record_data(self):
+        file_stream = open(self._file, 'wb')
+        pickle.dump(self._data, file_stream)
+        file_stream.close()
 
 
 if __name__ == "__main__":
-    con2 = ACConnector()
+    con = ACConnector()
+    con.update_weather_data(use_api=False)
+    stations = con.get_station_codes()
+    print(stations)
+    # print(con._data["day"]['2022-12-18'][stations[0]])
+    print(con.get_daily_data(stations[0], "o3"))
