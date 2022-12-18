@@ -83,6 +83,6 @@ if __name__ == "__main__":
     stations = con.get_station_codes()
 
     grapher = Grapher()
-    # grapher.plot_values_margin(con.get_daily_data_averages(stations[0]))
+    grapher.plot_values_average(con.get_daily_data_averages(stations[0]))
     # grapher.plot_values_average(con.get_daily_data_averages(stations[3]))
-    # grapher.plot_values_average(con.get_daily_data_stations("no2"))
+    # grapher.plot_values_average(con.get_daily_data_stations("pm10"))

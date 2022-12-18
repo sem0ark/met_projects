@@ -60,6 +60,8 @@ class ACConnector:
         """
         self._code = 'acqui'
         self._key = get_keys()[self._code]
+        self._pollutions = ['o3', 'no2', 'so2', 'pm10', 'pm25']
+        # a list of gases/pollutions provided by the API
         self._data = {}
 
         if city is None:
@@ -81,9 +83,12 @@ class ACConnector:
 
             self.update_location_data(self._city)
 
+####### Setters ################################################################
     def set_city(self, city):
         self.update_location_data(city)
         self._city = city
+
+####### Getters ################################################################
 
     def get_city(self):
         return self._city
@@ -120,8 +125,6 @@ class ACConnector:
         if not use_api:
             return
 
-        pollutions = ['o3', 'no2', 'so2', 'pm10', 'pm25']
-
         for loc in self._locations:
             try:
                 station_data = self.get_data_station(loc)
@@ -146,7 +149,7 @@ class ACConnector:
                         "min": day["min"],
                     }
 
-            for k in pollutions:
+            for k in self._pollutions:
                 if k not in station_data["data"]["forecast"]["daily"] and \
                         k in station_data["data"]["iaqi"]:
                     date = station_data["data"]["time"]["iso"].split('T')[0]
@@ -159,6 +162,7 @@ class ACConnector:
 
         self.record_data()
 
+##### Structuring ##############################################################
     def get_daily_data_pollution(self, station_code, pollution_code):
         """
         Result structure:
@@ -182,16 +186,22 @@ class ACConnector:
         - date
         - [pollution code] -> array of averages
         """
-        result_data = {}
+        result_data = {
+            "date": []
+        }
 
         for date in sorted(self._data["day"]):
             if station_code not in self._data["day"][date]:
                 continue
             result_data["date"].append(date)
-            for (pollution_code, value) in self._data["day"][date][station_code].items():
+            for pollution_code in self._pollutions:
                 if pollution_code not in result_data:
                     result_data[pollution_code] = []
-                result_data[pollution_code].append(value["avg"])
+                if pollution_code not in self._data["day"][date][station_code]:
+                    result_data[pollution_code].append(0)
+                else:
+                    result_data[pollution_code].append(
+                        self._data["day"][date][station_code][pollution_code]["avg"])
 
         return result_data
 
