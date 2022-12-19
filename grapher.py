@@ -25,6 +25,9 @@ class Grapher:
     def __init__(self, style='classic'):
         self.style = style
 
+    def set_style(self, style):
+        self.style = style
+
     def plot_values_margin(self, data):
         """
         Receives data in a form of {[date]: {max ; min ; avg}.
@@ -79,10 +82,10 @@ class Grapher:
 #     get current city
 #         -> show current city code_name
 class Interpreter:
-    def __init__(self):
+    def __init__(self, use_api=False):
         self._connection = ACConnector()
         self._grapher = Grapher()
-        
+        self._connection.update_weather_data(use_api=use_api)
         self.status = {
             "ok": None,
             "text": '',
@@ -182,6 +185,9 @@ class Interpreter:
 
     def com_set_city(self, city):
         self._connection.set_city(city)
+
+    def com_set_style(self, style):
+        self._grapher.set_style(style)
 
     def com_get_city(self):
         return self._connection.get_city()
