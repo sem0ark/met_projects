@@ -16,12 +16,13 @@ import matplotlib.pyplot as plt
 
 from connector import ACConnector
 
-# forecast (plot/bar) (all/no2/so2/pm10/pm25/co/o3) -> (type of the graph) (which gas to use)
-#     avg -> average through all stations
-#     [@station_code] -> information for sepcific station
-#         avg     -> show average for the day
-#         max-min -> show min and max for the day for the specific pollution
+
 class Grapher:
+    """
+    The Grapher class is in charge of plotting and showing data using matplotlib.
+    The data should be in the specified structure.
+    """
+
     def __init__(self, style='classic'):
         self.style = style
 
@@ -56,7 +57,14 @@ class Grapher:
 
     def plot_values_average(self, data):
         """
-        Plots a data in a standard manner, creates a plot with a legend.
+        Plots a data in a plot graph with a legend for keys, creates a plot with a legend.
+        Used for showing data about AQI (0 - 400) for the specified pollution types.
+        Receives {
+            "date": [list of dates],
+            key1: [list of data for every date],
+            key2: [list of data for every date],
+            ...
+        }
         """
         plt.style.use(self.style)
 
@@ -67,23 +75,24 @@ class Grapher:
             if key == "date":
                 continue
             plt.plot(x, value, label=key)
-        
+
         plt.ylim(0, 400)
         plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left',
-                      ncol=2, mode="expand", borderaxespad=0.)
+                      ncol=4, mode="expand", borderaxespad=0.)
         plt.tight_layout()
         plt.show()
 
+    #TODO add bar chart to the Grapher
+    #TODO add bar chart option to the Interpreter and cli.py
 
 
-# get
-#     get stations
-#         -> shows the list of all possible stations,
-#         -> their codes and locations
-#     get current city
-#         -> show current city code_name
 class Interpreter:
-    def __init__(self, city='belgrade', use_api=False):
+    """
+    Main class in charge of interpreting and executing commands
+    passed from the cli.py.
+    """
+
+    def __init__(self, city='belgrade', use_api=True):
         self._connection = ACConnector(city=city)
         self._grapher = Grapher()
         self._connection.update_weather_data(use_api=use_api)
@@ -93,19 +102,29 @@ class Interpreter:
         }
 
     def get_text(self):
+        """Returns the last string message from the interpreter."""
         return self.status["text"]
 
     def get_error(self):
+        """Returns the last exception object from the interpreter."""
         return self.status["error"]
 
     def set_text(self, text):
+        """Set the text message for the interpreter."""
         self.status["text"] = text
 
-    def set_error(self, e):
-        self.status["error"] = e
+    def set_error(self, err):
+        """Set the exception object for the interpreter."""
+        self.status["error"] = err
 
     def execute(self, com):
-        try:
+        """
+        Main execution function.
+        Receives a commend as a string and passes it to the subroutines.
+        Returns True for the successive execution of teh command,
+                False otherwise.
+        """
+        try: # hadles any possible errors and reports as a message from the interpreter
             com = com.split()
 
             if com[0] == "forecast" and len(com) > 2:
@@ -126,6 +145,7 @@ class Interpreter:
         return False
 
     def exec_get(self, com):
+        """Execution subroutine for teh branch of 'get' commands"""
         if com[0] == 'city':
             print(f"Currently selected city is: {self.com_get_city()}")
             return True
@@ -147,6 +167,8 @@ class Interpreter:
         return False
 
     def exec_set(self, com):
+        """Execution subroutine for the branch of 'set' commands"""
+
         if com[0] == 'city' and len(com) == 2:
             print("Updating teh list of stations...")
             self.com_set_city(com[1])
@@ -158,6 +180,8 @@ class Interpreter:
         return False
 
     def exec_forecast(self, com):
+        """Execution subroutine for the branch of 'forecast' commands"""
+
         if com[0] == "plot" and len(com) == 3:
             if com[1] == "all":
                 if com[2] in self._connection.get_station_codes():
@@ -175,29 +199,49 @@ class Interpreter:
         return False
 
     def com_set_city(self, city):
+        """Sets a new city for the session"""
         self._connection.set_city(city)
 
     def com_set_style(self, style):
+        """Sets a new style of plots for the session"""
         self._grapher.set_style(style)
+        #TODO Create a handling of the command for the cli.py
+        #TODO Create a handling of the command for listing available styles
 
     def com_get_city(self):
+        """Returns the current city code name for the session"""
         return self._connection.get_city()
 
     def com_get_stations(self):
+        """Returns the list of station codes and names for the session"""
         return self._connection.get_stations()
 
     def com_get_pollutions(self):
+        """Returns the available types of pollution for the session"""
         return self._connection.get_pollutions()
 
     def com_plot_average_stations(self, pollution_type):
+        """
+        Uses Grapher class and prints a plot for
+            the pollution type throughout available list of stations
+        """
         self._grapher.plot_values_average(
             self._connection.get_daily_data_stations(pollution_type))
 
     def com_plot_average_pollutions(self, station_code):
+        """
+        Uses Grapher class and prints a plot for
+            data from the specified station for all available types of pollution
+        """
         self._grapher.plot_values_average(
             self._connection.get_daily_data_averages(station_code))
 
     def com_plot_pollution_margin(self, station_code, pollution_type):
+        """
+        Uses Grapher class and prints a plot with margins
+            for max and min values (if they are available) for
+            data from the specified station and type of pollution
+        """
         self._grapher.plot_values_margin(
             self._connection.get_daily_data_pollution(station_code, pollution_type))
 

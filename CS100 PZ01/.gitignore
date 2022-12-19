@@ -1,5 +1,6 @@
 *key*
 *.txt
+*.bin
 *.log
 *.docx
 __pycache__

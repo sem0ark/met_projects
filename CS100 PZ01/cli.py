@@ -65,10 +65,10 @@ This program shows the information about the pollution in the specified city:
 
 Possible commands:
 
-forecast plot (no2/so2/pm10/pm25/o3) avg
-    -> average through all stations
+forecast plot [pollution_type] all
+    -> average through all available stations
 forecast plot all [@station_code]
-    -> information about averages of gases for the specific station
+    -> information about averages of air quality for the specific station
 forecast plot (no2/so2/pm10/pm25/o3) [@station_code]
     -> informaton about the specific gas with margins for min and max
 

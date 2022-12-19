@@ -28,7 +28,7 @@ def req_json(req_url, headers=''):
         return json.loads(response.text)
 
     raise ValueError(
-        f'Something went worng, error {response.status_code}')
+        f'Something went worng, error code {response.status_code}')
 
 
 def get_keys(filename='keys.txt'):
@@ -51,6 +51,13 @@ class ACConnector:
     """
     Connector class for the API by https://aqicn.org/
     """
+    POLLUTIONS = ['o3', 'no2', 'so2', 'pm10', 'pm25']
+    DATA = {}
+
+
+    CODE = 'acqui'
+    FILE = CODE + '.bin'
+    URL = 'https://api.waqi.info'
 
     def __init__(self, city=None):
         """
@@ -58,11 +65,8 @@ class ACConnector:
         it is thought that there would be only one instance used.
         If the city is not specified we use defaul info about belgrade and its stations.
         """
-        self._code = 'acqui'
-        self._key = get_keys()[self._code]
-        self._pollutions = ['o3', 'no2', 'so2', 'pm10', 'pm25']
+        self._key = get_keys()[self.__class__.CODE]
         # a list of gases/pollutions provided by the API
-        self._data = {}
 
         if city == 'belgrade':
             self._station_codes = [
@@ -91,19 +95,21 @@ class ACConnector:
                 'Beograd Pančevački most, Serbia',
             ]
             self._city = 'belgrade'
-            self._file = self._code + '_' + self._city + '.txt'
-            self.m_url = 'https://api.waqi.info'
         else:
             self._station_codes = []
             self._station_names = []
             self._city = city
-            self._file = self._code + '_' + self._city + '.txt'
-            self.m_url = 'https://api.waqi.info'
+            self.__class__.FILE = self.__class__.CODE + '_' + self._city + '.txt'
+            self.__class__.URL = 'https://api.waqi.info'
 
             self.update_location_data(self._city)
 
 ####### Setters ################################################################
     def set_city(self, city):
+        """
+        Sets a new city and updates the list of available stations.
+        The list would be empty if the city name is incorrect.
+        """
         self.update_location_data(city)
         self._city = city
 
@@ -131,7 +137,7 @@ class ACConnector:
 
     def get_pollutions(self):
         """Returns a list of available pollution values"""
-        return self._pollutions
+        return self.__class__.POLLUTIONS
 
     def update_weather_data(self, use_api=True):
         """
@@ -164,25 +170,25 @@ class ACConnector:
                 for day in days:
                     date = day["day"]
 
-                    if "day" not in self._data:
-                        self._data["day"] = {}
-                    if date  not in self._data["day"]:
-                        self._data["day"][date] = {}
-                    if loc not in self._data["day"][date]:
-                        self._data["day"][date][loc] = {}
+                    if "day" not in self.__class__.DATA:
+                        self.__class__.DATA["day"] = {}
+                    if date  not in self.__class__.DATA["day"]:
+                        self.__class__.DATA["day"][date] = {}
+                    if loc not in self.__class__.DATA["day"][date]:
+                        self.__class__.DATA["day"][date][loc] = {}
 
-                    self._data["day"][date][loc][k] = {
+                    self.__class__.DATA["day"][date][loc][k] = {
                         "avg": day["avg"],
                         "max": day["max"],
                         "min": day["min"],
                     }
 
-            for k in self._pollutions:
+            for k in self.__class__.POLLUTIONS:
                 if k not in station_data["data"]["forecast"]["daily"] and \
                         k in station_data["data"]["iaqi"]:
                     date = station_data["data"]["time"]["iso"].split('T')[0]
 
-                    self._data["day"][date][loc][k] = {
+                    self.__class__.DATA["day"][date][loc][k] = {
                         "avg": station_data["data"]["iaqi"][k]["v"],
                         "max": station_data["data"]["iaqi"][k]["v"],
                         "min": station_data["data"]["iaqi"][k]["v"]
@@ -201,17 +207,18 @@ class ACConnector:
         """
         result_data = {}
 
-        for date in sorted(self._data["day"]):
-            if station_code not in self._data["day"][date]:
+        for date in sorted(self.__class__.DATA["day"]):
+            if station_code not in self.__class__.DATA["day"][date]:
                 continue
-            if pollution_code not in self._data["day"][date][station_code]:
+            if pollution_code not in self.__class__.DATA["day"][date][station_code]:
                 result_data[date] = {
                     "avg": 0,
                     "max": 0,
                     "min": 0,
                 }
             else:
-                result_data[date] = self._data["day"][date][station_code][pollution_code].copy()
+                result_data[date] = \
+                    self.__class__.DATA["day"][date][station_code][pollution_code].copy()
         return result_data
 
     def get_daily_data_averages(self, station_code):
@@ -224,18 +231,18 @@ class ACConnector:
             "date": []
         }
 
-        for date in sorted(self._data["day"]):
-            if station_code not in self._data["day"][date]:
+        for date in sorted(self.__class__.DATA["day"]):
+            if station_code not in self.__class__.DATA["day"][date]:
                 continue
             result_data["date"].append(date)
-            for pollution_code in self._pollutions:
+            for pollution_code in self.__class__.POLLUTIONS:
                 if pollution_code not in result_data:
                     result_data[pollution_code] = []
-                if pollution_code not in self._data["day"][date][station_code]:
+                if pollution_code not in self.__class__.DATA["day"][date][station_code]:
                     result_data[pollution_code].append(0)
                 else:
                     result_data[pollution_code].append(
-                        self._data["day"][date][station_code][pollution_code]["avg"])
+                        self.__class__.DATA["day"][date][station_code][pollution_code]["avg"])
 
         return result_data
 
@@ -247,19 +254,19 @@ class ACConnector:
         """
         result_data = {}
 
-        dates = list(sorted(set(self._data["day"].keys())))
+        dates = list(sorted(set(self.__class__.DATA["day"].keys())))
 
         for station_code in self.get_station_codes():
             for date in dates:
                 if station_code not in result_data:
                     result_data[station_code] = []
-                if station_code not in self._data["day"][date]:
+                if station_code not in self.__class__.DATA["day"][date]:
                     result_data[station_code].append(0)
-                elif pollution_code not in self._data["day"][date][station_code]:
+                elif pollution_code not in self.__class__.DATA["day"][date][station_code]:
                     result_data[station_code].append(0)
                 else:
                     result_data[station_code].append(
-                        self._data["day"][date][station_code][pollution_code]["avg"])
+                        self.__class__.DATA["day"][date][station_code][pollution_code]["avg"])
 
         result_data["date"] = dates
 
@@ -282,26 +289,28 @@ class ACConnector:
             self._station_codes = ['@' + str(i["uid"]) for i in data["data"]]
             self._station_names = [i["station"]["name"] for i in data["data"]]
         else:
-            raise ValueError('Can\'t find information about this city')
+            self._station_codes = []
+            self._station_names = []
 
     def get_data_station(self, station_code):
         """
         Gets current data from the API by calling the API get current conditions.
         Uses location code of the station.
         """
-        data = req_json(self.m_url + f"/feed/{station_code}/?token={self._key}")
+        data = req_json(self.__class__.URL + f"/feed/{station_code}/?token={self._key}")
         return data
 
     def retrieve_data(self):
+        """Reads binary data from the file"""
         try:
-            with open(self._file, 'rb') as stream_file:
-                self._data = pickle.load(stream_file)
+            with open(self.__class__.FILE, 'rb') as stream_file:
+                self.__class__.DATA = pickle.load(stream_file)
         except FileNotFoundError:
             print('Data file wasn\'t found')
 
     def record_data(self):
-        with open(self._file, 'wb') as stream_file:
-            pickle.dump(self._data, stream_file)
+        with open(self.__class__.FILE, 'wb') as stream_file:
+            pickle.dump(self.__class__.DATA, stream_file)
 
 if __name__ == "__main__":
     con = ACConnector()
