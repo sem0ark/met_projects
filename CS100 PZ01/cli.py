@@ -37,6 +37,10 @@ class CLI:
             self._history.append(com)
             return
 
+        if com == "history":
+            self.get_history()
+            return
+
         success = self._interpreter.execute(com)
         if success:
             self._history.append(com)
@@ -49,7 +53,7 @@ class CLI:
         self._run = False
 
     def get_command(self):
-        return input(f"{str(len(self._history)).ljust(5, ' ')}> ").strip(' ')
+        return input(f"{str(len(self._history) + 1).ljust(5, ' ')}> ").strip(' ')
 
     def get_history(self):
         print("History of the commands: ")
@@ -84,6 +88,9 @@ set city
 
 help
     -> show the text with possible commands (this text).
+
+history
+    -> show the list of executed commands in the session
 
 quit
     -> close the session

@@ -170,7 +170,7 @@ class Interpreter:
         """Execution subroutine for the branch of 'set' commands"""
 
         if com[0] == 'city' and len(com) == 2:
-            print("Updating teh list of stations...")
+            print("Updating the list of stations...")
             self.com_set_city(com[1])
             print("Retrieving data from the list of stations...")
             self._connection.update_weather_data(use_api=True)
@@ -189,7 +189,7 @@ class Interpreter:
                     return True
 
             if com[1] in self.com_get_pollutions():
-                if com[2] == "avg":
+                if com[2] == "all":
                     self.com_plot_average_stations(com[1])
                     return True
                 elif com[2] in self._connection.get_station_codes():
