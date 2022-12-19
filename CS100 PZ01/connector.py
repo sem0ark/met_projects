@@ -64,13 +64,32 @@ class ACConnector:
         # a list of gases/pollutions provided by the API
         self._data = {}
 
-        if city is None:
+        if city == 'belgrade':
             self._station_codes = [
-                '@8574','@8094','@9261','@12893','@10556',
-                '@8575','@8093','@8761','@8816','@8766'
+                '@12893',
+                '@8094',
+                '@10556',
+                '@8574',
+                '@9261',
+                '@8093',
+                '@8575',
+                '@8761',
+                '@8816',
+                '@8766',
             ]
 
-            self._station_names = [''] * 12
+            self._station_names = [
+                'Beograd Vračar, Serbia',
+                'Zeleno Brdo, Beograd, Serbia',
+                'Beograd Stari grad, Serbia',
+                'Stari Grad, Beograd, Serbia',
+                'Beograd Oml. brigada, Serbia',
+                'Mostar, Beograd, Serbia',
+                'Novi Beograd, Beograd, Serbia',
+                'Beograd Des. Stefana, Serbia',
+                'Beograd Panč most, Serbia',
+                'Beograd Pančevački most, Serbia',
+            ]
             self._city = 'belgrade'
             self._file = self._code + '_' + self._city + '.txt'
             self.m_url = 'https://api.waqi.info'
@@ -96,19 +115,23 @@ class ACConnector:
         return self._city
 
     def get_station_codes(self):
-        """
-        Returns a list of station code 
-        """
+        """Returns a list of station code"""
         return self._station_codes.copy()
 
     def get_station_names(self):
+        """Returns a list of station names"""
         return self._station_names.copy()
 
     def get_stations(self):
+        """Returns a list of (station code, station name)"""
         return list(zip(
             self.get_station_codes(),
             self.get_station_names()
         ))
+
+    def get_pollutions(self):
+        """Returns a list of available pollution values"""
+        return self._pollutions
 
     def update_weather_data(self, use_api=True):
         """
@@ -181,8 +204,14 @@ class ACConnector:
         for date in sorted(self._data["day"]):
             if station_code not in self._data["day"][date]:
                 continue
-
-            result_data[date] = self._data["day"][date][station_code][pollution_code].copy()
+            if pollution_code not in self._data["day"][date][station_code]:
+                result_data[date] = {
+                    "avg": 0,
+                    "max": 0,
+                    "min": 0,
+                }
+            else:
+                result_data[date] = self._data["day"][date][station_code][pollution_code].copy()
         return result_data
 
     def get_daily_data_averages(self, station_code):

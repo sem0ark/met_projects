@@ -16,7 +16,8 @@ class CLI:
     def __init__(self):
         self._history = []
         self._run = True
-        self._interpreter = Interpreter()
+        print("Hello, we are retrieving data from API now!")
+        self._interpreter = Interpreter(city='belgrade', use_api=True)
 
     def main_loop(self):
         self.show_help()
@@ -25,6 +26,8 @@ class CLI:
             self.execute(com)
 
     def execute(self, com):
+        if com == "":
+            return
         if com == "quit":
             self.quit()
             self._history.append(com)
@@ -34,19 +37,13 @@ class CLI:
             self._history.append(com)
             return
 
-        self._interpreter.execute(com)
-        if self._interpreter.is_ok():
+        success = self._interpreter.execute(com)
+        if success:
             self._history.append(com)
-        elif self._interpreter.get_error() is None:
-            if self._interpreter.text() == "Bad command":
-                print(f'Bad command, didn\'t understand "{com}"')
-
-            if self._interpreter.text() == "Bad station code":
-                print(f'Bad station code, please enter a correct one')
-                self._interpreter.execute("get stations")
         else:
-            print(f'Sorry, something went wrong while running "{com}": {self._interpreter.get_error()}')
-            print(self._interpreter.text())
+            if self._interpreter.get_error():
+                print(f'Sorry, something went wrong while running "{com}": {self._interpreter.get_error()}')
+            print(self._interpreter.get_text())
 
     def quit(self):
         self._run = False
@@ -79,6 +76,8 @@ get stations
     -> shows the list of all possible stations, their codes and locations
 get city
     -> show current city code_name
+get pollutions
+    -> show available types of data about the air conditions
 
 set city
     -> set another city to explore its information

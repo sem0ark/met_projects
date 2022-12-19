@@ -82,12 +82,11 @@ class Grapher:
 #     get current city
 #         -> show current city code_name
 class Interpreter:
-    def __init__(self, use_api=False):
-        self._connection = ACConnector()
+    def __init__(self, city='belgrade', use_api=False):
+        self._connection = ACConnector(city=city)
         self._grapher = Grapher()
         self._connection.update_weather_data(use_api=use_api)
         self.status = {
-            "ok": None,
             "text": '',
             "error": None,
         }
@@ -98,93 +97,87 @@ class Interpreter:
 
             if com[0] == "forecast":
                 if len(com) == 1:
-                    self.blame()
-                else:
-                    self.parse_forecast(com[1:])
+                    return False
+                elif self.parse_forecast(com[1:]):
+                    return True
             elif com[0] == 'get':
                 if len(com) == 1:
-                    self.blame()
-                else:
-                    self.parse_get(com[1:])
+                    return False
+                elif self.parse_get(com[1:]):
+                    return True
             elif com[0] == 'set':
                 if len(com) == 1:
-                    self.blame()
-                else:
-                    self.parse_set(com[1:])
+                    return False
+                elif self.parse_set(com[1:]):
+                    return True
         except Exception as e:
-            self.error("Inner error", e)
+            self.set_text("It looks like there's an error...")
+            self.set_error(e)
+            return False
+        self.set_text(f"Bad command, don't understand get {' '.join(com)}")
 
-        self.blame()
+        return False
 
-    def text(self):
+    def get_text(self):
         return self.status["text"]
-
-    def is_ok(self):
-        return self.status["ok"]
 
     def get_error(self):
         return self.status["error"]
 
-    def good(self):
-        self.status["ok"] = True
-        self.status["text"] = ''
-        self.status["error"] = None
-        return True
-
-    def blame(self, text="Bad command"):
-        self.status["ok"] = False
+    def set_text(self, text):
         self.status["text"] = text
-        self.status["error"] = None
-        return False
 
-    def error(self, text, e):
-        self.status["ok"] = False
-        self.status["text"] = text
+    def set_error(self, e):
         self.status["error"] = e
-        return False
 
     def parse_get(self, com):
         if com[0] == 'city':
             print(f"Currently selected city is: {self.com_get_city()}")
-            return self.good()
-        elif com[0] == 'stations':
+            return True
+
+        if com[0] == 'stations':
             data = self._connection.get_stations()
             print("Currently available stations:")
             for (i, j) in data:
                 print(i, j)
-            return self.good()
-        else:
-            return self.blame()
+            return True
+
+        if com[0] == 'pollutions':
+            data = self._connection.get_pollutions()
+            print("Currently available data:")
+            for i in data: print(i)
+            return True
+
+        self.set_text(f"Bad command, don't understand get {' '.join(com)}")
+        return False
 
     def parse_set(self, com):
-        if com[0] == 'city':
-            if len(com) != 2:
-                return self.blame()
+        if com[0] == 'city' and len(com) == 2:
             self.com_set_city(com[1])
-            return self.good()
+            return True
+        self.set_text(f"Bad command, don't understand set {' '.join(com)}")
+        return False
 
     def parse_forecast(self, com):
-        if com[0] == "plot":
-            if len(com) != 3:
-                self.blame()
-            elif com[1] == "all":
-                if com[2] in self.com_get_stations():
+        if com[0] == "plot" and len(com) == 3:
+            if com[1] == "all":
+                if com[2] in self._connection.get_station_codes():
                     self.com_plot_average_pollutions(com[2])
-                    return self.good()
-                else:
-                    return self.blame("Bad station code")
-            elif com[2] in ['no2','so2','pm10','pm25','o3']:
-                if com[3] == "avg":
-                    self.com_plot_average_stations(com[2])
-                    return self.good()
-                elif com[3] in self.com_get_stations():
-                    self.com_plot_pollution_margin(com[2], com[3])
+                    return True
 
-            self.blame()
-
+            if com[1] in ['no2','so2','pm10','pm25','o3']:
+                if com[2] == "avg":
+                    self.com_plot_average_stations(com[1])
+                    return True
+                elif com[2] in self._connection.get_station_codes():
+                    self.com_plot_pollution_margin(com[2], com[1])
+                    return True
+        self.set_text(f"Bad command, don't understand forecast {' '.join(com)}")
+        return False
 
     def com_set_city(self, city):
         self._connection.set_city(city)
+        self._connection.update_weather_data(use_api=True)
 
     def com_set_style(self, style):
         self._grapher.set_style(style)
@@ -196,23 +189,23 @@ class Interpreter:
         return self._connection.get_stations()
 
     def com_plot_average_stations(self, pollution_type):
-        grapher.plot_values_average(
-            con.get_daily_data_stations(pollution_type))
+        self._grapher.plot_values_average(
+            self._connection.get_daily_data_stations(pollution_type))
 
     def com_plot_average_pollutions(self, station_code):
-        grapher.plot_values_average(
-            con.get_daily_data_averages(station_code))
+        self._grapher.plot_values_average(
+            self._connection.get_daily_data_averages(station_code))
 
     def com_plot_pollution_margin(self, station_code, pollution_type):
-        grapher.plot_values_margin(
-            con.get_daily_data_pollution(station_code, pollution_type))
+        self._grapher.plot_values_margin(
+            self._connection.get_daily_data_pollution(station_code, pollution_type))
 
 if __name__ == "__main__":
-    con = ACConnector()
-    con.update_weather_data(use_api=False)
-    stations = con.get_station_codes()
+    # con = ACConnector(city='belgrade')
+    # con.update_weather_data(use_api=True)
+    # stations = con.get_station_codes()
 
-    grapher = Grapher()
+    # grapher = Grapher()
     # grapher.plot_values_average(con.get_daily_data_averages(stations[0]))
     # grapher.plot_values_margin(con.get_daily_data_pollution(stations[3], "pm25"))
     # grapher.plot_values_average(con.get_daily_data_averages(stations[3]))
