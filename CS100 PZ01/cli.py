@@ -84,6 +84,9 @@ set city
 
 help
     -> show the text with possible commands (this text).
+
+quit
+    -> close the session
 """)
 
 

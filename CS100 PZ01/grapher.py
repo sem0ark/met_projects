@@ -56,7 +56,7 @@ class Grapher:
 
     def plot_values_average(self, data):
         """
-        Plots a data in a standard manner, creates a 
+        Plots a data in a standard manner, creates a plot with a legend.
         """
         plt.style.use(self.style)
 
@@ -69,7 +69,8 @@ class Grapher:
             plt.plot(x, value, label=key)
         
         plt.ylim(0, 400)
-        plt.legend(bbox_to_anchor=(-0.1, 1.05))
+        plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left',
+                      ncol=2, mode="expand", borderaxespad=0.)
         plt.tight_layout()
         plt.show()
 
@@ -91,33 +92,6 @@ class Interpreter:
             "error": None,
         }
 
-    def execute(self, com):
-        try:
-            com = com.split()
-
-            if com[0] == "forecast":
-                if len(com) == 1:
-                    return False
-                elif self.parse_forecast(com[1:]):
-                    return True
-            elif com[0] == 'get':
-                if len(com) == 1:
-                    return False
-                elif self.parse_get(com[1:]):
-                    return True
-            elif com[0] == 'set':
-                if len(com) == 1:
-                    return False
-                elif self.parse_set(com[1:]):
-                    return True
-        except Exception as e:
-            self.set_text("It looks like there's an error...")
-            self.set_error(e)
-            return False
-        self.set_text(f"Bad command, don't understand get {' '.join(com)}")
-
-        return False
-
     def get_text(self):
         return self.status["text"]
 
@@ -130,7 +104,28 @@ class Interpreter:
     def set_error(self, e):
         self.status["error"] = e
 
-    def parse_get(self, com):
+    def execute(self, com):
+        try:
+            com = com.split()
+
+            if com[0] == "forecast" and len(com) > 2:
+                if self.exec_forecast(com[1:]):
+                    return True
+            elif com[0] == 'get' and len(com) > 1:
+                if self.exec_get(com[1:]):
+                    return True
+            elif com[0] == 'set' and len(com) > 1:
+                if self.exec_set(com[1:]):
+                    return True
+        except Exception as e:
+            self.set_text("It looks like there's an error...")
+            self.set_error(e)
+            return False
+
+        self.set_text(f"Bad command, don't understand get {' '.join(com)}")
+        return False
+
+    def exec_get(self, com):
         if com[0] == 'city':
             print(f"Currently selected city is: {self.com_get_city()}")
             return True
@@ -143,7 +138,7 @@ class Interpreter:
             return True
 
         if com[0] == 'pollutions':
-            data = self._connection.get_pollutions()
+            data = self.com_get_pollutions()
             print("Currently available data:")
             for i in data: print(i)
             return True
@@ -151,21 +146,25 @@ class Interpreter:
         self.set_text(f"Bad command, don't understand get {' '.join(com)}")
         return False
 
-    def parse_set(self, com):
+    def exec_set(self, com):
         if com[0] == 'city' and len(com) == 2:
+            print("Updating teh list of stations...")
             self.com_set_city(com[1])
+            print("Retrieving data from the list of stations...")
+            self._connection.update_weather_data(use_api=True)
+            print(f"Completed! The city now is: {self.com_get_city()}")
             return True
         self.set_text(f"Bad command, don't understand set {' '.join(com)}")
         return False
 
-    def parse_forecast(self, com):
+    def exec_forecast(self, com):
         if com[0] == "plot" and len(com) == 3:
             if com[1] == "all":
                 if com[2] in self._connection.get_station_codes():
                     self.com_plot_average_pollutions(com[2])
                     return True
 
-            if com[1] in ['no2','so2','pm10','pm25','o3']:
+            if com[1] in self.com_get_pollutions():
                 if com[2] == "avg":
                     self.com_plot_average_stations(com[1])
                     return True
@@ -177,7 +176,6 @@ class Interpreter:
 
     def com_set_city(self, city):
         self._connection.set_city(city)
-        self._connection.update_weather_data(use_api=True)
 
     def com_set_style(self, style):
         self._grapher.set_style(style)
@@ -187,6 +185,9 @@ class Interpreter:
 
     def com_get_stations(self):
         return self._connection.get_stations()
+
+    def com_get_pollutions(self):
+        return self._connection.get_pollutions()
 
     def com_plot_average_stations(self, pollution_type):
         self._grapher.plot_values_average(
@@ -210,3 +211,4 @@ if __name__ == "__main__":
     # grapher.plot_values_margin(con.get_daily_data_pollution(stations[3], "pm25"))
     # grapher.plot_values_average(con.get_daily_data_averages(stations[3]))
     # grapher.plot_values_average(con.get_daily_data_stations("pm10"))
+    pass
