@@ -99,7 +99,6 @@ class ACConnector:
             self._station_codes = []
             self._station_names = []
             self._city = city
-            self.__class__.FILE = self.__class__.CODE + '_' + self._city + '.txt'
             self.__class__.URL = 'https://api.waqi.info'
 
             self.update_location_data(self._city)
@@ -177,23 +176,71 @@ class ACConnector:
                     if loc not in self.__class__.DATA["day"][date]:
                         self.__class__.DATA["day"][date][loc] = {}
 
-                    self.__class__.DATA["day"][date][loc][k] = {
-                        "avg": day["avg"],
-                        "max": day["max"],
-                        "min": day["min"],
-                    }
+                    #FIXME Add updating information about the averages
+                    # Add additional branching:
+                    # if the data in the date is already exists
+                    #    if reads_number doesn't exist
+                    #       create reads_number = 1
+                    #    update avg (avg * reads_number + cur avg) / (reads_number + 1)
+                    #    update max
+                    #    update min
+                    #    reads_number += 1
+                    # else
+                    #   write data
+                    #   create reads_number = 1
+                    if k in self.__class__.DATA["day"][date][loc]:
+                        if "reads" not in self.__class__.DATA["day"][date][loc][k]:
+                            self.__class__.DATA["day"][date][loc][k]["reads"] = 1
+
+                        reads = self.__class__.DATA["day"][date][loc][k]["reads"]
+
+                        self.__class__.DATA["day"][date][loc][k] = {
+                            "avg": (day["avg"] * reads +
+                                    self.__class__.DATA["day"][date][loc][k]["avg"]) / (reads + 1),
+                            "max": max(day["max"],
+                                    self.__class__.DATA["day"][date][loc][k]["max"]),
+                            "min": min(day["min"],
+                                    self.__class__.DATA["day"][date][loc][k]["min"]),
+                            "reads": reads + 1,
+                        }
+                    else:
+                        self.__class__.DATA["day"][date][loc][k] = {
+                            "avg": day["avg"],
+                            "max": day["max"],
+                            "min": day["min"],
+                            "reads": 1,
+                        }
 
             for k in self.__class__.POLLUTIONS:
                 if k not in station_data["data"]["forecast"]["daily"] and \
                         k in station_data["data"]["iaqi"]:
                     date = station_data["data"]["time"]["iso"].split('T')[0]
+                    value = station_data["data"]["iaqi"][k]["v"]
 
-                    self.__class__.DATA["day"][date][loc][k] = {
-                        "avg": station_data["data"]["iaqi"][k]["v"],
-                        "max": station_data["data"]["iaqi"][k]["v"],
-                        "min": station_data["data"]["iaqi"][k]["v"]
-                    }
+                    if loc not in self.__class__.DATA["day"][date]:
+                        self.__class__.DATA["day"][date][loc] = {}
 
+                    if k in self.__class__.DATA["day"][date][loc]:
+                        if "reads" not in self.__class__.DATA["day"][date][loc][k]:
+                            self.__class__.DATA["day"][date][loc][k]["reads"] = 1
+                        reads = self.__class__.DATA["day"][date][loc][k]["reads"]
+
+                        self.__class__.DATA["day"][date][loc][k] = {
+                            "avg": (value * reads +
+                                    self.__class__.DATA["day"][date][loc][k]["avg"]) / (reads + 1),
+                            "max": max(value,
+                                    self.__class__.DATA["day"][date][loc][k]["max"]),
+                            "min": min(value,
+                                    self.__class__.DATA["day"][date][loc][k]["min"]),
+                            "reads": reads + 1,
+                        }
+                    else:
+                        self.__class__.DATA["day"][date][loc][k] = {
+                            "avg": value,
+                            "max": value,
+                            "min": value,
+                            "reads": 1,
+                        }
         self.record_data()
 
 ##### Structuring ##############################################################
@@ -314,7 +361,7 @@ class ACConnector:
 
 if __name__ == "__main__":
     con = ACConnector()
-    con.update_weather_data(use_api=False)
+    con.update_weather_data(use_api=True)
     stations = con.get_station_codes()
     print(stations)
     # print(con._data["day"]['2022-12-18'][stations[0]])
