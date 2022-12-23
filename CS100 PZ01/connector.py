@@ -59,7 +59,7 @@ class ACConnector:
     FILE = CODE + '.bin'
     URL = 'https://api.waqi.info'
 
-    def __init__(self, city=None):
+    def __init__(self, city='belgrade'):
         """
         Initialisation of the class,
         it is thought that there would be only one instance used.
@@ -328,10 +328,8 @@ class ACConnector:
         Uses user-agend in case of bot detection.
         """
         data = req_json(
-            f'https://api.waqi.info/search/?token={self._key}&keyword={city}',
-            headers={
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-        })
+            f'https://api.waqi.info/search/?token={self._key}&keyword={city}'
+        )
         if len(data) != 0:
             self._station_codes = ['@' + str(i["uid"]) for i in data["data"]]
             self._station_names = [i["station"]["name"] for i in data["data"]]
@@ -360,7 +358,7 @@ class ACConnector:
             pickle.dump(self.__class__.DATA, stream_file)
 
 if __name__ == "__main__":
-    con = ACConnector()
+    con = ACConnector(city="belgrade")
     con.update_weather_data(use_api=True)
     stations = con.get_station_codes()
     print(stations)
