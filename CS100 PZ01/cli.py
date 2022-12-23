@@ -28,12 +28,13 @@ class CLI:
     def execute(self, com):
         if com == "":
             return
+
         if com == "quit":
             self.quit()
             self._history.append(com)
             return
         if com == "help":
-            self.show_help()
+            self.parse_help(com.split(' ')[1:])
             self._history.append(com)
             return
 
@@ -60,7 +61,31 @@ class CLI:
         for i in self._history[::-1]:
             print(i)
 
+    def parse_help(self, com):
+        if len(com) == 0:
+            self.show_help()
+            return True
+        if len(com) == 1:
+            poll_name = com[0]
+
+            if poll_name == "pm10":
+                print("help for pm10")
+            elif poll_name == "pm25":
+                print("help for pm25")
+            elif poll_name == "no2":
+                print("help for no2")
+            elif poll_name == "so2":
+                print("help for so2")
+            elif poll_name == "o3":
+                print("help for o3")
+            else:
+                print("Bad code for help")
+                return False
+        print("Bad command for help")
+        return False
+
     def show_help(self):
+        """Prints the general  help"""
         print("""
 This program shows the information about the pollution in the specified city:
 1. It would show the available forecast about the air conditions.
@@ -95,6 +120,7 @@ history
 quit
     -> close the session
 """)
+        return True
 
 
 if __name__ == "__main__":
