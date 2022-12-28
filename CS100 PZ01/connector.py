@@ -319,7 +319,6 @@ class ACConnector:
 
         return result_data
 
-
 #####   Private   ##############################################################
     def update_location_data(self, city):
         """
