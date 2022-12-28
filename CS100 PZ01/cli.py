@@ -7,19 +7,20 @@ Software Engineering, year 1
 
 Description:
 1. Get input in commends from the user
-
+2. 
 """
 
 from grapher import Interpreter
 
 class CLI:
-    def __init__(self):
+    def __init__(self, start_city='belgrade', use_api=True):
         self._history = []
         self._run = True
         print("Hello, we are retrieving data from API now!")
-        self._interpreter = Interpreter(city='belgrade', use_api=True)
+        self._interpreter = Interpreter(city=start_city, use_api=True)
 
     def main_loop(self):
+        """The main loop of the program"""
         self.show_help()
         while self._run:
             com = self.get_command()
@@ -33,7 +34,7 @@ class CLI:
             self.quit()
             self._history.append(com)
             return
-        if com == "help":
+        if com.split(' ')[0] == "help":
             self.parse_help(com.split(' ')[1:])
             self._history.append(com)
             return
@@ -69,20 +70,42 @@ class CLI:
             poll_name = com[0]
 
             if poll_name == "pm10":
-                print("help for pm10")
+                print("""
+Particulate matter (PM) includes microscopic matter suspended in air or water.
+Airborne particles are called aerosols.
+PM10 includes particles less than 10 µm in diameter.""")
             elif poll_name == "pm25":
-                print("help for pm25")
+                print("""
+Particulate matter (PM) includes microscopic matter suspended in air or water.
+Airborne particles are called aerosols.
+PM2.5 includes particles less than 2.5 µm in diameter.""")
             elif poll_name == "no2":
-                print("help for no2")
+                print("""
+Nitrogen dioxide is a chemical compound with the formula NO2. 
+It is one of several nitrogen oxides. NO ₂ is an intermediate in
+the industrial synthesis of nitric acid, millions of tons of which are
+produced each year for use primarily in the production of fertilizers.
+At higher temperatures it is a reddish-brown gas.
+""")
             elif poll_name == "so2":
-                print("help for so2")
+                print("""
+Sulfur dioxide or sulphur dioxide is the chemical compound with the formula SO2.
+It is a toxic gas responsible for the odor of burnt matches.
+It is released naturally by volcanic activity and is produced as a by-product of
+copper extraction and the burning of sulfur-bearing fossil fuels.""")
             elif poll_name == "o3":
-                print("help for o3")
+                print("""
+Ozone is an odorless, colorless gas made up of three oxygen molecules (O3)
+and is a natural part of the environment.
+It occurs both in the Earth's upper atmosphere, or stratosphere,
+and at ground level in the lower atmosphere, or troposphere.
+""")
             else:
                 print("Bad code for help")
                 return False
-        print("Bad command for help")
-        return False
+        else:
+            print("Bad command for help")
+            return False
 
     def show_help(self):
         """Prints the general  help"""
