@@ -176,18 +176,6 @@ class ACConnector:
                     if loc not in self.__class__.DATA["day"][date]:
                         self.__class__.DATA["day"][date][loc] = {}
 
-                    #FIXME Add updating information about the averages
-                    # Add additional branching:
-                    # if the data in the date is already exists
-                    #    if reads_number doesn't exist
-                    #       create reads_number = 1
-                    #    update avg (avg * reads_number + cur avg) / (reads_number + 1)
-                    #    update max
-                    #    update min
-                    #    reads_number += 1
-                    # else
-                    #   write data
-                    #   create reads_number = 1
                     if k in self.__class__.DATA["day"][date][loc]:
                         if "reads" not in self.__class__.DATA["day"][date][loc][k]:
                             self.__class__.DATA["day"][date][loc][k]["reads"] = 1
