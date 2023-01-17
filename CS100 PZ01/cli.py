@@ -122,7 +122,7 @@ forecast plot [pollution_type] all
 forecast plot all [@station_code]
     -> information about averages of air quality for the specific station
 forecast plot (no2/so2/pm10/pm25/o3) [@station_code]
-    -> informaton about the specific gas with margins for min and max
+    -> information about the specific gas with margins for min and max
 
 get stations
     -> shows the list of all possible stations, their codes and locations

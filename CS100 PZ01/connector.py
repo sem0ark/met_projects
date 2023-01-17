@@ -61,9 +61,9 @@ class ACConnector:
 
     def __init__(self, city='belgrade'):
         """
-        Initialisation of the class,
+        Initialization of the class,
         it is thought that there would be only one instance used.
-        If the city is not specified we use defaul info about belgrade and its stations.
+        If the city is not specified we use default info about belgrade and its stations.
         """
         self._key = get_keys()[self.__class__.CODE]
         # a list of gases/pollutions provided by the API
@@ -310,9 +310,8 @@ class ACConnector:
 #####   Private   ##############################################################
     def update_location_data(self, city):
         """
-        The mothod is searhing possible stations that correspond to the keyword
+        The method is searching possible stations that correspond to the keyword
         entered by the user to get data from the API list of possible stations.
-        Uses user-agend in case of bot detection.
         """
         data = req_json(
             f'https://api.waqi.info/search/?token={self._key}&keyword={city}'
