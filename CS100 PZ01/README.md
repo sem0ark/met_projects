@@ -1,13 +1,6 @@
 ## Project description
-The project created as a course project-based learning task
+The project created as a course project-based learning task.
 for CS100 Introduction to Programming course from Metropolitan University in Belgrade.
-The project was completed by a group of students:
-1. Phillip Kriegel
-2. Arkadii Semenov
-3. Nikola Radović
-4. Miljan Petrić
-5. Uroš Krstić
-
 The topic of the project: Create a monitoring system for air quality in the area of one city.
 
 ## Program destription
