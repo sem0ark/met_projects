@@ -1,6 +1,7 @@
 import clsx from "clsx";
 
 import {
+  useQuery_FetchCategories,
   useQuery_FetchCategory,
   useQuery_FetchProducts,
 } from "../data/queries";
@@ -80,7 +81,10 @@ const CategoryHeading = ({ id }: { id: string }) => {
   );
 };
 
-const sortFunctions: Record<string, { func: (a: Product, b: Product) => number, name: string}> = {
+const sortFunctions: Record<
+  string,
+  { func: (a: Product, b: Product) => number; name: string }
+> = {
   id: {
     name: "ID",
     func: (a, b) => a.id.localeCompare(b.id),
@@ -110,9 +114,25 @@ const Sorter = ({
   setAscending: (asc: boolean) => void;
   ascending: boolean;
 }) => (
-  <button className={clsx("flex gap-1 w-24 p-1 rounded-full items-center", sortFunction === currentSortFunction && "border-2 text-white border-accent-200 bg-accent-500")} onClick={() => sortFunction === currentSortFunction ? setAscending(!ascending) : setSortFunction(sortFunction)}>
-    {sortFunction === currentSortFunction && (ascending ? <ArrowUpIcon className="h-5"/> : <ArrowDownIcon className="h-5"/>)}
-    <div className="font-bold flex-1 text-center">{sortFunctionName}</div>
+  <button
+    className={clsx(
+      "flex w-24 items-center gap-1 rounded-full p-1",
+      sortFunction === currentSortFunction &&
+        "border-2 border-accent-200 bg-accent-500 text-white",
+    )}
+    onClick={() =>
+      sortFunction === currentSortFunction
+        ? setAscending(!ascending)
+        : setSortFunction(sortFunction)
+    }
+  >
+    {sortFunction === currentSortFunction &&
+      (ascending ? (
+        <ArrowUpIcon className="h-5" />
+      ) : (
+        <ArrowDownIcon className="h-5" />
+      ))}
+    <div className="flex-1 text-center font-bold">{sortFunctionName}</div>
   </button>
 );
 
@@ -127,11 +147,10 @@ const Sorters = ({
   setAscending: (asc: boolean) => void;
   ascending: boolean;
 }) => {
-
   return (
-    <div className="flex gap-2 w-full justify-center">
+    <div className="flex w-full justify-center gap-2">
       {Object.entries(sortFunctions).map(([name, v]) => (
-        <Sorter 
+        <Sorter
           setSortFunction={setSortFunction}
           currentSortFunction={sortFunction}
           sortFunction={name}
@@ -144,12 +163,69 @@ const Sorters = ({
   );
 };
 
+const Filters = ({
+  setPriceRegion,
+}: {
+  setPriceRegion: (v: [number, number] | null) => void;
+}) => {
+  const { data: categories } = useQuery_FetchCategories();
+  const className =
+    "flex h-5 w-fit cursor-pointer flex-row items-center text-nowrap rounded-full border-2 border-accent-600 bg-accent-600 px-2 text-xs text-white transition-colors duration-300 ease-in-out hover:bg-accent-300";
+
+  return (
+    <>
+      {categories && (
+        <div className="flex w-full flex-wrap justify-center gap-2">
+          <Link
+            to={`/products`}
+            className="flex h-5 w-fit cursor-pointer flex-row items-center text-nowrap rounded-full border-2 border-accent-600 bg-accent-600 px-2 text-xs text-white transition-colors duration-300 ease-in-out hover:bg-accent-300"
+          >
+            <div className="text-nowrap">All</div>
+          </Link>
+
+          {categories.map(({ id }) => (
+            <CategoryTag id={id} key={id} />
+          ))}
+        </div>
+      )}
+
+      <div className="flex w-full flex-wrap justify-center gap-2">
+        <button onClick={() => setPriceRegion(null)} className={className}>
+          Any Price
+        </button>
+        <button onClick={() => setPriceRegion([0, 100])} className={className}>
+          0 - 100 RSD
+        </button>
+        <button
+          onClick={() => setPriceRegion([100, 300])}
+          className={className}
+        >
+          200 - 300 RSD
+        </button>
+        <button
+          onClick={() => setPriceRegion([300, 800])}
+          className={className}
+        >
+          300 - 800 RSD
+        </button>
+        <button
+          onClick={() => setPriceRegion([1000, 99999])}
+          className={className}
+        >
+          over 1000 RSD
+        </button>
+      </div>
+    </>
+  );
+};
+
 export function Products() {
   const [searchParams] = useSearchParams();
   const { data, isLoading, isError, error } = useQuery_FetchProducts();
   const [sortFunction, setSortFunction] =
     useState<keyof typeof sortFunctions>();
   const [ascending, setAscending] = useState(true);
+  const [priceRegion, setPriceRegion] = useState<[number, number] | null>();
 
   const categoryIdParam = searchParams.get("categoryId");
 
@@ -161,13 +237,21 @@ export function Products() {
       </div>
     );
 
-  const filtered = categoryIdParam
+  const filteredByCategory = categoryIdParam
     ? data?.filter((it) => it.categoryIds.includes(categoryIdParam))
     : data;
 
+  const filteredByPrice = priceRegion
+    ? filteredByCategory?.filter(
+        (it) => priceRegion[0] <= it.price && it.price <= priceRegion[1],
+      )
+    : filteredByCategory;
+
   const sorted = sortFunction
-    ? filtered?.sort((a, b) => (ascending ? 1 : -1) * sortFunctions[sortFunction].func(a, b))
-    : filtered;
+    ? filteredByPrice?.sort(
+        (a, b) => (ascending ? 1 : -1) * sortFunctions[sortFunction].func(a, b),
+      )
+    : filteredByPrice;
 
   return (
     <div className="flex flex-col gap-5">
@@ -183,6 +267,8 @@ export function Products() {
         sortFunction={sortFunction || "id"}
         ascending={ascending}
       />
+
+      <Filters setPriceRegion={setPriceRegion} />
 
       <div className="flex flex-wrap justify-center gap-5 px-5">
         {sorted?.map((product) => (
