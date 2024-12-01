@@ -226,8 +226,7 @@ export function Products() {
     useState<keyof typeof sortFunctions>();
   const [ascending, setAscending] = useState(true);
   const [priceRegion, setPriceRegion] = useState<[number, number] | null>();
-
-  const categoryIdParam = searchParams.get("categoryId");
+  const [search, setSearch] = useState<string>("");
 
   if (isError) throw error;
   if (isLoading)
@@ -237,6 +236,7 @@ export function Products() {
       </div>
     );
 
+  const categoryIdParam = searchParams.get("categoryId");
   const filteredByCategory = categoryIdParam
     ? data?.filter((it) => it.categoryIds.includes(categoryIdParam))
     : data;
@@ -247,14 +247,23 @@ export function Products() {
       )
     : filteredByCategory;
 
-  const sorted = sortFunction
-    ? filteredByPrice?.sort(
-        (a, b) => (ascending ? 1 : -1) * sortFunctions[sortFunction].func(a, b),
+  const filteredBySearch = search
+    ? filteredByPrice?.filter(
+        (it) => it.name.toLowerCase().includes(search.toLowerCase()),
       )
     : filteredByPrice;
 
+
+  const sorted = sortFunction
+    ? filteredBySearch?.sort(
+        (a, b) => (ascending ? 1 : -1) * sortFunctions[sortFunction].func(a, b),
+      )
+    : filteredBySearch;
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 items-center">
+      <input type="text" onInput={(e) => setSearch((e.target as HTMLInputElement).value)} placeholder="Search" className="w-full max-w-lg border-2 rounded-full outline-none focus:border-accent-500 px-5 py-1" />
+
       {!!categoryIdParam && (
         <div className="mb-10 flex w-full items-center justify-center">
           <CategoryHeading id={categoryIdParam} />
