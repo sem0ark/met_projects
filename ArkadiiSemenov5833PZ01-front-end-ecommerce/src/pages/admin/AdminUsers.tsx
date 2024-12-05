@@ -9,6 +9,7 @@ import { useState } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { User } from "../../data/types";
 import { ErrorText } from "../../components/forms";
+import { useUser } from "../../data/auth";
 
 
 
@@ -215,6 +216,7 @@ const UserCard = ({ User }: { User: User }) => {
 };
 
 export const AdminUsers = () => {
+  const currentUser = useUser();
   const { data, isLoading, isError, error } = useQuery_FetchUsers();
   const [isAddingUser, setIsAddingUser] = useState(false);
 
@@ -240,7 +242,7 @@ export const AdminUsers = () => {
         <UserCreateForm cancelEditing={() => setIsAddingUser(false)} />
       )}
 
-      {data?.map((user) => (
+      {data?.filter((user) => user.id !== currentUser?.id)?.map((user) => (
         <UserCard User={user} key={user.id} />
       )) || "No Users..."}
     </div>

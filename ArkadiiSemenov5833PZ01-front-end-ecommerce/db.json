@@ -33,6 +33,10 @@
   ],
   "categories": [
     {
+      "name": "Electronics",
+      "id": "1"
+    },
+    {
       "name": "Clothes",
       "id": "2"
     },
@@ -55,7 +59,7 @@
       "name": "Laptop",
       "description": "15-inch laptop with 16GB RAM and 512GB SSD",
       "descriptionLong": "15-inch laptop with 16GB RAM and 512GB SSD, built to handle intensive tasks like video editing, graphic design, and gaming. With a stunning Full HD display and a high-end graphics card, this laptop delivers rich visuals and smooth performance. It features an ergonomic keyboard and a responsive touchpad, providing comfort for long work hours. The slim and lightweight design makes it easy to carry.",
-      "price": "1000",
+      "price": "1023",
       "categoryIds": [
         "1",
         "f1a9"
@@ -65,25 +69,7 @@
         "https://picsum.photos/800?random=1",
         "https://picsum.photos/800?random=2",
         "https://picsum.photos/800?random=3"
-      ],
-      "ratings": 4.7
-    },
-    {
-      "id": "3",
-      "name": "T-shirt",
-      "description": "100% cotton t-shirt available in various sizes",
-      "descriptionLong": "100% cotton t-shirt available in various sizes, offering ultimate comfort and breathability. The fabric is soft on the skin and durable, suitable for everyday wear. Its classic crew neck and versatile design make it a staple in any wardrobe. This T-shirt is easy to style with jeans, shorts, or skirts, perfect for casual outings or as a base layer under jackets.",
-      "price": "19.9",
-      "categoryIds": [
-        "2"
-      ],
-      "imageUrl": "https://picsum.photos/300?random=3",
-      "imageUrls": [
-        "https://picsum.photos/800?random=1",
-        "https://picsum.photos/800?random=2",
-        "https://picsum.photos/800?random=3"
-      ],
-      "ratings": 4
+      ]
     },
     {
       "id": "4",
@@ -345,6 +331,23 @@
         "https://picsum.photos/800?random=13"
       ],
       "ratings": 4.5
+    },
+    {
+      "id": "9435",
+      "name": "Test",
+      "price": "12",
+      "description": "description",
+      "descriptionLong": "description",
+      "categoryIds": [
+        "3",
+        "2"
+      ],
+      "imageUrl": "https://picsum.photos/300",
+      "imageUrls": [
+        "https://picsum.photos/800?random=1",
+        "https://picsum.photos/800?random=2",
+        "https://picsum.photos/800?random=3"
+      ]
     }
   ]
 }

@@ -62,6 +62,7 @@ export function SignUp() {
               },
             })}
           />
+          <ErrorText message={errors.username?.message} />
         </div>
 
         <div className="flex w-full flex-col items-start gap-1">

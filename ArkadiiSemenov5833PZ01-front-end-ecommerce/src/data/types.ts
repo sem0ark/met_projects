@@ -1,16 +1,14 @@
+import { z } from "zod";
+
 export type RoleType = "user" | "admin";
 
-export interface User {
-  id: string;
-  login: string;
-  role: RoleType;
-}
+export const UserSchema = z.object({
+  id: z.string(),
+  login: z.string(),
+  role: z.enum(["user", "admin"]),
+});
 
-export interface UserDTO {
-  id: string;
-  login: string;
-  password: string;
-}
+export type User = z.infer<typeof UserSchema>;
 
 export interface UserPost {
   login: string;
@@ -18,16 +16,20 @@ export interface UserPost {
   role: RoleType;
 }
 
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  descriptionLong: string;
-  price: number;
-  categoryIds: string[];
-  imageUrl: string;
-  imageUrls: string[];
-}
+export const ProductSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  descriptionLong: z.string(),
+  // For some reason, json-server jumps between string and number values.
+  price: z.union([z.string(), z.number()]).transform((v) => typeof v === "string" ? Number.parseFloat(v) : v),
+  categoryIds: z.array(z.string()),
+  imageUrl: z.string(),
+  imageUrls: z.array(z.string()),
+});
+
+export type Product = z.infer<typeof ProductSchema>;
+
 export interface ProductPost {
   name: string;
   description: string;
@@ -38,10 +40,13 @@ export interface ProductPost {
   imageUrls: string[];
 }
 
-export interface Category {
-  id: string;
-  name: string;
-}
+export const CategorySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+export type Category = z.infer<typeof CategorySchema>;
+
 export interface CategoryPost {
   name: string;
 }
