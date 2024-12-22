@@ -33,11 +33,11 @@ namespace Components
                 p.ColumnCount = columns;
               });
 
-
     public static Tabs Tabs()
       => (Tabs)new Tabs(0, 0, new TabControl())
               .Apply(p => { p.Dock = DockStyle.Fill; });
 
+    public static Container<FlowLayoutPanel> Horizontal(int min_width = 0, int min_height = 0) => H(min_width, min_height);
     public static Container<FlowLayoutPanel> H(int min_width = 0, int min_height = 0)
       => new Container<FlowLayoutPanel>(min_width, min_height, new FlowLayoutPanel())
               .Apply(p =>
@@ -47,6 +47,7 @@ namespace Components
                 p.AutoSize = true;
               });
 
+    public static Container<FlowLayoutPanel> Vertical(int min_width = 0, int min_height = 0) => V(min_width, min_height);
     public static Container<FlowLayoutPanel> V(int min_width = 0, int min_height = 0)
       => new Container<FlowLayoutPanel>(min_width, min_height, new FlowLayoutPanel())
               .Apply(p =>
@@ -96,6 +97,29 @@ namespace Components
       return c;
     }
 
+    public static Component<ListBox> ListBox<T>(ReadSignal<List<T>> values, Action<T> callback) {
+      var c = Component(new ListBox()).Apply(lb => {
+        lb.SelectionMode = SelectionMode.One;
+        lb.Dock = DockStyle.Fill;
+      });
+
+      var items = c.Peek().Items;
+
+      values.On(vals => {
+        items.Clear();
+        foreach (var value in vals)
+        {
+          if (value != null) items.Add(value);
+          else throw new Exception("Can't contain null values in the list for ListBox");
+        }  
+      });
+
+      return c.Apply(lb => lb.SelectedIndexChanged += (s, e) => {
+        var i = lb.SelectedIndex;
+        if (i >= 0 && i < values.Peek().Count) callback(values.Peek()[i]);
+      });
+    }
+
     public static Component<ListBox> ListBox<T>(List<T> values) {
       var c = Component(new ListBox()).Apply(lb => { lb.SelectionMode = SelectionMode.One; });
       var items = c.Peek().Items;
@@ -121,7 +145,7 @@ namespace Components
           else throw new Exception("Can't contain null values in the list for ListBox");
         }
 
-        c.Apply(lb =>
+        return c.Apply(lb =>
         {
           lb.SelectedIndexChanged += (s, e) =>
           {
@@ -129,7 +153,6 @@ namespace Components
             if (i >= 0 && i < values.Length) callback(values[i]);
           };
         });
-        return c;
       };
 
     public static Menu Menu() => new Menu();
@@ -167,27 +190,23 @@ namespace Components
           });
 
 
-    public static Component<DataGridView> DataGridView<T>(IQueryable<T> query)
+    public static Component<DataGridView> DataGridView<T>(IEnumerable<object> data)
     {
       var dataGrid = new DataGridView
       {
         AutoSize = true,
       };
-      var l = query.ToList();
-      dataGrid.DataSource = l;
+      dataGrid.DataSource = data;
       return Component(dataGrid);
     }
 
-    public static Component<DataGridView> DataGridView<T>(ReadSignal<IQueryable<T>> query)
+    public static Component<DataGridView> DataGridView<T>(ReadSignal<IEnumerable<object>> dataSignal)
     {
       var dataGrid = new DataGridView
       {
         AutoSize = true,
       };
-      Effect(() =>
-      {
-        dataGrid.DataSource = query.Get().ToList();
-      });
+      Effect(() => dataGrid.DataSource = dataSignal.Get());
       return Component(dataGrid);
     }
     
@@ -235,6 +254,27 @@ namespace Components
     public Component<T> OnClick(Action<Component<T>> callback) => this.Apply(c => c.Click += (s, e) => callback(this));
     public Component<T> OnClick(Action<Component<T>, EventArgs> callback) => this.Apply(c => c.Click += (s, e) => callback(this, e));
     public Component<T> OnTextInput(Action<string> callback) => this.Apply(c => c.TextChanged += (s, e) => callback(this.value.Text));
+  }
+
+  public class StubContainer {
+    private List<Control> Controls; 
+    public StubContainer() {
+      Controls = [];
+    }
+
+    public StubContainer Add<C>(C newControl) where C : Control
+    {
+      this.Controls.Add(newControl);
+      return this;
+    }
+
+    public StubContainer Add<C>(Component<C> newComponent) where C : Control
+    {
+      this.Controls.Add(newComponent.Render());
+      return this;
+    }
+
+    public List<Control> GetControls() => this.Controls;
   }
 
   public class Container<T> : Component<T> where T : Control
@@ -301,27 +341,6 @@ namespace Components
 
     public override Container<T> Apply(Action<T> act) { act(this.value); return this; }
     public override Component<Control> ToGeneric() => new Component<Control>(this.value);
-  }
-
-  public class StubContainer {
-    private List<Control> Controls; 
-    public StubContainer() {
-      Controls = [];
-    }
-
-    public StubContainer Add<C>(C newControl) where C : Control
-    {
-      this.Controls.Add(newControl);
-      return this;
-    }
-
-    public StubContainer Add<C>(Component<C> newComponent) where C : Control
-    {
-      this.Controls.Add(newComponent.Render());
-      return this;
-    }
-
-    public List<Control> GetControls() => this.Controls;
   }
 
   public class FunctionalContainer<T> : Component<T> where T : Control
