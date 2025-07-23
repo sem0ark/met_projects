@@ -15,7 +15,7 @@
                 newRow.classList.add('form-control', 'mb-2');
                 newRow.innerHTML = `
                     <div class="input-group join">
-                        <input type="text" required name="imageUrls" value="${initialValue}" placeholder="Image URL..." class="join-item input input-bordered w-full" />
+                        <input type="text" name="imageUrls" value="${initialValue}" placeholder="Image URL..." class="join-item input input-bordered w-full" required />
                         <button type="button" class="join-item btn text-white btn-error removeImageBtn">Remove</button>
                     </div>
                 `;
@@ -49,7 +49,7 @@
                 <label class="label">
                     <span class="label-text">Name:</span>
                 </label>
-                <input type="text" required th:field="*{name}" placeholder="Product Name" class="input input-bordered w-full" />
+                <input type="text" th:field="*{name}" placeholder="Product Name" class="input input-bordered w-full" required />
             </div>
 
             <div class="form-control mb-4">
@@ -63,14 +63,14 @@
                 <label class="label">
                     <span class="label-text">Price:</span>
                 </label>
-                <input type="number" required min="0" step="0.01" th:field="*{price}" placeholder="e.g., 123.45" class="input input-bordered w-full" />
+                <input type="number" min="0" step="0.01" th:field="*{price}" placeholder="e.g., 123.45" class="input input-bordered w-full" required />
             </div>
 
             <div class="form-control mb-4">
                 <label class="label">
                     <span class="label-text">Stock Quantity:</span>
                 </label>
-                <input type="number" required min="0" th:field="*{stockQuantity}" placeholder="e.g., 100" class="input input-bordered w-full" />
+                <input type="number" min="0" th:field="*{stockQuantity}" placeholder="e.g., 100" class="input input-bordered w-full" required />
             </div>
 
             <div class="form-control mb-6">

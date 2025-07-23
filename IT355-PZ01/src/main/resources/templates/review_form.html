@@ -19,14 +19,14 @@
                 <label class="label">
                     <span class="label-text">Your Name:</span>
                 </label>
-                <input type="text" required th:field="*{reviewerName}" placeholder="Your Name" class="input input-bordered w-full" required />
+                <input type="text" th:field="*{reviewerName}" placeholder="Your Name" class="input input-bordered w-full" required />
             </div>
 
             <div class="form-control mb-4">
                 <label class="label">
                     <span class="label-text">Rating (1-5):</span>
                 </label>
-                <input type="number" required th:field="*{rating}" min="1" max="5" placeholder="Rating" class="input input-bordered w-full" required />
+                <input type="number" th:field="*{rating}" min="1" max="5" placeholder="Rating" class="input input-bordered w-full" required />
             </div>
 
             <div class="form-control mb-6">
