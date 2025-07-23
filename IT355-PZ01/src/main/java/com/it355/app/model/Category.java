@@ -22,4 +22,10 @@ public class Category {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    // See https://www.baeldung.com/jpa-query-unrelated-entities
+    // will be handled by the database with ON DELETE SET NULL
+    // To make sure we DON'T delete products when removing a category
+    @OneToMany(mappedBy = "category")
+    private List<Product> products;
 }
