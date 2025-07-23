@@ -1,31 +1,112 @@
 <!DOCTYPE html>
 <html xmlns:th="http://thymeleaf.org">
-
 <head>
     <title>Add/Edit Product</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
-</head>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const addImageBtn = document.getElementById('addImageBtn');
+            const imagesContainer = document.getElementById('imagesContainer');
+
+            const addImageField = (initialValue) => {
+                const newRow = document.createElement('div');
+                newRow.classList.add('form-control', 'mb-2');
+                newRow.innerHTML = `
+                    <div class="input-group join">
+                        <input type="text" name="imageUrls" value="${initialValue}" placeholder="Image URL..." class="join-item input input-bordered w-full" />
+                        <button type="button" class="join-item btn text-white btn-error removeImageBtn">Remove</button>
+                    </div>
+                `;
+                imagesContainer.appendChild(newRow);
+            }
+
+            imagesContainer.addEventListener('click', function(e) {
+                if (e.target.classList.contains('removeImageBtn')) {
+                    e.target.closest('.form-control').remove();
+                }
+            });
+
+            addImageBtn.addEventListener('click', function() {
+                addImageField('');
+            });
+
+            document.querySelectorAll(`[data-prefetch="product-images"]`).forEach((image) => {
+                addImageField(image.src)
+            })
+        });
+    </script>
+</head>
 <body>
-    <div class="container">
-        <h2>Add/Edit Product</h2>
-        <!--  -->
-        <form method="post" th:action="@{/save}" th:object="${product}">
+    <div class="container mx-auto p-4 max-w-2xl">
+        <h2 class="text-3xl font-bold mb-6 text-center">Add/Edit Product</h2>
+
+        <form method="post" th:action="@{/products/save}" th:object="${product}" class="bg-base-100 p-8 rounded-lg shadow-md">
             <input type="hidden" th:field="*{id}">
 
-            <div class="mb-3">
-                <label class="form-label">Name:</label>
-                <input class="form-control" type="text" th:field="*{name}">
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Name:</span>
+                </label>
+                <input type="text" th:field="*{name}" placeholder="Product Name" class="input input-bordered w-full" />
             </div>
-            <div class="mb-3">
-                <label class="form-label">Price:</label>
-                <input class="form-control" type="text" th:field="*{price}">
+
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Description:</span>
+                </label>
+                <textarea th:field="*{description}" placeholder="Product Description" class="textarea textarea-bordered h-24 w-full"></textarea>
             </div>
-            <button type="submit" class="btn btn-primary">Save</button>
-            <a class="btn btn-secondary" th:href="@{/}">Cancel</a>
+
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Price:</span>
+                </label>
+                <input type="number" step="0.01" th:field="*{price}" placeholder="e.g., 123.45" class="input input-bordered w-full" />
+            </div>
+
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Stock Quantity:</span>
+                </label>
+                <input type="number" th:field="*{stockQuantity}" placeholder="e.g., 100" class="input input-bordered w-full" />
+            </div>
+
+            <div class="form-control mb-6">
+                <label class="label">
+                    <span class="label-text">Category:</span>
+                </label>
+                <select th:field="*{category.id}" class="select select-bordered w-full">
+                    <option value="">Select Category</option>
+                    <option th:each="category : ${categories}"
+                            th:value="${category.id}"
+                            th:text="${category.name}"
+                            th:selected="${product.category != null and product.category.id == category.id}">
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-control mb-6">
+                <label class="label">
+                    <span class="label-text">Images:</span>
+                </label>
+                <div id="imagesContainer"></div>
+                <button type="button" id="addImageBtn" class="btn btn-outline btn-neutral mt-2">Add Image URL</button>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button type="submit" class="btn text-white btn-accent">Save Product</button>
+                <a class="btn btn-outline btn-neutral" th:href="@{/products/}">Cancel</a>
+            </div>
         </form>
     </div>
-</body>
 
+    <div class="hidden">
+        <div th:each="image : ${product.images}">
+            <img th:src="${image.imageUrl}" data-prefetch="product-images" th:alt="${image.altText ?: product.name}">
+        </div>
+    </div>
+
+</body>
 </html>

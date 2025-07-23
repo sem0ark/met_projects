@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://thymeleaf.org">
+<head>
+    <title>Add Product Image</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body>
+    <div class="container mx-auto p-4 max-w-lg">
+        <h2 class="text-3xl font-bold mb-6 text-center">
+            Add Image for <span th:if="${product != null}" th:text="${product.name}"></span>
+        </h2>
+
+        <form method="post" th:action="@{/images/save}" th:object="${image}" class="bg-base-100 p-8 rounded-lg shadow-md">
+            <input type="hidden" th:field="*{id}">
+            <input type="hidden" th:field="*{product.id}">
+
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Image URL:</span>
+                </label>
+                <input type="url" th:field="*{imageUrl}" placeholder="e.g., https://example.com/image.jpg" class="input input-bordered w-full" required />
+            </div>
+
+            <div class="form-control mb-6">
+                <label class="label">
+                    <span class="label-text">Alt Text (Optional):</span>
+                </label>
+                <input type="text" th:field="*{altText}" placeholder="Brief description of the image" class="input input-bordered w-full" />
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button type="submit" class="btn text-white btn-accent">Save Image</button>
+                <a class="btn btn-outline btn-neutral" th:href="@{/products/details/{id}(id=${image.product.id})}">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
