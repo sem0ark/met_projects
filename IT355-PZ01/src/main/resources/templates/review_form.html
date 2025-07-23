@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://thymeleaf.org">
+<head>
+    <title>Add/Edit Review</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body>
+    <div class="container mx-auto p-4 max-w-lg">
+        <h2 class="text-3xl font-bold mb-6 text-center">
+            Add/Edit Review for <span th:if="${product != null}" th:text="${product.name}"></span>
+        </h2>
+
+        <form method="post" th:action="@{/reviews/save}" th:object="${review}" class="bg-base-100 p-8 rounded-lg shadow-md">
+            <input type="hidden" th:field="*{id}">
+            <input type="hidden" th:field="*{product.id}">
+
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Your Name:</span>
+                </label>
+                <input type="text" th:field="*{reviewerName}" placeholder="Your Name" class="input input-bordered w-full" required />
+            </div>
+
+            <div class="form-control mb-4">
+                <label class="label">
+                    <span class="label-text">Rating (1-5):</span>
+                </label>
+                <input type="number" th:field="*{rating}" min="1" max="5" placeholder="Rating" class="input input-bordered w-full" required />
+            </div>
+
+            <div class="form-control mb-6">
+                <label class="label">
+                    <span class="label-text">Comment:</span>
+                </label>
+                <textarea th:field="*{commentText}" rows="4" placeholder="Your review comments" class="textarea textarea-bordered h-32 w-full"></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button type="submit" class="btn text-white btn-accent">Save Review</button>
+                <a class="btn btn-outline btn-neutral" th:href="@{/products/details/{id}(id=${review.product.id})}">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
