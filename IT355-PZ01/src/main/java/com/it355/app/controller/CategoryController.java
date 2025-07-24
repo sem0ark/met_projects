@@ -52,7 +52,7 @@ public class CategoryController {
         if (categoryOptional.isPresent()) {
             Category categoryToDelete = categoryOptional.get();
 
-            // Event Hibernate's only ON DELETE SET NULL logic is not working, so implemented cascading manually
+            // Hibernate's only ON DELETE SET NULL logic is not working, so implemented cascading manually.
             List<Product> productsToClear = productRepository.findByCategoryId(categoryToDelete.getId());
             for (Product product : productsToClear) {
                 product.setCategory(null);

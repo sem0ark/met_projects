@@ -17,14 +17,10 @@ import com.it355.app.model.*;
 @Controller
 @RequestMapping("/images")
 public class ProductImageController {
-    private final ProductImageRepository productImageRepository;
-    private final ProductRepository productRepository;
-
     @Autowired
-    public ProductImageController(ProductImageRepository productImageRepository, ProductRepository productRepository) {
-        this.productImageRepository = productImageRepository;
-        this.productRepository = productRepository;
-    }
+    private ProductImageRepository productImageRepository;
+    @Autowired
+    private ProductRepository productRepository;
 
     @GetMapping("/new")
     public String newProductImageForm(@RequestParam Integer productId, Model model) {

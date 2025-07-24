@@ -17,17 +17,12 @@ import com.it355.app.model.*;
 @Controller
 @RequestMapping("/reviews")
 public class ReviewController {
-    private final ReviewRepository reviewRepository;
-    private final ProductRepository productRepository; // To link reviews to products
-    private final CommentRepository commentRepository; // To list comments
-
     @Autowired
-    public ReviewController(ReviewRepository reviewRepository, ProductRepository productRepository,
-            CommentRepository commentRepository) {
-        this.reviewRepository = reviewRepository;
-        this.productRepository = productRepository;
-        this.commentRepository = commentRepository;
-    }
+    private ReviewRepository reviewRepository;
+    @Autowired
+    private ProductRepository productRepository;
+    @Autowired
+    private CommentRepository commentRepository;
 
     @GetMapping("/")
     public String listReviews(Model model) {
