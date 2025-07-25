@@ -34,7 +34,7 @@ public class Review {
     @Column(columnDefinition = "TEXT")
     private String commentText;
 
-    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "review", cascade = CascadeType.REMOVE)
     @JsonManagedReference
     private List<Comment> comments;
 }

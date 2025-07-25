@@ -37,11 +37,11 @@ public class Product {
     @JoinColumn(name = "category_id", nullable = true) // Allow NULL, so that we won't break when category is removed
     private Category category;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.REMOVE)
     @JsonManagedReference // avoid infinite recursion
     private List<ProductImage> images;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.REMOVE)
     @JsonManagedReference // avoid infinite recursion
     private List<Review> reviews;
 }
