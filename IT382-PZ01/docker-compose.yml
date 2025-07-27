@@ -1,0 +1,206 @@
+version: '3.8'
+
+# Define custom networks for explicit communication.
+# This implements "Network Segmentation".
+networks:
+  app_network:
+    driver: bridge # Default driver, explicitly stated for clarity
+
+# Define secrets for sensitive data
+# See "Don't Store Secrets in Images"
+secrets:
+  mysql_root_password:
+    file: ./sample_secrets/mysql_root_password.sample.txt
+  mysql_user_password:
+    file: ./sample_secrets/mysql_user_password.sample.txt
+  backend_db_password:
+    file: ./sample_secrets/backend_db_password.sample.txt
+  redis_password:
+    file: ./sample_secrets/redis_password.sample.txt
+
+services:
+  # --- Backend Service (Node.js REST API) ---
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend_api
+    # Pinning ports to prevent accidental exposure of internal ports
+    ports:
+      - "3000:3000" # Host:Container
+    networks:
+      - app_network # Only allow communication within the app_network
+    environment:
+      # Injecting secrets via environment variables at runtime
+      # While visible via docker inspect, this is a common method for Compose
+      # For higher security in prod, consider orchestrator-native secret management.
+      DB_HOST: mysql
+      DB_USER: appuser
+      DB_NAME: appdb
+      DB_PORT: 3306
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Using Docker Secrets mounted as files for more sensitive data
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      MYSQL_USER_PASSWORD_FILE: /run/secrets/mysql_user_password
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+    secrets:
+      - mysql_root_password
+      - mysql_user_password
+      - redis_password
+    depends_on:
+      mysql:
+        condition: service_healthy # Ensure DB is healthy before starting backend
+      redis:
+        condition: service_healthy # Ensure Redis is healthy before starting backend
+    # Resource Limits - prevents DoS attacks from resource exhaustion
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck: # Include HEALTHCHECK for service reliability
+      test: ["CMD", "curl", "--fail", "http://localhost:3000/health"] # Assuming a health endpoint
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    # Least Privilege Principle - drop unnecessary capabilities
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # Required for binding to ports below 1024 (though we use 3000, good habit)
+    # Prevent In-Container Privilege Escalation
+    security_opt:
+      - no-new-privileges:true
+      # Seccomp: Relying on Docker's default seccomp profile, which is generally robust.
+      # - seccomp=unconfined # Explicitly state unconfined if you want to ensure default Docker daemon seccomp
+
+  # --- Frontend Service (React.js App) ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend_app
+    ports:
+      - "80:80" # Standard HTTP port for web access
+    networks:
+      - app_network
+    environment:
+      VITE_BACKEND_URL: http://backend:3000 # Connects to the backend service name within the Docker network
+    # Resource Limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+    healthcheck: # Include HEALTHCHECK for web server
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    # Least Privilege Principle - web servers often need minimal capabilities
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # If Nginx needs to bind to port 80 (below 1024)
+    # Prevent In-Container Privilege Escalation
+    security_opt:
+      - no-new-privileges:true
+    read_only: true # Set Filesystem to Read-Only where possible (for static serving)
+    tmpfs:
+      # Allow temporary writes if needed. Nginx needs /var/cache/nginx/client_temp
+      # and potentially other cache/temp directories.
+      # You can specify multiple tmpfs mounts if needed.
+      - /tmp:rw,size=64m # Still good practice for general temp
+      - /var/cache/nginx:rw,size=128m # <-- Add this line for Nginx cache
+      - /var/run:rw,size=32m # Nginx might also write PID files or similar here
+
+  # --- MySQL Database Service ---
+  mysql:
+    # Pin Docker Image Versions
+    image: mysql:8.0.37
+    container_name: mysql_db
+    networks:
+      - app_network
+    environment:
+      # Injecting secrets via Docker Secrets (files)
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_user_password
+      MYSQL_DATABASE: appdb
+    secrets:
+      - mysql_root_password
+      - mysql_user_password
+    volumes:
+      - db_data:/var/lib/mysql # Persistent volume for data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro # Read-only for init scripts
+    # Resource Limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+    healthcheck: # Robust healthcheck for MySQL
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD_FILE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Least Privilege Principle for database
+    cap_drop:
+      - ALL
+    # Prevent In-Container Privilege Escalation
+    security_opt:
+      - no-new-privileges:true
+
+  # --- Redis Cache Service ---
+  redis:
+    # Pin Docker Image Versions - using alpine for smaller image
+    image: redis:7.2.5-alpine
+    container_name: redis_cache
+    networks:
+      - app_network
+    environment:
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+    secrets:
+      - redis_password
+    volumes:
+      - redis_data:/data # Persistent volume for AOF/RDB if enabled
+    command: redis-server --requirepass "$(cat /run/secrets/redis_password)" --appendonly yes # Enforce password & persistence
+    # Resource Limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+    healthcheck: # Healthcheck for Redis
+      test: ["CMD", "redis-cli", "-a", "$(cat /run/secrets/redis_password)", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    # Least Privilege Principle
+    cap_drop:
+      - ALL
+    # Prevent In-Container Privilege Escalation
+    security_opt:
+      - no-new-privileges:true
+
+# Define persistent volumes
+volumes:
+  db_data:
+  redis_data:
+

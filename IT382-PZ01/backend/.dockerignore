@@ -1,0 +1,7 @@
+node_modules
+pnpm-debug.log # Changed from npm-debug.log
+.env
+.git
+Dockerfile
+*.log
+.pnpm-store/
