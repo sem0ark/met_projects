@@ -1,4 +1,6 @@
-from typing import Iterable, Optional
+from copy import deepcopy
+import random
+from typing import Iterable, Optional, Self
 
 
 class Solution:
@@ -28,6 +30,9 @@ class Solution:
 
         return self.objectives
 
+    def copy(self) -> Self:
+        return deepcopy(self)
+
 
 class Problem:
     """
@@ -43,7 +48,7 @@ class Problem:
         raise NotImplementedError
 
     def get_objective_function(self) -> "ObjectiveFunction":
-        """Returns the objective function(s) for this problem."""
+        """Returns the objective function for this problem."""
         raise NotImplementedError
 
     def get_neighborhood_operators(self) -> list["NeighborhoodOperator"]:
@@ -57,6 +62,9 @@ class Problem:
 class ObjectiveFunction:
     """Abstract interface for evaluating a solution."""
 
+    def __init__(self, n_dimensions: int) -> None:
+        self.n_dimensions = n_dimensions
+
     def evaluate(self, solution: Solution) -> tuple[float, ...]:
         """
         Evaluates the solution and returns a list of objective values.
@@ -68,17 +76,46 @@ class ObjectiveFunction:
         """
         Evaluates the solution and updates it with the list of objective values.
         """
-        solution.objectives = self.evaluate(solution)
+        if not solution.objectives:
+            solution.objectives = self.evaluate(solution)
 
-    def is_better(
-        self, new_solution: Solution, current_solution: Solution
+    def is_better(self, new_solution: Solution, current_solution: Solution) -> bool:
+        """
+        Determines if 'new_solution' is better than 'current_solution' based on Pareto dominance.
+        Assumes objectives have already been computed and set on the solutions.
+
+        For multi-objective: new_solution dominates current_solution.
+        For single-objective: new_solution > current_solution.
+        """
+        return self._dominates(
+            new_solution.get_objectives(), current_solution.get_objectives()
+        )
+
+    def _dominates(
+        self, new_objective: tuple[float, ...], current_objective: tuple[float, ...]
     ) -> bool:
         """
-        Determines if 'new_solution' are better than 'current_solution'.
-        Needs to be implemented based on single-objective (e.g., minimization)
-        or multi-objective (e.g., Pareto dominance).
+        Checks if objective vector obj1 dominates objective vector current_objective.
+        Assumes minimization for all objectives.
         """
-        raise NotImplementedError
+        if len(new_objective) != len(current_objective):
+            raise ValueError(
+                "Objective vectors must have the same number of objectives."
+            )
+
+        if len(new_objective) == 1 and abs(new_objective[0] - current_objective[0]) > 1e-6:
+            return new_objective[0] < current_objective[0]
+
+        at_least_one_strictly_better = False
+        for i in range(len(new_objective)):
+            if abs(new_objective[i] - current_objective[i]) < 1e-6:
+                continue
+            if new_objective[i] > current_objective[i]:
+                return False
+            elif new_objective[i] < current_objective[i]:
+                at_least_one_strictly_better = True
+
+        return at_least_one_strictly_better
 
 
 class NeighborhoodOperator:
@@ -105,16 +142,19 @@ class NeighborhoodOperator:
 class LocalSearchStrategy:
     """Abstract interface for a local search strategy."""
 
-    def __init__(self, problem: Problem, objective_func: ObjectiveFunction):
+    def __init__(
+        self,
+        problem: Problem,
+        neighborhood_operator: NeighborhoodOperator,
+    ):
         self.problem = problem
-        self.objective_func = objective_func
+        self.objective_func = problem.get_objective_function()
+        self.neighborhood_operator = neighborhood_operator
 
-    def search(
-        self, initial_solution: Solution, neighborhood_operator: NeighborhoodOperator
-    ) -> Solution:
+    def search(self, initial_solution: Solution) -> Solution:
         """
-        Performs a local search starting from initial_solution using the given
-        neighborhood_operator. Returns the local optimum found.
+        Performs a local search starting from initial_solution using the given operator.
+        Returns the local optimum found.
         """
         raise NotImplementedError
 
@@ -155,19 +195,13 @@ class AcceptanceCriterion:
         """
         raise NotImplementedError
 
-    def get_current_best_solution(self) -> Optional[Solution]:
-        """
-        Returns the single "best" solution from the archive.
-        This is primarily for single-objective algorithms where VNS needs a current_solution to shake.
-        For multi-objective, this might return the solution with the lowest value for a specific objective,
-        or null if the archive is empty.
-        """
+    def get_all_solutions(self) -> list[Solution]:
+        """Returns the full archive of accepted solutions."""
+        return self.archive
+
+    def get_one_current_solution(self) -> Optional[Solution]:
+        """Returns a single solution from the archive."""
         if not self.archive:
             return None
 
-        # Default for single-objective: assume the first element is the best
-        return self.archive[0]
-
-    def get_archive(self) -> list[Solution]:
-        """Returns the full archive of accepted solutions (e.g., Pareto front)."""
-        return self.archive
+        return random.choice(self.archive)

@@ -1,72 +1,214 @@
+from collections import deque
 import logging
+import random
 from typing import Callable, Optional
 from vns.abstract import AcceptanceCriterion, ObjectiveFunction, Solution
 
 
-class BestOfHistoryAcceptance(AcceptanceCriterion):
+class TakeBestAcceptance(AcceptanceCriterion):
+    """
+    General-purpose Acceptance Criterion.
+
+    For multi-objective problems, it maintains an archive of non-dominated solutions (Pareto front).
+
+    Provides methods to get the full archive or a single solution for shaking.
+    """
+
     def __init__(self, objective_func: ObjectiveFunction):
         super().__init__(objective_func)
-        # For single objective, the archive will always contain at most one solution.
         self.archive: list[Solution] = []
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def accept(self, candidate_solution: Solution) -> bool:
-        if not self.archive:  # Archive is empty, always accept the first solution
-            self.archive.append(candidate_solution)
+        """
+        Decides whether to accept candidate_solution and update the archive.
+        Updates the non-dominated archive based on Pareto dominance.
+
+        Returns True if the archive changes (solution added/removed).
+        """
+        self.objective_func.evaluate_and_set(candidate_solution)
+
+        if not self.archive:
+            self.archive.append(candidate_solution.copy())
             return True
 
-        current_best_in_archive = self.archive[0]
+        dominating = [
+            solution
+            for solution in self.archive
+            if not self.objective_func.is_better(candidate_solution, solution)
+        ]
+        archive_changed = len(dominating) != len(self.archive)
+        if archive_changed:
+            # Means that candidate dominates some of the existing solutions
+            dominating.append(candidate_solution.copy())
 
-        if self.objective_func.is_better(candidate_solution, current_best_in_archive):
-            self.archive = [candidate_solution]  # Replace the old best
-            return True
-        return False
-
-    def get_current_best_solution(self) -> Optional[Solution]:
-        if self.archive:
-            return self.archive[0]
-        return None
+        self.archive = dominating
+        return archive_changed
 
 
-class SkewedAcceptanceCriterion(AcceptanceCriterion):
-    def __init__(self, objective_func: ObjectiveFunction, alpha: float, distance_metric: Callable[[Solution, Solution], float]):
+class SkewedAcceptance(AcceptanceCriterion):
+    """
+    Skewed Acceptance Criterion for SINGLE-OBJECTIVE VNS (minimization).
+
+    It accepts solutions based on standard improvement, AND also accepts solutions
+    that are 'skewed acceptable' even if not strictly better, allowing the search
+    to escape local optima or explore plateaus.
+    """
+
+    def __init__(
+        self,
+        objective_func: ObjectiveFunction,
+        alpha: float,
+        distance_metric: Callable[[Solution, Solution], float],
+    ):
         super().__init__(objective_func)
         self.alpha = alpha
         self.distance_metric = distance_metric
+
         self.archive: list[Solution] = []
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.info(f"Initialized SkewedAcceptanceCriterion with alpha={alpha}")
+
+        if self.objective_func.n_dimensions > 1:
+            raise ValueError("SkewedAcceptance is for single-objective problems only.")
+
+        self.logger.info(
+            "Initialized SkewedAcceptance for single-objective with alpha=%.2f",
+            alpha,
+        )
 
     def accept(self, candidate_solution: Solution) -> bool:
-        candidate_objectives = candidate_solution.get_objectives()
+        self.objective_func.evaluate_and_set(
+            candidate_solution
+        )  # Ensure objectives are set
 
-        if not self.archive: # Initial solution or empty archive
-            self.archive.append(candidate_solution)
-            self.logger.debug(f"Archive empty, accepted initial solution: {candidate_objectives[0]:.2f}")
+        # Extract scalar objective values
+        candidate_value = candidate_solution.get_objectives()[
+            0
+        ]  # Only the first objective
+
+        if not self.archive:  # Initial solution or empty archive
+            self.archive.append(candidate_solution.copy())  # Store a copy
             return True
 
         current_best_in_archive = self.archive[0]
-        current_best_objectives = current_best_in_archive.get_objectives()
+        current_best_value = current_best_in_archive.get_objectives()[
+            0
+        ]  # Only the first objective
 
-        # Standard VNS improvement condition
-        if self.objective_func.is_better(candidate_solution, current_best_in_archive):
-            self.archive = [candidate_solution]
-            self.logger.debug(f"Accepted (standard improvement): {candidate_objectives[0]:.2f} (prev: {current_best_objectives[0]:.2f})")
+        distance = self.distance_metric(current_best_in_archive, candidate_solution)
+        skewed_candidate_value = candidate_value - self.alpha * distance
+
+        if skewed_candidate_value < current_best_value:
+            self.archive = [candidate_solution.copy()]  # Replace the old best
             return True
-        else:
-            # Skewed acceptance condition
-            distance = self.distance_metric(current_best_in_archive, candidate_solution)
-            skewed_candidate_value = candidate_objectives[0] - self.alpha * distance
-            current_best_value = current_best_objectives[0]
 
-            # We are minimizing, so a smaller value is better.
-            # If (candidate_value - alpha*distance) is less than current_best_value, accept.
-            if skewed_candidate_value < current_best_value:
-                self.archive = [candidate_solution]
-                self.logger.info(
-                    "Accepted (skewed): Candidate %.2f (skewed to %.2f) vs Current %.2f. Distance: %.2f",
-                    candidate_objectives[0], skewed_candidate_value, current_best_value, distance
-                )
-                return True
-        
-        self.logger.debug(f"Rejected candidate {candidate_objectives[0]:.2f} (not better than {current_best_objectives[0]:.2f} nor skewed acceptable)")
+        return False
+
+
+class BufferedAcceptanceCriterion(AcceptanceCriterion):
+    def __init__(self, objective_func: ObjectiveFunction, buffer_size: int):
+        super().__init__(objective_func)
+        # Use deque for efficient FIFO behavior (append and popleft)
+        self.buffer: deque[Solution] = deque(maxlen=buffer_size)
+
+    def get_one_current_solution(self) -> Optional[Solution]:
+        """Returns a single solution from either the main archive or buffer."""
+        size = len(self.archive) + len(self.buffer)
+        if size == 0:
+            return None
+
+        index = random.randint(0, size - 1)
+        if index < len(self.archive):
+            return self.archive[index]
+
+        index -= len(self.archive)
+        return self.buffer[index]
+
+
+class BeamSearchAcceptance(BufferedAcceptanceCriterion):
+    """General-purpose Acceptance Criterion with a beam search buffer."""
+
+    def __init__(self, objective_func: ObjectiveFunction, buffer_size: int):
+        super().__init__(objective_func, buffer_size)
+
+    def accept(self, candidate_solution: Solution) -> bool:
+        """
+        Decides whether to accept candidate_solution and update the archive/buffer.
+        Returns True if the archive changes, False otherwise.
+        """
+        self.objective_func.evaluate_and_set(candidate_solution)
+
+        if not self.archive:  # First solution always goes into archive
+            self.archive.append(candidate_solution.copy())
+            return True
+
+        dominating = []
+        for solution in self.archive:
+            if self.objective_func.is_better(candidate_solution, solution):
+                self.buffer.append(solution)
+            else:
+                dominating.append(solution)
+
+        archive_changed = len(dominating) != len(self.archive)
+        if archive_changed:
+            # Means that candidate dominates some of the existing solutions
+            dominating.append(candidate_solution.copy())
+
+        self.archive = dominating
+        return archive_changed
+
+
+class BeamSeachSkewedAcceptance(BufferedAcceptanceCriterion):
+    """
+    Skewed Acceptance Criterion for SINGLE-OBJECTIVE VNS (minimization).
+
+    It accepts solutions based on standard improvement, AND also accepts solutions
+    that are 'skewed acceptable' even if not strictly better, allowing the search
+    to escape local optima or explore plateaus.
+    """
+
+    def __init__(
+        self,
+        objective_func: ObjectiveFunction,
+        alpha: float,
+        buffer_size: int,
+        distance_metric: Callable[[Solution, Solution], float],
+    ):
+        super().__init__(objective_func, buffer_size)
+        self.alpha = alpha
+        self.distance_metric = distance_metric
+
+        self.archive: list[Solution] = []
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+        if self.objective_func.n_dimensions > 1:
+            raise ValueError("SkewedAcceptance is for single-objective problems only.")
+
+        self.logger.info(
+            "Initialized SkewedAcceptance for single-objective with alpha=%.2f and buffer_size=%d",
+            alpha,
+            buffer_size,
+        )
+
+    def accept(self, candidate_solution: Solution) -> bool:
+        self.objective_func.evaluate_and_set(candidate_solution)
+        candidate_value = candidate_solution.get_objectives()[0]
+
+        if not self.archive:
+            self.archive.append(candidate_solution.copy())
+            return True
+
+        current_best_in_archive = self.archive[0]
+        current_best_value = current_best_in_archive.get_objectives()[0]
+
+        distance = self.distance_metric(current_best_in_archive, candidate_solution)
+        skewed_candidate_value = candidate_value - self.alpha * distance
+
+        if candidate_value < current_best_value:
+            self.archive = [candidate_solution.copy()]
+            return True
+
+        if skewed_candidate_value < current_best_value:
+            self.buffer.append(candidate_solution)
+
         return False
