@@ -156,6 +156,7 @@ function SortableContainer({
   disabled,
   id,
   items,
+  label,
   ...props
 }: ContainerProps & {
   disabled?: boolean;
@@ -188,6 +189,7 @@ function SortableContainer({
   return (
     <Container
       ref={disabled ? undefined : setNodeRef}
+      label={label ?? `Column ${id}`}
       style={{
         transition,
         transform: CSS.Translate.toString(transform),
@@ -346,10 +348,7 @@ export function MultipleContainers({
   );
 
   const findContainer = (id: UniqueIdentifier) => {
-    if (id in items) {
-      return id;
-    }
-
+    if (id in items) return id;
     return Object.keys(items).find((key) => items[key].includes(id));
   };
 
@@ -367,6 +366,18 @@ export function MultipleContainers({
     });
   }, [items]);
 
+
+
+
+
+
+
+
+
+
+
+
+  
   return (
     <DndContext
       sensors={sensors}
