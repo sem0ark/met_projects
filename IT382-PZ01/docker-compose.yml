@@ -6,8 +6,6 @@ networks:
   app_network:
     driver: bridge # Default driver, explicitly stated for clarity
 
-# Define secrets for sensitive data
-# See "Don't Store Secrets in Images"
 secrets:
   mysql_root_password:
     file: ./sample_secrets/mysql_root_password.sample.txt
@@ -105,22 +103,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    # Least Privilege Principle - web servers often need minimal capabilities
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE # If Nginx needs to bind to port 80 (below 1024)
-    # Prevent In-Container Privilege Escalation
     security_opt:
       - no-new-privileges:true
-    read_only: true # Set Filesystem to Read-Only where possible (for static serving)
-    tmpfs:
-      # Allow temporary writes if needed. Nginx needs /var/cache/nginx/client_temp
-      # and potentially other cache/temp directories.
-      # You can specify multiple tmpfs mounts if needed.
-      - /tmp:rw,size=64m # Still good practice for general temp
-      - /var/cache/nginx:rw,size=128m # <-- Add this line for Nginx cache
-      - /var/run:rw,size=32m # Nginx might also write PID files or similar here
 
   # --- MySQL Database Service ---
   mysql:
@@ -130,7 +114,6 @@ services:
     networks:
       - app_network
     environment:
-      # Injecting secrets via Docker Secrets (files)
       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
       MYSQL_USER: appuser
       MYSQL_PASSWORD_FILE: /run/secrets/mysql_user_password
@@ -156,12 +139,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    # Least Privilege Principle for database
-    cap_drop:
-      - ALL
-    # Prevent In-Container Privilege Escalation
-    security_opt:
-      - no-new-privileges:true
 
   # --- Redis Cache Service ---
   redis:
@@ -176,7 +153,7 @@ services:
       - redis_password
     volumes:
       - redis_data:/data # Persistent volume for AOF/RDB if enabled
-    command: redis-server --requirepass "$(cat /run/secrets/redis_password)" --appendonly yes # Enforce password & persistence
+    command: redis-server --appendonly yes
     # Resource Limits
     deploy:
       resources:
@@ -192,9 +169,6 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-    # Least Privilege Principle
-    cap_drop:
-      - ALL
     # Prevent In-Container Privilege Escalation
     security_opt:
       - no-new-privileges:true
