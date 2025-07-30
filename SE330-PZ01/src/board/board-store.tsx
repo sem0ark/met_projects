@@ -3,7 +3,24 @@ import {
   type GetState,
   type SetState,
 } from "../utils/store-utils";
-import type { Lane, Card } from "./types";
+
+
+export interface Lane {
+  id: string;
+  title?: string;
+  cards: Card[];
+  droppable?: boolean;
+  disallowAddingCard?: boolean;
+}
+
+export interface Card {
+  id: string;
+  title?: string;
+  description?: string;
+  laneId?: string;
+  draggable?: boolean;
+}
+
 
 const createBoardStore = () =>
   function store(set: SetState<typeof store>, get: GetState<typeof store>) {
@@ -14,14 +31,13 @@ const createBoardStore = () =>
         loadBoard: (boardData: { lanes: Lane[] }) =>
           set((state) => {
             state.lanes = boardData.lanes.map((lane) => {
-              lane.currentPage = 1;
-              lane.cards = lane.cards ?? []; // Ensure cards array exists
+              lane.cards = lane.cards ?? [];
               lane.cards.forEach((card) => (card.laneId = lane.id));
               return lane;
             });
           }),
 
-        addLane: (newLane: Omit<Lane, "cards" | "currentPage">) =>
+        addLane: (newLane: Omit<Lane, "cards">) =>
           set((state) => {
             state.lanes.push({ cards: [], ...newLane });
           }),
@@ -116,7 +132,6 @@ const createBoardStore = () =>
           set((state) => {
             const lane = state.lanes.find((l) => l.id === laneId);
             if (lane) {
-              // Ensure laneId is set on new cards
               lane.cards = cards.map((c) => ({ ...c, laneId }));
             }
           }),
@@ -125,44 +140,45 @@ const createBoardStore = () =>
           set((state) => {
             state.lanes = newConfiguredLanes.map((lane) => ({
               ...lane,
-              currentPage: lane.currentPage || 1,
-              cards: lane.cards || [], // Ensure cards array exists
+              cards: lane.cards ?? [], // Ensure cards array exists
             }));
           }),
+      },
 
-        paginateLane: (
-          laneId: string,
-          newCards: Omit<Card, "laneId">[],
-          nextPage: number,
-        ) =>
-          set((state) => {
-            const lane = state.lanes.find((l) => l.id === laneId);
-            if (lane) {
-              const filteredNewCards = newCards
-                .map((c) => ({ ...c, laneId }))
-                .filter(
-                  (c) =>
-                    !lane.cards.some(
-                      (existingCard) => existingCard.id === c.id,
-                    ),
-                );
-              lane.cards.push(...filteredNewCards);
-              lane.currentPage = nextPage;
-            }
-          }),
+      getCardDetails: (laneId: string, cardIndex: number) => {
+        const state = get();
+        const lane = state.lanes.find((l) => l.id === laneId);
+        return lane ? lane.cards[cardIndex] : null;
+      },
 
-        getCardDetails: (laneId: string, cardIndex: number) => {
-          const state = get();
-          const lane = state.lanes.find((l) => l.id === laneId);
-          return lane ? lane.cards[cardIndex] : null;
-        },
+      getLaneDetails: (index: number) => {
+        const state = get();
+        return state.lanes[index];
+      },
 
-        getLaneDetails: (index: number) => {
-          const state = get();
-          return state.lanes[index];
-        },
+      getLaneById: (laneId: string) => {
+        const state = get();
+        return state.lanes.find((lane) => lane.id === laneId);
+      },
+
+      getAllLaneIds: () => {
+        const state = get();
+        return state.lanes.map((lane) => lane.id);
+      },
+
+      getCardsByLaneId: (laneId: string) => {
+        const state = get();
+        return state.lanes.find((lane) => lane.id === laneId)?.cards || [];
       },
     };
   };
 
-export const { useStore: useBoardStore } = createGlobalStore(createBoardStore);
+
+const { useStore: useBoardStore } = createGlobalStore(createBoardStore);
+
+export const useLanes = () => useBoardStore((state) => state.lanes);
+export const useLaneById = (laneId: string) => useBoardStore((state) => state.getLaneById(laneId));
+export const useCardsByLaneId = (laneId: string) => useBoardStore((state) => state.getCardsByLaneId(laneId));
+export const useCardDetails = (laneId: string, cardIndex: number) => useBoardStore((state) => state.getCardDetails(laneId, cardIndex));
+export const useAllLaneIds = () => useBoardStore((state) => state.getAllLaneIds());
+export const useBoardStoreActions = () => useBoardStore((state) => state.actions);

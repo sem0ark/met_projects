@@ -23,9 +23,7 @@ export const Action = forwardRef<HTMLButtonElement, ActionProps>(
 
           hoverClassName ?? "hover:bg-base-200",
           activeClassName ?? "active:bg-base-200 active:text-base-content",
-          "focus-visible:shadow-none focus-visible:outline-none",
-          "focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0",
-          "focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+          "focus-visible:ring-offset-base-100 focus-visible:shadow-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:outline-none",
         )}
         tabIndex={0}
       >
@@ -38,7 +36,7 @@ export const Action = forwardRef<HTMLButtonElement, ActionProps>(
 export const Handle = forwardRef<HTMLButtonElement, ActionProps>(
   (props, ref) => {
     return (
-      <Action ref={ref} data-cypress="draggable-handle" {...props}>
+      <Action ref={ref} data-cypress="draggable-handle" grab={true} {...props}>
         <EllipsisVerticalIcon className="absolute left-[2px] size-5" />
         <EllipsisVerticalIcon className="absolute left-[10px] size-5" />
       </Action>

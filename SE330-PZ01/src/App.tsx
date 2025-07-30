@@ -1,15 +1,10 @@
-import { Container } from "./board/Container";
-import { Item } from "./board/Item";
+import { MultipleContainers } from "./board/Board";
 
 // <input type="checkbox" value="dark" className="toggle theme-controller" />
 function App() {
   return (
-    <div className="bg-base-200 drawer mx-auto max-w-[100rem]">
-      <Container label="Hello">
-        <Item value={"123"} />
-        <Item value={"123"} />
-        <Item value={"123"} />
-      </Container>
+    <div className="bg-base-100 drawer mx-auto w-fit">
+      <MultipleContainers handle={true}/>
     </div>
   );
 }

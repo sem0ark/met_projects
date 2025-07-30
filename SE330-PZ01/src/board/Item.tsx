@@ -1,7 +1,7 @@
-import React, { useEffect } from "react";
+import { forwardRef, memo } from "react";
 import clsx from "clsx";
 import type { DraggableSyntheticListeners } from "@dnd-kit/core";
-import type { Transform } from "@dnd-kit/utilities";
+import { CSS, type Transform } from "@dnd-kit/utilities";
 
 import { Handle, Remove, type ActionProps } from "./ActionButton";
 
@@ -24,14 +24,13 @@ export interface ItemProps {
   onRemove?(): void;
 }
 
-export const Item = React.memo(
-  React.forwardRef<HTMLLIElement, ItemProps>(
+export const Item = memo(
+  forwardRef<HTMLLIElement, ItemProps>(
     (
       {
         dragOverlay,
         dragging,
         disabled,
-        fadeIn,
         handle,
         handleProps,
         index,
@@ -44,38 +43,17 @@ export const Item = React.memo(
       },
       ref,
     ) => {
-      useEffect(() => {
-        if (!dragOverlay) {
-          return;
-        }
-
-        document.body.style.cursor = "grabbing";
-
-        return () => {
-          document.body.style.cursor = "";
-        };
-      }, [dragOverlay]);
-
       const wrapperCustomProperties: React.CSSProperties = {
-        "--translate-x": transform ? `${Math.round(transform.x)}px` : undefined,
-        "--translate-y": transform ? `${Math.round(transform.y)}px` : undefined,
-        "--scale-x": transform?.scaleX ? `${transform.scaleX}` : undefined,
-        "--scale-y": transform?.scaleY ? `${transform.scaleY}` : undefined,
-        "--index": index,
         transition: transition,
+        transform: transform ? CSS.Transform.toString(transform) : undefined,
+        "--index": index,
       } as React.CSSProperties;
-
-      // Custom properties for dragOverlay and picked-up state
-      const itemCustomProperties: React.CSSProperties = {
-        "--scale": dragOverlay ? "1.05" : "1",
-      } as React.CSSProperties; // Cast needed for custom CSS variables
 
       return (
         <li
           className={clsx(
             "box-border flex transform-gpu touch-manipulation",
-            fadeIn && "animate-fade-in",
-            dragOverlay && "z-[999]",
+            dragOverlay && "z-[999] scale-110",
           )}
           style={wrapperCustomProperties}
           ref={ref}
@@ -100,14 +78,8 @@ export const Item = React.memo(
               dragOverlay && "cursor-inherit animate-pop",
 
               "focus-visible:shadow-accent focus-visible:shadow-md focus-visible:ring-2",
-              'before:bg-accent relative before:absolute before:top-1/2 before:left-0 before:block before:h-full before:w-[3px] before:-translate-y-1/2 before:rounded-l-[3px] before:content-[""]',
-
-              // Show remove button on hover
-              "group", // Enable group-hover utility
-              // Note: The visibility of .Remove is controlled by a parent group-hover in this setup,
-              // rather than a direct CSS rule. The Remove component itself will apply 'invisible group-hover:visible'.
+              'before:bg-accent relative before:absolute before:top-1/2 before:left-0 before:block before:h-full before:w-1 before:-translate-y-1/2 before:rounded-l-[3px] before:content-[""]',
             )}
-            style={itemCustomProperties}
             data-cypress="draggable-item"
             {...(!handle ? listeners : undefined)}
             {...props}
@@ -115,17 +87,9 @@ export const Item = React.memo(
           >
             {value}
             <span
-              className="-mt-3 -mr-2.5 -mb-4 ml-auto flex self-start"
-              // DaisyUI defaults or closer
-              // Original: margin-top: -12px; margin-left: auto; margin-bottom: -15px; margin-right: -10px;
-              // Equivalent Tailwind: -mt-3 (12px), ml-auto, -mb-4 (16px), -mr-2.5 (10px)
+              className="-my-3 ml-auto flex h-full flex-col justify-center"
             >
-              {onRemove ? (
-                <Remove
-                  className="invisible group-hover:visible"
-                  onClick={onRemove}
-                />
-              ) : null}
+              {onRemove ? (<Remove onClick={onRemove} />) : null}
               {handle ? <Handle {...handleProps} {...listeners} /> : null}
             </span>
           </div>
