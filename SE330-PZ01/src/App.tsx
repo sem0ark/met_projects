@@ -1,11 +1,14 @@
-import { MultipleContainers } from "./board/Board";
+import { Board } from "./board/Board";
+import { Navbar } from "./Navbar";
 
 function App() {
   return (
-    <div className="bg-base-100 drawer mx-auto w-fit">
-      <input type="checkbox" value="dark" className="toggle theme-controller" />
-      <MultipleContainers handle={true} />
-    </div>
+    <>
+      <Navbar />
+      <div className="mx-auto w-fit">
+        <Board handle={true} />
+      </div>
+    </>
   );
 }
 

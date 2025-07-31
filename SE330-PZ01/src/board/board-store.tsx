@@ -5,7 +5,7 @@ import {
   type SetState,
 } from "../utils/store-utils";
 import { v4 as uuid4 } from "uuid";
-import { persist } from "zustand/middleware";
+// import { persist } from "zustand/middleware";
 
 type ID = number | string;
 
@@ -191,21 +191,21 @@ const createBoardStore = () => {
   return immer(store);
 };
 
-const createBoardStorePersisted = () =>
-  persist(createBoardStore(), {
-    name: "board-store",
-    version: 1,
-    partialize: (state) => ({
-      lanes: state.lanes,
-      cards: state.cards,
-    }),
-  });
+// const createBoardStorePersisted = () =>
+//   persist(createBoardStore(), {
+//     name: "board-store",
+//     version: 1,
+//     partialize: (state) => ({
+//       lanes: state.lanes,
+//       cards: state.cards,
+//     }),
+//   });
 
 export const {
   useStore: useBoardStore,
   useStoreShallow: useBoardStoreShallow,
   getStoreState: getBoardState,
-} = createGlobalStore(createBoardStorePersisted);
+} = createGlobalStore(createBoardStore);
 
 export const useLane = (laneId: ID) =>
   useBoardStoreShallow((state) =>

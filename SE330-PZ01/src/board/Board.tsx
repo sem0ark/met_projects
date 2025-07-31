@@ -40,7 +40,7 @@ interface Props {
   vertical?: boolean;
 }
 
-export function MultipleContainers({ scrollable }: Props) {
+export function Board({ scrollable }: Props) {
   const { initializeBoard } = useBoardStoreActions();
   useEffect(() => {
     initializeBoard();
@@ -327,9 +327,7 @@ export function MultipleContainers({ scrollable }: Props) {
         <DragOverlay>
           {activeId ? (
             containers.includes(activeId) ? (
-              <OverlayLane id={activeId} items={items[activeId]}>
-                ""
-              </OverlayLane>
+              <OverlayLane id={activeId} items={items[activeId]} />
             ) : (
               <OverlayCard id={activeId} />
             )
