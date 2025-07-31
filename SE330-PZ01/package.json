@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest",
-    "lint": "prettier --write ./src && eslint ./src",
+    "lint": "prettier --write ./src && eslint ./src && tsc -noEmit",
     "preview": "vite preview"
   },
   "dependencies": {

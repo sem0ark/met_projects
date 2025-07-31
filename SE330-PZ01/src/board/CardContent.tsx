@@ -23,7 +23,7 @@ const CardEditForm = ({
 }: CardContentProps & {
   onClose: () => void;
   onSave: (title: string, description: string) => void;
-  autoFocusRef: React.RefObject<HTMLInputElement>;
+  autoFocusRef: React.RefObject<HTMLInputElement | null>;
 }) => {
   const card = useCard(id);
 

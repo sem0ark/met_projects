@@ -47,7 +47,7 @@ describe("createBoardStore", () => {
 
     // Reset UUID mocks for each test with a consistent sequence
     let uuidCount = 0;
-    vi.mocked(uuid4).mockImplementation(() => {
+    vi.mocked(uuid4 as unknown as () => string).mockImplementation(() => {
       uuidCount++;
       switch (uuidCount) {
         case 1:
@@ -250,7 +250,7 @@ describe("createBoardStore", () => {
     beforeEach(() => {
       // Re-mock uuid4 specifically for this describe block to control the sequence
       let localUuidCount = 0;
-      vi.mocked(uuid4).mockImplementation(() => {
+      vi.mocked(uuid4 as unknown as () => string).mockImplementation(() => {
         localUuidCount++;
 
         if (localUuidCount === 1) return mockLaneId1; // For the lane creation
@@ -414,7 +414,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
 
     // Reset UUID mocks for each test with a consistent sequence
     let uuidCount = 0;
-    vi.mocked(uuid4).mockImplementation(() => {
+    vi.mocked(uuid4 as unknown as () => string).mockImplementation(() => {
       uuidCount++;
       switch (uuidCount) {
         case 1:
