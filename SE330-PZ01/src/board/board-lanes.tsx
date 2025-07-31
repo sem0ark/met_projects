@@ -10,18 +10,17 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { useLane } from "./board-store";
 import { OverlayCard, SortableCard } from "./board-cards";
-import { PLACEHOLDER_ID } from "./constants";
 import type { PropsWithChildren } from "react";
 
 import React, { forwardRef } from "react";
 import clsx from "clsx";
 
-import { Remove, Handle, type ActionProps } from "./ActionButton";
+import { Handle, type ActionProps } from "./ActionButton";
+import { LaneLabelContent } from "./LaneLabelContent";
 
 interface ContainerProps {
   children?: React.ReactNode;
   label?: React.ReactNode;
-  isStatic?: boolean;
   hover?: boolean;
   handle?: boolean;
   handleProps?: ActionProps;
@@ -41,12 +40,9 @@ const Container = forwardRef<HTMLDivElement, ContainerProps>(
       children,
       label,
       hover,
-      isStatic,
       handleProps,
-      scrollable,
       placeholder,
       onClick,
-      onRemove,
       style,
       ...props
     }: ContainerProps,
@@ -57,10 +53,11 @@ const Container = forwardRef<HTMLDivElement, ContainerProps>(
         {...props}
         ref={ref}
         className={clsx(
-          "rounded-box bg-base-200 border-base-content/10 m-2.5 box-border flex min-h-52 min-w-80 flex-col",
+          "rounded-box bg-base-200 border-base-content/10 m-2.5 box-border flex min-h-52 w-96 flex-col",
           "appearance-none border outline-none",
           "transition-colors duration-300 ease-in-out",
           "focus-visible:ring-info focus-visible:ring-offset-base-100 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+          "group/container",
           {
             "text-base-content/50 cursor-pointer items-center justify-center":
               placeholder,
@@ -76,23 +73,19 @@ const Container = forwardRef<HTMLDivElement, ContainerProps>(
         tabIndex={onClick ? 0 : undefined}
         style={style}
       >
-        {!isStatic && (
+        {!!label && (
           <div
             className={clsx(
-              "flex items-center justify-between p-4",
+              "flex flex-row items-center justify-between w-full",
               "bg-base-100 rounded-t-box",
               "border-base-content/10 border-b",
-              "group",
             )}
           >
-            <h3 className="text-base-content text-lg font-semibold">{label}</h3>
-            <div className="flex gap-1">
-              {!!onRemove && <Remove onClick={onRemove} />}
-              <Handle
-                className="-my-4 -mr-4 rounded-none rounded-tr-md py-8 pr-8"
-                {...handleProps}
-              />
-            </div>
+            {label}
+            <Handle
+              className="rounded-none rounded-tr-md py-8 pr-8 border-0"
+              {...handleProps}
+            />
           </div>
         )}
 
@@ -101,12 +94,7 @@ const Container = forwardRef<HTMLDivElement, ContainerProps>(
             {children}
           </div>
         ) : (
-          <ul
-            className={clsx(
-              "m-0 flex list-none flex-col gap-2 p-4",
-              scrollable && "overflow-y-auto",
-            )}
-          >
+          <ul className="m-0 flex h-96 list-none flex-col gap-2 overflow-y-auto p-4">
             {children}
           </ul>
         )}
@@ -122,12 +110,17 @@ export function SortableLane({
   children,
   disabled,
   id,
-  items,
+  cards,
+  onAddCard,
+  onRemoveCard,
+  onRemove: onRemoveLane,
   ...props
 }: ContainerProps & {
   disabled?: boolean;
   id: UniqueIdentifier;
-  items: UniqueIdentifier[];
+  cards: UniqueIdentifier[];
+  onAddCard: (laneId: UniqueIdentifier) => void;
+  onRemoveCard: (laneId: UniqueIdentifier, cardId: UniqueIdentifier) => void;
 }) {
   const lane = useLane(id);
   const {
@@ -141,21 +134,25 @@ export function SortableLane({
     transform,
   } = useSortable({
     id,
-    data: { type: "container", children: items },
+    data: { type: "container", children: cards },
     animateLayoutChanges: animateLayoutChanges,
   });
 
+  if (!lane) {
+    return null;
+  }
+
   const isOverContainer = over
     ? (id === over.id && active?.data.current?.type !== "container") ||
-      items.includes(over.id)
+      cards.includes(over.id)
     : false;
-
-  const currentLabel = lane?.title ?? `Column ${id}`;
 
   return (
     <Container
       ref={setNodeRef}
-      label={currentLabel}
+      label={
+        <LaneLabelContent laneId={lane.id} onAddCard={onAddCard} onRemoveLane={onRemoveLane}/>
+      }
       style={{
         transition,
         transform: CSS.Translate.toString(transform),
@@ -165,46 +162,45 @@ export function SortableLane({
       handleProps={{ ...attributes, ...listeners }}
       {...props}
     >
-      <SortableContext items={items} strategy={verticalListSortingStrategy}>
-        {items.map((value, index) => {
+      {children}
+      <SortableContext items={cards} strategy={verticalListSortingStrategy}>
+        {cards.map((cardId, index) => {
           return (
             <SortableCard
-              disabled={disabled}
-              key={value}
-              id={value}
+              disabled={disabled || isDragging}
+              key={cardId}
+              id={cardId}
               index={index}
+              onRemove={onRemoveCard && (() => onRemoveCard(lane?.id, cardId))}
             />
           );
         })}
       </SortableContext>
-      {children}
     </Container>
   );
 }
 
 export function OverlayLane({
   id,
-  items,
+  cards,
   ...props
 }: ContainerProps & {
   disabled?: boolean;
   id: UniqueIdentifier;
-  items: UniqueIdentifier[];
+  cards: UniqueIdentifier[];
 }) {
   const lane = useLane(id);
 
   return (
-    <Container label={lane?.title || `Column ${id}`} {...props}>
-      {items.map((itemId) => (
+    <Container label={<LaneLabelContent laneId={lane?.id ?? ""}/>} {...props}>
+      {cards.map((itemId) => (
         <OverlayCard key={itemId} id={itemId} />
       ))}
     </Container>
   );
 }
 
-const empty: UniqueIdentifier[] = [];
 export const ColumnPlaceholder = ({
-  disabled,
   onClick,
   children,
 }: PropsWithChildren<{
@@ -212,15 +208,8 @@ export const ColumnPlaceholder = ({
   onClick: () => void;
 }>) => {
   return (
-    <SortableLane
-      id={PLACEHOLDER_ID}
-      disabled={disabled}
-      items={empty}
-      onClick={onClick}
-      placeholder
-      isStatic
-    >
+    <Container placeholder onClick={onClick}>
       {children}
-    </SortableLane>
+    </Container>
   );
 };

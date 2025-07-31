@@ -1,4 +1,3 @@
-import { useCard, type Card } from "./board-store";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 
 import { forwardRef, memo } from "react";
@@ -6,9 +5,10 @@ import clsx from "clsx";
 import type { DraggableSyntheticListeners } from "@dnd-kit/core";
 import { CSS, type Transform } from "@dnd-kit/utilities";
 
-import { Handle, Remove, type ActionProps } from "./ActionButton";
+import { Handle, type ActionProps } from "./ActionButton";
 import { useIsUsingHandleCard } from "./app-store";
 import { useSortable } from "@dnd-kit/sortable";
+import { CardContent, type CardContentProps } from "./CardContent";
 
 interface ItemProps {
   dragOverlay?: boolean;
@@ -25,8 +25,6 @@ interface ItemProps {
   transition?: string | null;
 
   value: React.ReactNode;
-
-  onRemove?(): void;
 }
 
 const Item = memo(
@@ -40,7 +38,6 @@ const Item = memo(
         handleProps,
         index,
         listeners,
-        onRemove,
         transition,
         transform,
         value,
@@ -66,11 +63,12 @@ const Item = memo(
         >
           <div
             className={clsx(
-              "relative flex flex-grow items-center p-4",
+              "relative flex flex-grow items-center pl-4",
               "bg-base-100 rounded-md shadow-md outline-none",
               "transform-origin-center box-border list-none",
               "text-base-content text-base font-normal whitespace-nowrap",
               "transition-shadow duration-200 ease-in-out",
+              "group/card",
 
               !handle && "cursor-grab",
 
@@ -91,11 +89,10 @@ const Item = memo(
             tabIndex={!handle ? 0 : undefined}
           >
             {value}
-            <span className="-my-3 ml-auto flex h-full flex-col justify-center">
-              {onRemove ? <Remove onClick={onRemove} /> : null}
+            <span className="ml-auto flex h-full flex-col justify-center">
               {handle ? (
                 <Handle
-                  className="-my-4 -mr-4 rounded-none rounded-r-md py-7 pr-7"
+                  className="rounded-none rounded-r-md py-8 pr-7"
                   {...handleProps}
                   {...listeners}
                 />
@@ -108,32 +105,15 @@ const Item = memo(
   ),
 );
 
-const CardContent = ({ card }: { card: Card }) => {
-  if (!card) {
-    return (
-      <div style={{ padding: "8px", opacity: 0.7, color: "gray" }}>
-        Loading card...
-      </div>
-    );
-  }
 
-  return (
-    <>
-      <strong>{card.title || "Untitled Card"}</strong>
-      {card.description && <p> {card.description} </p>}
-    </>
-  );
-};
-
-type CardProps = Omit<ItemProps, "value"> & { id: UniqueIdentifier };
+type CardProps = Omit<ItemProps, "value"> & CardContentProps;
 const CardItem = forwardRef<HTMLLIElement, CardProps>(
-  ({ id, ...props }, ref) => {
-    const cardData = useCard(id);
+  ({ id, onRemove, ...props }, ref) => {
     return (
       <Item
-        ref={ref} // Pass the ref from useSortable to the underlying DOM element
+        ref={ref}
         {...props}
-        value={<CardContent card={cardData} />}
+        value={<CardContent onRemove={onRemove} id={id} />}
       />
     );
   },
@@ -144,8 +124,8 @@ export function SortableCard({
   disabled,
   id,
   index,
-}: {
-  id: UniqueIdentifier;
+  ...props
+}: CardContentProps & {
   index: number;
   disabled?: boolean;
 }) {
@@ -172,12 +152,12 @@ export function SortableCard({
       transition={transition}
       transform={transform}
       disabled={disabled}
+      {...props}
     />
   );
 }
 
 export function OverlayCard({ id }: { id: UniqueIdentifier }) {
   const isUsingHandle = useIsUsingHandleCard();
-
-  return <CardItem id={id} handle={isUsingHandle} />;
+  return <CardItem dragging={true} id={id} handle={isUsingHandle} />;
 }

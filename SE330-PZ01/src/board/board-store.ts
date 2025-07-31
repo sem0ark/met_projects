@@ -6,8 +6,7 @@ import {
 } from "../utils/store-utils";
 import { v4 as uuid4 } from "uuid";
 import { persist } from "zustand/middleware";
-
-type ID = number | string;
+import type { ID } from "./common-types";
 
 export interface Lane {
   id: ID;
@@ -16,6 +15,9 @@ export interface Lane {
 
   considerCardDone: boolean;
   canRemove: boolean;
+
+  canEditCards: boolean;
+  canAddCard: boolean;
   canRemoveCards: boolean;
 }
 
@@ -27,7 +29,6 @@ export interface Card {
   description: string;
 }
 
-const INIT_LANE_TITLES = ["To Do", "In Progress", "Done"];
 const INIT_ITEMS_PER_LANE = 3;
 
 function createRange<T>(
@@ -36,6 +37,45 @@ function createRange<T>(
 ): T[] {
   return [...new Array(length)].map((_, index) => initializer(index));
 }
+
+const getDefaultLanes = (): Lane[] => {
+  return [
+    {
+      id: uuid4(),
+      title: "To Do",
+      cards: [],
+      considerCardDone: false,
+      canRemove: true,
+
+      canAddCard: true,
+      canEditCards: true,
+      canRemoveCards: true,
+    },
+    {
+      id: uuid4(),
+      title: "In Progress",
+      cards: [],
+      considerCardDone: false,
+      canRemove: false,
+
+      canAddCard: true,
+      canEditCards: true,
+      canRemoveCards: true,
+    },
+    {
+      id: uuid4(),
+      title: "Done",
+      cards: [],
+      considerCardDone: true,
+      canRemove: false,
+
+      canAddCard: false,
+      canEditCards: false,
+      canRemoveCards: true,
+    }
+  ]
+}
+
 
 export const createBoardStore = () => {
   function store(set: SetState<typeof store>, get: GetState<typeof store>) {
@@ -47,39 +87,27 @@ export const createBoardStore = () => {
         initializeBoard: (): Record<ID, ID[]> => {
           if (get().lanes.length === 0)
             set((state) => {
-              const newLanes: Lane[] = [];
+              const newLanes: Lane[] = getDefaultLanes();
               const newCards: Record<ID, Card> = {};
 
-              INIT_LANE_TITLES.forEach((title) => {
-                const laneId = uuid4();
-                const newLane: Lane = {
-                  id: laneId,
-                  title: title,
-                  cards: [],
-                  considerCardDone: false,
-                  canRemove: false,
-                  canRemoveCards: false,
-                };
-                newLanes.push(newLane);
-
+              newLanes.forEach(({title, id: laneId, cards: laneCards}) => {
                 createRange(
                   INIT_ITEMS_PER_LANE,
-                  (i) => `${title[0]}${i + 1}`,
+                  (i) => `${title.split(" ")[0]} ${i + 1}`,
                 ).forEach((cardTitle) => {
                   const cardId = uuid4();
                   const newCard: Card = {
                     id: cardId,
                     laneId: laneId,
                     title: cardTitle,
-                    description: "",
+                    description: "Sample description",
                   };
                   newCards[cardId] = newCard;
-                  newLane.cards.push(cardId);
+                  laneCards.push(cardId);
                 });
               });
 
               const doneLane = newLanes.at(-1)!;
-              doneLane.canRemove = true;
               doneLane.considerCardDone = true;
 
               state.lanes = newLanes;
@@ -114,20 +142,7 @@ export const createBoardStore = () => {
             }
           }),
 
-        removeLane: (laneId: ID) =>
-          set((state) => {
-            const laneToRemove = state.lanes.find((lane) => lane.id === laneId);
-
-            if (laneToRemove) {
-              laneToRemove.cards.forEach((cardId) => {
-                delete state.cards[cardId];
-              });
-            }
-
-            state.lanes = state.lanes.filter((lane) => lane.id !== laneId);
-          }),
-
-        addCard: (card: Omit<Card, "id">, index?: number) => {
+        addCard: (card: Omit<Card, "id">, index?: number): Card => {
           const id = uuid4();
 
           set((state) => {
@@ -144,7 +159,7 @@ export const createBoardStore = () => {
             }
           });
 
-          return id;
+          return { id, ...card };
         },
 
         updateCard: (updatedCard: Partial<Card> & Pick<Card, "id">) =>
@@ -157,19 +172,6 @@ export const createBoardStore = () => {
               ...state.cards[updatedCard.id],
               ...updatedCard,
             };
-          }),
-
-        removeCard: (cardId: ID) =>
-          set((state) => {
-            const card = state.cards[cardId];
-            if (!card) return;
-
-            const lane = state.lanes.find((l) => l.id === card.laneId);
-            if (lane) {
-              lane.cards = lane.cards.filter((id) => id !== cardId);
-            }
-
-            delete state.cards[cardId];
           }),
 
         syncBoardState: (dndItems: Record<ID, ID[]>, newLaneOrder?: ID[]) => {
@@ -227,6 +229,22 @@ export const createBoardStore = () => {
           });
         },
       },
+      getters: {
+        canRemoveCard: (cardId: ID) => {
+          if (!get().cards[cardId]) return false
+          const cardLaneId = get().cards[cardId].laneId;
+          const lane = get().lanes.find((lane) => cardLaneId === lane.id);
+
+          return lane && lane.canRemoveCards;
+        },
+        isCardDone: (cardId: ID) => {
+          if (!get().cards[cardId]) return false
+          const cardLaneId = get().cards[cardId].laneId;
+          const lane = get().lanes.find((lane) => cardLaneId === lane.id);
+
+          return lane && lane.considerCardDone;
+        },
+      },
     };
   }
 
@@ -236,7 +254,7 @@ export const createBoardStore = () => {
 const createBoardStorePersisted = () =>
   persist(createBoardStore(), {
     name: "board-store",
-    version: 3,
+    version: 1,
     partialize: (state) => ({
       lanes: state.lanes,
       cards: state.cards,
@@ -253,8 +271,12 @@ export const useLane = (laneId: ID) =>
   useBoardStoreShallow((state) =>
     state.lanes.find((lane) => lane.id === laneId),
   );
+
 export const useCard = (cardId: ID) =>
   useBoardStoreShallow((state) => state.cards[cardId]);
 
 export const useBoardStoreActions = () =>
   useBoardStoreShallow((state) => state.actions);
+
+export const useBoardStoreGetters = () =>
+  useBoardStoreShallow((state) => state.getters);

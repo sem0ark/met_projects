@@ -42,7 +42,8 @@ interface Props {
 }
 
 export function Board({ scrollable }: Props) {
-  const { addLane, initializeBoard, syncBoardState } = useBoardStoreActions();
+  const { addLane, addCard, initializeBoard, syncBoardState } =
+    useBoardStoreActions();
   useEffect(() => {
     initializeBoard();
   }, [initializeBoard]);
@@ -146,7 +147,7 @@ export function Board({ scrollable }: Props) {
     });
   }, [items]);
 
-  const handleRemove = useCallback((containerID: UniqueIdentifier) => {
+  const handleRemoveColumn = useCallback((containerID: UniqueIdentifier) => {
     setContainers((prevContainers) =>
       prevContainers.filter((id) => id !== containerID),
     );
@@ -162,7 +163,7 @@ export function Board({ scrollable }: Props) {
       title: "New Column",
       considerCardDone: false,
       canRemove: true,
-      canRemoveCards: true,
+      canChangeCards: true,
     });
     const newContainerId = lane.id;
 
@@ -172,6 +173,34 @@ export function Board({ scrollable }: Props) {
       [newContainerId]: [],
     }));
   }, [addLane]);
+
+  const handleAddCard = useCallback(
+    (containerId: UniqueIdentifier) => {
+      const newCard = addCard({
+        laneId: containerId,
+        title: "",
+        description: "",
+      });
+
+      setItems((items) => ({
+        ...items,
+        [containerId]: [newCard.id, ...items[containerId]],
+      }));
+    },
+    [addCard],
+  );
+
+  const handleRemoveCard = useCallback(
+    (containerId: UniqueIdentifier, cardId: UniqueIdentifier) => {
+      setItems((items) => {
+        return {
+          ...items,
+          [containerId]: items[containerId].filter((id) => id !== cardId),
+        };
+      });
+    },
+    [],
+  );
 
   return (
     <DndContext
@@ -189,7 +218,6 @@ export function Board({ scrollable }: Props) {
       onDragOver={({ active, over }) => {
         const overId = over?.id;
 
-        // Early exit conditions
         if (overId == null || active.id in items) {
           return;
         }
@@ -271,7 +299,7 @@ export function Board({ scrollable }: Props) {
           const lane = addLane({
             title: "New Column",
             canRemove: true,
-            canRemoveCards: true,
+            canChangeCards: true,
             considerCardDone: false,
           });
           const newContainerId = lane.id;
@@ -320,17 +348,19 @@ export function Board({ scrollable }: Props) {
             <SortableLane
               key={containerId}
               id={containerId}
-              items={items[containerId]}
+              cards={items[containerId]}
               scrollable={scrollable}
-              onRemove={() => handleRemove(containerId)}
+              onRemove={() => handleRemoveColumn(containerId)}
               disabled={isDraggingContainer}
+              onAddCard={handleAddCard}
+              onRemoveCard={handleRemoveCard}
             />
           ))}
           <ColumnPlaceholder
             disabled={isDraggingContainer}
             onClick={handleAddColumn}
           >
-            <span className="text-base-content/70 hover:text-primary text-xl font-bold transition-colors">
+            <span className="text-base-content/70 hover:text-primary group-hover/container:text-accent text-xl font-bold transition-colors">
               + Add column
             </span>
           </ColumnPlaceholder>
@@ -340,7 +370,7 @@ export function Board({ scrollable }: Props) {
         <DragOverlay>
           {activeId ? (
             containers.includes(activeId) ? (
-              <OverlayLane id={activeId} items={items[activeId]} />
+              <OverlayLane id={activeId} cards={items[activeId]} />
             ) : (
               <OverlayCard id={activeId} />
             )

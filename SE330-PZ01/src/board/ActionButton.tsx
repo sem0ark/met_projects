@@ -1,5 +1,10 @@
 import React, { forwardRef } from "react";
-import { XMarkIcon, EllipsisVerticalIcon } from "@heroicons/react/20/solid";
+import {
+  XMarkIcon,
+  EllipsisVerticalIcon,
+  PlusIcon,
+  PencilSquareIcon,
+} from "@heroicons/react/20/solid";
 import clsx from "clsx";
 
 export type ActionProps = {
@@ -53,7 +58,23 @@ export const Handle = forwardRef<HTMLButtonElement, ActionProps>(
 export function Remove(props: ActionProps) {
   return (
     <Action hoverClassName="hover:bg-red-100 hover:text-red-600" {...props}>
-      <XMarkIcon className="size-5" />
+      <XMarkIcon className="absolute top-1/2 left-1/2 size-5 -translate-x-1/2 -translate-y-1/2" />
+    </Action>
+  );
+}
+
+export function AddNew(props: ActionProps) {
+  return (
+    <Action hoverClassName="hover:bg-info/50 hover:text-info" {...props}>
+      <PlusIcon className="absolute top-1/2 left-1/2 size-5 -translate-x-1/2 -translate-y-1/2" />
+    </Action>
+  );
+}
+
+export function Edit(props: ActionProps) {
+  return (
+    <Action hoverClassName="hover:bg-accent hover:text-white" {...props}>
+      <PencilSquareIcon className="absolute top-1/2 left-1/2 size-5 -translate-x-1/2 -translate-y-1/2" />
     </Action>
   );
 }
