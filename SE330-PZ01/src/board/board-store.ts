@@ -128,12 +128,6 @@ export const createBoardStore = () => {
             state.lanes = state.lanes.filter((lane) => lane.id !== laneId);
           }),
 
-          moveLane: (oldIndex: number, newIndex: number) =>
-          set((state) => {
-            const [movedLane] = state.lanes.splice(oldIndex, 1);
-            state.lanes.splice(newIndex, 0, movedLane);
-          }),
-
         addCard: (card: Omit<Card, "id">, index?: number) => {
           const id = uuid4();
 
@@ -179,24 +173,52 @@ export const createBoardStore = () => {
             delete state.cards[cardId];
           }),
 
-        moveCard: (
-          fromLaneId: ID,
-          toLaneId: ID,
-          cardId: ID,
-          index: number,
-        ) =>
+        syncBoardState: (dndItems: Record<ID, ID[]>, newLaneOrder?: ID[]) => {
           set((state) => {
-            const fromLane = state.lanes.find((l) => l.id === fromLaneId);
-            const toLane = state.lanes.find((l) => l.id === toLaneId);
-            const card = state.cards[cardId];
-            if (!fromLane || !toLane || !card) return;
+            if (newLaneOrder && newLaneOrder.length > 0) {
+              const reorderedLanes: Lane[] = [];
+              const existingLanesMap = new Map(state.lanes.map(lane => [lane.id, lane]));
 
-            if (!fromLane.cards.includes(cardId)) return;
+              newLaneOrder.forEach(laneId => {
+                const lane = existingLanesMap.get(laneId);
+                if (lane) {
+                  reorderedLanes.push(lane);
+                  existingLanesMap.delete(laneId);
+                }
+              });
 
-            fromLane.cards = fromLane.cards.filter(id => id !== cardId);
-            toLane.cards.splice(index, 0, cardId);
-            state.cards[cardId].laneId = toLaneId;
-          }),
+              existingLanesMap.forEach(lane => reorderedLanes.push(lane));
+              state.lanes = reorderedLanes;
+            }
+
+            Object.entries(dndItems).forEach(([laneId, cardIdsInOrder]) => {
+              const lane = state.lanes.find(l => l.id === laneId);
+              if (lane) {
+                lane.cards = cardIdsInOrder.filter(cardId => !!state.cards[cardId]);
+
+                cardIdsInOrder.forEach(cardId => {
+                  if (state.cards[cardId]) {
+                    state.cards[cardId].laneId = laneId;
+                  }
+                });
+              }
+            });
+
+            const allActiveCardIdsInDndItems = new Set<ID>();
+            Object.values(dndItems).forEach(cardIds => {
+                cardIds.forEach(cardId => allActiveCardIdsInDndItems.add(cardId));
+            });
+
+            Object.keys(state.cards).forEach(cardId => {
+                if (!allActiveCardIdsInDndItems.has(cardId)) {
+                    delete state.cards[cardId];
+                }
+            });
+
+            const activeLaneIdsInDndItems = new Set<ID>(Object.keys(dndItems));
+            state.lanes = state.lanes.filter(lane => activeLaneIdsInDndItems.has(lane.id));
+          });
+        },
       },
     };
   }
@@ -207,7 +229,7 @@ export const createBoardStore = () => {
 const createBoardStorePersisted = () =>
   persist(createBoardStore(), {
     name: "board-store",
-    version: 1,
+    version: 3,
     partialize: (state) => ({
       lanes: state.lanes,
       cards: state.cards,

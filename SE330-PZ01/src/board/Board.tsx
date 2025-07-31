@@ -29,6 +29,7 @@ import { useBoardStoreActions } from "./board-store";
 import { OverlayCard } from "./board-cards";
 import { ColumnPlaceholder, OverlayLane, SortableLane } from "./board-lanes";
 import { PLACEHOLDER_ID } from "./constants";
+import { useThrottle } from "../utils/hooks";
 
 type Items = Record<UniqueIdentifier, UniqueIdentifier[]>;
 
@@ -41,15 +42,14 @@ interface Props {
 }
 
 export function Board({ scrollable }: Props) {
-  const { initializeBoard, addLane, removeLane, moveCard, moveLane } = useBoardStoreActions();
+  const { addLane, initializeBoard, syncBoardState } = useBoardStoreActions();
   useEffect(() => {
     initializeBoard();
   }, [initializeBoard]);
 
   const [items, setItems] = useState<Items>(initializeBoard);
-  const [containers, setContainers] = useState(
-    Object.keys(items) as UniqueIdentifier[],
-  );
+  const [containers, setContainers] = useState(Object.keys(items) as UniqueIdentifier[]);
+
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [clonedItems, setClonedItems] = useState<Items | null>(null);
 
@@ -58,6 +58,12 @@ export function Board({ scrollable }: Props) {
 
   const isDraggingContainer =
     activeId != null ? containers.includes(activeId) : false;
+
+    const itemsThrottled = useThrottle(items);
+  const containersThrottled = useThrottle(containers);
+  useEffect(() => {
+    syncBoardState(itemsThrottled, containersThrottled)
+  }, [itemsThrottled, containersThrottled, syncBoardState])
 
   const sensors = useSensors(
     useSensor(MouseSensor),
@@ -126,10 +132,11 @@ export function Board({ scrollable }: Props) {
   const onDragCancel = useCallback(() => {
     if (clonedItems) {
       setItems(clonedItems);
+      syncBoardState(clonedItems);
     }
     setActiveId(null);
     setClonedItems(null);
-  }, [clonedItems]);
+  }, [clonedItems, syncBoardState]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -146,10 +153,7 @@ export function Board({ scrollable }: Props) {
       delete newItems[containerID];
       return newItems;
     });
-
-    removeLane(containerID);
-  }, [removeLane]);
-
+  }, []);
 
   const handleAddColumn = useCallback(() => {
     const lane = addLane({
@@ -237,12 +241,12 @@ export function Board({ scrollable }: Props) {
           });
         }
       }}
+
       onDragEnd={({ active, over }) => {
         if (active.id in items && over?.id) {
           setContainers((containers) => {
             const activeIndex = containers.indexOf(active.id);
             const overIndex = containers.indexOf(over.id);
-            moveLane(activeIndex, overIndex)
 
             return arrayMove(containers, activeIndex, overIndex);
           });
@@ -279,7 +283,6 @@ export function Board({ scrollable }: Props) {
             ),
             [newContainerId]: [active.id],
           }));
-          moveCard(activeContainer, newContainerId, active.id, 0)
 
           setActiveId(null);
           return;
@@ -301,8 +304,6 @@ export function Board({ scrollable }: Props) {
               ),
             }));
           }
-
-          moveCard(activeContainer, overContainer, active.id, overIndex)
         }
 
         setActiveId(null); // Reset active drag ID
