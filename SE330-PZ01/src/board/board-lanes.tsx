@@ -76,14 +76,14 @@ const Container = forwardRef<HTMLDivElement, ContainerProps>(
         {!!label && (
           <div
             className={clsx(
-              "flex flex-row items-center justify-between w-full",
+              "flex w-full flex-row items-center justify-between",
               "bg-base-100 rounded-t-box",
               "border-base-content/10 border-b",
             )}
           >
             {label}
             <Handle
-              className="rounded-none rounded-tr-md py-8 pr-8 border-0"
+              className="rounded-none rounded-tr-md border-0 py-8 pr-8"
               {...handleProps}
             />
           </div>
@@ -151,7 +151,11 @@ export function SortableLane({
     <Container
       ref={setNodeRef}
       label={
-        <LaneLabelContent laneId={lane.id} onAddCard={onAddCard} onRemoveLane={onRemoveLane}/>
+        <LaneLabelContent
+          laneId={lane.id}
+          onAddCard={onAddCard}
+          onRemoveLane={onRemoveLane}
+        />
       }
       style={{
         transition,
@@ -192,7 +196,7 @@ export function OverlayLane({
   const lane = useLane(id);
 
   return (
-    <Container label={<LaneLabelContent laneId={lane?.id ?? ""}/>} {...props}>
+    <Container label={<LaneLabelContent laneId={lane?.id ?? ""} />} {...props}>
       {cards.map((itemId) => (
         <OverlayCard key={itemId} id={itemId} />
       ))}

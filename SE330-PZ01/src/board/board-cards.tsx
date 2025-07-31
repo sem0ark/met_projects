@@ -105,7 +105,6 @@ const Item = memo(
   ),
 );
 
-
 type CardProps = Omit<ItemProps, "value"> & CardContentProps;
 const CardItem = forwardRef<HTMLLIElement, CardProps>(
   ({ id, onRemove, ...props }, ref) => {

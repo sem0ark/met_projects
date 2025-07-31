@@ -27,15 +27,15 @@ const CardEditForm = ({
 }) => {
   const card = useCard(id);
 
-  const [editedTitle, setEditedTitle] = useState(card?.title || "");
+  const [editedTitle, setEditedTitle] = useState(card?.title ?? "");
   const [editedDescription, setEditedDescription] = useState(
-    card?.description || "",
+    card?.description ?? "",
   );
 
   useEffect(() => {
     if (card) {
-      setEditedTitle(card.title || "");
-      setEditedDescription(card.description || "");
+      setEditedTitle(card.title ?? "");
+      setEditedDescription(card.description ?? "");
     }
   }, [card]);
 
@@ -87,7 +87,6 @@ const CardEditForm = ({
             />
           </fieldset>
 
-          {/* Fieldset for Description */}
           <fieldset className="form-control w-full">
             <legend className="label">
               <span className="label-text">Description</span>
@@ -131,7 +130,7 @@ export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
   const inlineTitleInputRef = useRef<HTMLInputElement>(null); // Ref for autofocus on inline input
 
   const [isInlineEditingTitle, setIsInlineEditingTitle] = useState(false);
-  const [inlineEditedTitle, setInlineEditedTitle] = useState(card?.title || "");
+  const [inlineEditedTitle, setInlineEditedTitle] = useState(card?.title ?? "");
 
   // Effect to manage inline editing state and focus when title is empty
   useEffect(() => {
@@ -142,13 +141,6 @@ export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
       setIsInlineEditingTitle(false);
     }
   }, [card?.title, isInlineEditingTitle, card]);
-
-  // Focus inline input when it becomes visible
-  useEffect(() => {
-    if (isInlineEditingTitle && inlineTitleInputRef.current) {
-      inlineTitleInputRef.current.focus();
-    }
-  }, [isInlineEditingTitle]);
 
   const handleEditClick = useCallback(() => {
     setIsDrawerOpen(true);
@@ -170,9 +162,10 @@ export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
 
   const handleInlineTitleSubmit = useCallback(
     (e: React.FormEvent) => {
-      e.preventDefault(); // Prevent form submission if input is wrapped in a form
+      e.preventDefault();
+
       if (inlineEditedTitle.trim() === "") {
-        setInlineEditedTitle(card?.title || ""); // Revert to original or default
+        setInlineEditedTitle(card?.title ?? ""); // Revert to original or default
         setIsInlineEditingTitle(false); // Exit inline edit mode
         return;
       }
@@ -180,7 +173,7 @@ export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
         updateCard({
           id: card.id,
           title: inlineEditedTitle,
-          description: card?.description || "",
+          description: card?.description ?? "",
         });
       }
       setIsInlineEditingTitle(false); // Exit inline edit mode after submission
@@ -218,7 +211,7 @@ export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
                 onChange={(e) => setInlineEditedTitle(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {
-                    setInlineEditedTitle(card?.title || ""); // Revert on escape
+                    setInlineEditedTitle(card?.title ?? ""); // Revert on escape
                     setIsInlineEditingTitle(false);
                   }
                 }}

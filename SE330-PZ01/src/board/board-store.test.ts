@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-import { createBoardStore } from "./board-store"; // Assuming this is where createBoardStore is
+import { createBoardStore } from "./board-store";
 import { createStore } from "zustand";
 import { v4 as uuid4 } from "uuid";
 import type { ID } from "./common-types";
@@ -137,6 +137,7 @@ describe("createBoardStore", () => {
       actions.addLane({
         title: "Existing Lane",
         canRemove: false,
+        canEdit: false,
         considerCardDone: false,
         canAddCard: true,
         canEditCards: true,
@@ -161,6 +162,7 @@ describe("createBoardStore", () => {
         title: "Test Lane",
         considerCardDone: false,
         canRemove: true,
+        canEdit: true,
         canAddCard: false,
         canEditCards: false,
         canRemoveCards: false,
@@ -174,6 +176,7 @@ describe("createBoardStore", () => {
         cards: [],
         considerCardDone: false,
         canRemove: true,
+        canEdit: true,
         canAddCard: false,
         canEditCards: false,
         canRemoveCards: false,
@@ -190,6 +193,7 @@ describe("createBoardStore", () => {
         title: "Original Title",
         considerCardDone: false,
         canRemove: false,
+        canEdit: false,
         canAddCard: true,
         canEditCards: true,
         canRemoveCards: true,
@@ -200,6 +204,7 @@ describe("createBoardStore", () => {
         id: initialLaneId,
         title: "Updated Title",
         canRemove: true,
+        canEdit: true,
         canAddCard: false,
         canEditCards: false,
       });
@@ -220,6 +225,7 @@ describe("createBoardStore", () => {
         title: "Original Title",
         considerCardDone: false,
         canRemove: false,
+        canEdit: false,
         canAddCard: true,
         canEditCards: true,
         canRemoveCards: true,
@@ -260,6 +266,7 @@ describe("createBoardStore", () => {
         title: "Test Lane",
         considerCardDone: false,
         canRemove: false,
+        canEdit: false,
         canAddCard: true,
         canEditCards: true,
         canRemoveCards: true,
@@ -331,6 +338,7 @@ describe("createBoardStore", () => {
         title: "Test Lane",
         considerCardDone: false,
         canRemove: false,
+        canEdit: false,
         canAddCard: true,
         canEditCards: true,
         canRemoveCards: true,
@@ -379,7 +387,6 @@ describe("createBoardStore", () => {
     });
   });
 });
-
 
 describe("createBoardStore - Sync Board State and Getters", () => {
   let getTestStoreState: () => ReturnType<ReturnType<typeof createBoardStore>>;

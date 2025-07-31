@@ -15,6 +15,7 @@ export interface Lane {
 
   considerCardDone: boolean;
   canRemove: boolean;
+  canEdit: boolean;
 
   canEditCards: boolean;
   canAddCard: boolean;
@@ -46,6 +47,7 @@ const getDefaultLanes = (): Lane[] => {
       cards: [],
       considerCardDone: false,
       canRemove: true,
+      canEdit: true,
 
       canAddCard: true,
       canEditCards: true,
@@ -57,6 +59,7 @@ const getDefaultLanes = (): Lane[] => {
       cards: [],
       considerCardDone: false,
       canRemove: false,
+      canEdit: false,
 
       canAddCard: true,
       canEditCards: true,
@@ -68,14 +71,14 @@ const getDefaultLanes = (): Lane[] => {
       cards: [],
       considerCardDone: true,
       canRemove: false,
+      canEdit: false,
 
       canAddCard: false,
       canEditCards: false,
       canRemoveCards: true,
-    }
-  ]
-}
-
+    },
+  ];
+};
 
 export const createBoardStore = () => {
   function store(set: SetState<typeof store>, get: GetState<typeof store>) {
@@ -90,7 +93,7 @@ export const createBoardStore = () => {
               const newLanes: Lane[] = getDefaultLanes();
               const newCards: Record<ID, Card> = {};
 
-              newLanes.forEach(({title, id: laneId, cards: laneCards}) => {
+              newLanes.forEach(({ title, id: laneId, cards: laneCards }) => {
                 createRange(
                   INIT_ITEMS_PER_LANE,
                   (i) => `${title.split(" ")[0]} ${i + 1}`,
@@ -231,14 +234,14 @@ export const createBoardStore = () => {
       },
       getters: {
         canRemoveCard: (cardId: ID) => {
-          if (!get().cards[cardId]) return false
+          if (!get().cards[cardId]) return false;
           const cardLaneId = get().cards[cardId].laneId;
           const lane = get().lanes.find((lane) => cardLaneId === lane.id);
 
           return lane && lane.canRemoveCards;
         },
         isCardDone: (cardId: ID) => {
-          if (!get().cards[cardId]) return false
+          if (!get().cards[cardId]) return false;
           const cardLaneId = get().cards[cardId].laneId;
           const lane = get().lanes.find((lane) => cardLaneId === lane.id);
 

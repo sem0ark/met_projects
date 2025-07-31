@@ -160,10 +160,13 @@ export function Board({ scrollable }: Props) {
 
   const handleAddColumn = useCallback(() => {
     const lane = addLane({
-      title: "New Column",
-      considerCardDone: false,
+      title: "",
+      canEdit: true,
       canRemove: true,
-      canChangeCards: true,
+      canAddCard: true,
+      canEditCards: true,
+      canRemoveCards: true,
+      considerCardDone: false,
     });
     const newContainerId = lane.id;
 
@@ -298,8 +301,11 @@ export function Board({ scrollable }: Props) {
         if (overId === PLACEHOLDER_ID) {
           const lane = addLane({
             title: "New Column",
+            canEdit: true,
             canRemove: true,
-            canChangeCards: true,
+            canAddCard: true,
+            canEditCards: true,
+            canRemoveCards: true,
             considerCardDone: false,
           });
           const newContainerId = lane.id;
