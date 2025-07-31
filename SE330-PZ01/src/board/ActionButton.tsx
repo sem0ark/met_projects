@@ -10,7 +10,10 @@ export type ActionProps = {
 } & React.HTMLAttributes<HTMLButtonElement>;
 
 export const Action = forwardRef<HTMLButtonElement, ActionProps>(
-  ({ className, activeClassName, hoverClassName, grab, children, ...props }, ref) => {
+  (
+    { className, activeClassName, hoverClassName, grab, children, ...props },
+    ref,
+  ) => {
     return (
       <button
         ref={ref}

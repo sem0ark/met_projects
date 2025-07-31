@@ -1,12 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-import { createBoardStore, uuid4, type ID } from "./board-store";
+import { createBoardStore } from "./board-store";
 import { createStore } from "zustand";
+import { v4 as uuid4 } from "uuid";
 
 // Mock uuid for predictable IDs in tests
 vi.mock("uuid", () => ({
   v4: vi.fn(),
 }));
+
+type ID = number | string;
 
 // Helper to create a non-persisted store instance for testing
 // This helps isolate the store's logic from persistence issues during unit tests
@@ -231,34 +234,6 @@ describe("createBoardStore", () => {
     });
   });
 
-  // Test moveLane
-  describe("moveLane", () => {
-    it("should move a lane to a new position", () => {
-      const { actions } = getTestStoreState();
-      actions.initializeBoard(); // Creates 3 lanes: To Do, In Progress, Done
-
-      const initialLaneOrder = getTestStoreState().lanes.map((l) => l.title);
-      expect(initialLaneOrder).toEqual(["To Do", "In Progress", "Done"]);
-
-      actions.moveLane(0, 2); // Move "To Do" (index 0) to end (index 2)
-
-      const state = getTestStoreState();
-      const newLaneOrder = state.lanes.map((l) => l.title);
-      expect(newLaneOrder).toEqual(["In Progress", "Done", "To Do"]);
-    });
-
-    it("should handle moving to the same index", () => {
-      const { actions } = getTestStoreState();
-      actions.initializeBoard();
-      const initialLaneOrder = getTestStoreState().lanes.map((l) => l.title);
-
-      actions.moveLane(1, 1); // Move "In Progress" to same spot
-
-      const newLaneOrder = getTestStoreState().lanes.map((l) => l.title);
-      expect(newLaneOrder).toEqual(initialLaneOrder); // Order should be unchanged
-    });
-  });
-
   // Test addCard
   describe("addCard", () => {
     let laneId: ID;
@@ -395,7 +370,6 @@ describe("createBoardStore", () => {
     });
   });
 
-  // Test removeCard
   describe("removeCard", () => {
     let laneId: ID;
     let cardId: ID;
@@ -435,104 +409,321 @@ describe("createBoardStore", () => {
       expect(getTestStoreState()).toEqual(stateBefore); // No change
     });
   });
+});
 
-  // Test moveCard
-  describe("moveCard", () => {
-    let lane1Id: ID;
-    let lane2Id: ID;
-    let card1Lane1: ID;
-    let card2Lane1: ID;
-    let card1Lane2: ID;
+describe("createBoardStore", () => {
+  let getTestStoreState: () => ReturnType<ReturnType<typeof createBoardStore>>;
 
-    beforeEach(() => {
-      const { actions } = getTestStoreState();
-      const lane1 = actions.addLane({
-        title: "Lane 1",
-        considerCardDone: false,
-        canRemove: false,
-        canRemoveCards: true,
-      });
-      const lane2 = actions.addLane({
-        title: "Lane 2",
-        considerCardDone: false,
-        canRemove: false,
-        canRemoveCards: true,
-      });
-      lane1Id = lane1.id;
-      lane2Id = lane2.id;
+  const mockLaneId1 = "lane-1"; // To Do
+  const mockLaneId2 = "lane-2"; // In Progress
+  const mockLaneId3 = "lane-3"; // Done
 
-      card1Lane1 = actions.addCard({
-        laneId: lane1Id,
-        title: "C1L1",
-        description: "",
-      });
-      card2Lane1 = actions.addCard({
-        laneId: lane1Id,
-        title: "C2L1",
-        description: "",
-      });
-      card1Lane2 = actions.addCard({
-        laneId: lane2Id,
-        title: "C1L2",
-        description: "",
-      });
+  const mockCardId1 = "card-1"; // T1 (lane-1)
+  const mockCardId2 = "card-2"; // T2 (lane-1)
+  const mockCardId3 = "card-3"; // T3 (lane-1)
+
+  const mockCardId4 = "card-4"; // I1 (lane-2)
+  const mockCardId5 = "card-5"; // I2 (lane-2)
+  const mockCardId6 = "card-6"; // I3 (lane-2)
+
+  const mockCardId7 = "card-7"; // D1 (lane-3)
+  const mockCardId8 = "card-8"; // D2 (lane-3)
+  const mockCardId9 = "card-9"; // D3 (lane-3)
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const store = createTestStore();
+    getTestStoreState = () => store.getState();
+
+    // Reset UUID mocks for each test with a consistent sequence
+    let uuidCount = 0;
+    vi.mocked(uuid4).mockImplementation(() => {
+      uuidCount++;
+      switch (uuidCount) {
+        case 1:
+          return mockLaneId1; // To Do Lane
+        case 2:
+          return mockCardId1; // T1
+        case 3:
+          return mockCardId2; // T2
+        case 4:
+          return mockCardId3; // T3
+        case 5:
+          return mockLaneId2; // In Progress Lane
+        case 6:
+          return mockCardId4; // I1
+        case 7:
+          return mockCardId5; // I2
+        case 8:
+          return mockCardId6; // I3
+        case 9:
+          return mockLaneId3; // Done Lane
+        case 10:
+          return mockCardId7; // D1
+        case 11:
+          return mockCardId8; // D2
+        case 12:
+          return mockCardId9; // D3
+        default:
+          return `mock-uuid-extra-${uuidCount}`; // Fallback for unexpected calls
+      }
+    });
+
+    // Initialize the board for each test to have a consistent starting point
+    getTestStoreState().actions.initializeBoard();
+  });
+
+  describe("syncBoardState", () => {
+    it("should not change state if dndItems reflects current state with no order change", () => {
+      const stateBefore = getTestStoreState();
+      const initialDndItems = {
+        [mockLaneId1]: [mockCardId1, mockCardId2, mockCardId3],
+        [mockLaneId2]: [mockCardId4, mockCardId5, mockCardId6],
+        [mockLaneId3]: [mockCardId7, mockCardId8, mockCardId9],
+      };
+      const initialLaneOrder = [mockLaneId1, mockLaneId2, mockLaneId3];
+
+      getTestStoreState().actions.syncBoardState(
+        initialDndItems,
+        initialLaneOrder,
+      );
+
+      const stateAfter = getTestStoreState();
+      expect(stateAfter.lanes).toEqual(stateBefore.lanes);
+      expect(stateAfter.cards).toEqual(stateBefore.cards);
     });
 
     it("should move a card within the same lane", () => {
       const { actions } = getTestStoreState();
-      actions.moveCard(lane1Id, lane1Id, card1Lane1, 1); // Move C1L1 to index 1 in Lane 1
+      const dndItems: Record<ID, ID[]> = {
+        [mockLaneId1]: [mockCardId2, mockCardId1, mockCardId3], // T1 and T2 swapped
+        [mockLaneId2]: [mockCardId4, mockCardId5, mockCardId6],
+        [mockLaneId3]: [mockCardId7, mockCardId8, mockCardId9],
+      };
+      const initialLaneOrder = [mockLaneId1, mockLaneId2, mockLaneId3];
+
+      actions.syncBoardState(dndItems, initialLaneOrder);
 
       const state = getTestStoreState();
-      const lane1 = state.lanes.find((l) => l.id === lane1Id);
-      expect(lane1?.cards).toEqual([card2Lane1, card1Lane1]);
-      expect(state.cards[card1Lane1].laneId).toBe(lane1Id); // LaneId should not change
+      const lane1 = state.lanes.find((l) => l.id === mockLaneId1);
+      expect(lane1?.cards).toEqual([mockCardId2, mockCardId1, mockCardId3]);
+      expect(state.cards[mockCardId1].laneId).toBe(mockLaneId1);
+      expect(state.cards[mockCardId2].laneId).toBe(mockLaneId1);
     });
 
-    it("should move a card to a different lane", () => {
+    it("should move a card to a different lane and update its laneId", () => {
       const { actions } = getTestStoreState();
-      actions.moveCard(lane1Id, lane2Id, card1Lane1, 0); // Move C1L1 from Lane 1 to Lane 2 at index 0
+      const dndItems: Record<ID, ID[]> = {
+        [mockLaneId1]: [mockCardId2, mockCardId3], // T1 moved out
+        [mockLaneId2]: [mockCardId4, mockCardId1, mockCardId5, mockCardId6], // T1 moved here
+        [mockLaneId3]: [mockCardId7, mockCardId8, mockCardId9],
+      };
+      const initialLaneOrder = [mockLaneId1, mockLaneId2, mockLaneId3];
+
+      actions.syncBoardState(dndItems, initialLaneOrder);
 
       const state = getTestStoreState();
-      const lane1 = state.lanes.find((l) => l.id === lane1Id);
-      const lane2 = state.lanes.find((l) => l.id === lane2Id);
+      const lane1 = state.lanes.find((l) => l.id === mockLaneId1);
+      const lane2 = state.lanes.find((l) => l.id === mockLaneId2);
 
-      expect(lane1?.cards).toEqual([card2Lane1]); // Lane 1 should now only have card2Lane1
-      expect(lane2?.cards).toEqual([card1Lane1, card1Lane2]); // Lane 2 should have C1L1 first
-      expect(state.cards[card1Lane1].laneId).toBe(lane2Id); // Card's laneId must be updated
+      expect(lane1?.cards).toEqual([mockCardId2, mockCardId3]);
+      expect(lane2?.cards).toEqual([
+        mockCardId4,
+        mockCardId1,
+        mockCardId5,
+        mockCardId6,
+      ]);
+      expect(state.cards[mockCardId1].laneId).toBe(mockLaneId2); // LaneId updated
     });
 
-    it("should handle moving to the end of a lane", () => {
+    it("should reorder lanes correctly", () => {
       const { actions } = getTestStoreState();
-      actions.moveCard(lane1Id, lane2Id, card1Lane1, 100); // Move C1L1 to end of Lane 2
+      const dndItems: Record<ID, ID[]> = {
+        [mockLaneId1]: [mockCardId1, mockCardId2, mockCardId3],
+        [mockLaneId2]: [mockCardId4, mockCardId5, mockCardId6],
+        [mockLaneId3]: [mockCardId7, mockCardId8, mockCardId9],
+      };
+      const newLaneOrder = [mockLaneId2, mockLaneId3, mockLaneId1]; // Swap order
+
+      actions.syncBoardState(dndItems, newLaneOrder);
 
       const state = getTestStoreState();
-      const lane1 = state.lanes.find((l) => l.id === lane1Id);
-      const lane2 = state.lanes.find((l) => l.id === lane2Id);
-
-      expect(lane1?.cards).toEqual([card2Lane1]);
-      expect(lane2?.cards).toEqual([card1Lane2, card1Lane1]); // Should be at the end
-      expect(state.cards[card1Lane1].laneId).toBe(lane2Id);
+      expect(state.lanes.map((l) => l.id)).toEqual(newLaneOrder);
+      expect(state.lanes[0].title).toBe("In Progress");
+      expect(state.lanes[1].title).toBe("Done");
+      expect(state.lanes[2].title).toBe("To Do");
     });
 
-    it("should do nothing if fromLane is not found", () => {
+    it("should handle both lane reorder and card movement simultaneously", () => {
       const { actions } = getTestStoreState();
-      const stateBefore = getTestStoreState();
-      actions.moveCard("non-existent-lane", lane2Id, card1Lane1, 0);
-      expect(getTestStoreState()).toEqual(stateBefore);
+      // New lane order: Done, To Do, In Progress
+      const newLaneOrder = [mockLaneId3, mockLaneId1, mockLaneId2];
+
+      // Cards: T1 moved to Done, D1 moved to To Do
+      const dndItems: Record<ID, ID[]> = {
+        [mockLaneId1]: [mockCardId2, mockCardId3, mockCardId7], // T2, T3, D1
+        [mockLaneId2]: [mockCardId4, mockCardId5, mockCardId6], // I1, I2, I3 (unchanged)
+        [mockLaneId3]: [mockCardId8, mockCardId9, mockCardId1], // D2, D3, T1
+      };
+
+      actions.syncBoardState(dndItems, newLaneOrder);
+
+      const state = getTestStoreState();
+      expect(state.lanes.map((l) => l.id)).toEqual(newLaneOrder);
+
+      const laneDone = state.lanes.find((l) => l.id === mockLaneId3); // Now first
+      const laneTodo = state.lanes.find((l) => l.id === mockLaneId1); // Now second
+      const laneInProgress = state.lanes.find((l) => l.id === mockLaneId2); // Now third
+
+      expect(laneDone?.cards).toEqual([mockCardId8, mockCardId9, mockCardId1]);
+      expect(state.cards[mockCardId1].laneId).toBe(mockLaneId3); // T1 now in Done lane
+
+      expect(laneTodo?.cards).toEqual([mockCardId2, mockCardId3, mockCardId7]);
+      expect(state.cards[mockCardId7].laneId).toBe(mockLaneId1); // D1 now in To Do lane
+
+      expect(laneInProgress?.cards).toEqual([
+        mockCardId4,
+        mockCardId5,
+        mockCardId6,
+      ]);
     });
 
-    it("should do nothing if toLane is not found", () => {
+    it("should remove cards that are not present in dndItems", () => {
       const { actions } = getTestStoreState();
-      const stateBefore = getTestStoreState();
-      actions.moveCard(lane1Id, "non-existent-lane", card1Lane1, 0);
-      expect(getTestStoreState()).toEqual(stateBefore);
+      const dndItems: Record<ID, ID[]> = {
+        [mockLaneId1]: [mockCardId1, mockCardId2], // T3 removed
+        [mockLaneId2]: [mockCardId4, mockCardId5], // I3 removed
+        [mockLaneId3]: [mockCardId7], // D2, D3 removed
+      };
+      const initialLaneOrder = [mockLaneId1, mockLaneId2, mockLaneId3];
+
+      actions.syncBoardState(dndItems, initialLaneOrder);
+
+      const state = getTestStoreState();
+      expect(state.cards[mockCardId3]).toBeUndefined();
+      expect(state.cards[mockCardId6]).toBeUndefined();
+      expect(state.cards[mockCardId8]).toBeUndefined();
+      expect(state.cards[mockCardId9]).toBeUndefined();
+      expect(Object.keys(state.cards)).toHaveLength(5); // 9 initial - 4 removed
+
+      const lane1 = state.lanes.find((l) => l.id === mockLaneId1);
+      expect(lane1?.cards).toEqual([mockCardId1, mockCardId2]);
     });
 
-    it("should do nothing if card is not found in fromLane", () => {
+    it("should remove lanes that are not present in dndItems keys or newLaneOrder", () => {
       const { actions } = getTestStoreState();
+      const dndItems: Record<ID, ID[]> = {
+        [mockLaneId1]: [mockCardId1, mockCardId2, mockCardId3],
+      };
+      const newLaneOrder = [mockLaneId1]; // Only lane 1 remains
+
+      actions.syncBoardState(dndItems, newLaneOrder);
+
+      const state = getTestStoreState();
+      expect(state.lanes).toHaveLength(1);
+      expect(state.lanes[0].id).toBe(mockLaneId1);
+
+      // Cards from removed lanes should also be gone
+      expect(state.cards[mockCardId4]).toBeUndefined();
+      expect(state.cards[mockCardId7]).toBeUndefined();
+      expect(Object.keys(state.cards)).toHaveLength(3); // Only cards from lane-1
+    });
+
+    it("should handle empty dndItems (all cards removed)", () => {
+      const { actions } = getTestStoreState();
+      const dndItems: Record<ID, ID[]> = {
+        [mockLaneId1]: [],
+        [mockLaneId2]: [],
+        [mockLaneId3]: [],
+      };
+      const initialLaneOrder = [mockLaneId1, mockLaneId2, mockLaneId3];
+
+      actions.syncBoardState(dndItems, initialLaneOrder);
+
+      const state = getTestStoreState();
+      expect(state.lanes.every((lane) => lane.cards.length === 0)).toBe(true);
+      expect(Object.keys(state.cards)).toHaveLength(0); // All cards removed
+      expect(state.lanes).toHaveLength(3); // Lanes still exist if in dndItems keys
+    });
+
+    it("should handle empty newLaneOrder (no lane order change)", () => {
+      const { actions } = getTestStoreState();
+      const dndItems: Record<ID, ID[]> = {
+        [mockLaneId1]: [mockCardId2, mockCardId1], // Card order change
+        [mockLaneId2]: [mockCardId4, mockCardId5, mockCardId6],
+        [mockLaneId3]: [mockCardId7, mockCardId8, mockCardId9],
+      };
+      const newLaneOrder: ID[] = []; // Empty array
+
+      const stateBeforeLaneOrder = getTestStoreState().lanes.map((l) => l.id);
+      actions.syncBoardState(dndItems, newLaneOrder);
+      const stateAfter = getTestStoreState();
+
+      // Lane order should remain the same as before if newLaneOrder is empty
+      expect(stateAfter.lanes.map((l) => l.id)).toEqual(stateBeforeLaneOrder);
+      // Card changes should still apply
+      const lane1 = stateAfter.lanes.find((l) => l.id === mockLaneId1);
+      expect(lane1?.cards).toEqual([mockCardId2, mockCardId1]);
+    });
+
+    it("should filter out card IDs from dndItems if they do not exist in state.cards", () => {
+      const { actions } = getTestStoreState();
+      const dndItems: Record<ID, ID[]> = {
+        [mockLaneId1]: [mockCardId1, "non-existent-card", mockCardId2], // Contains a non-existent card
+        [mockLaneId2]: [mockCardId4],
+        [mockLaneId3]: [mockCardId7],
+      };
+      const initialLaneOrder = [mockLaneId1, mockLaneId2, mockLaneId3];
+
+      // Manually delete a card from the store's cards map *before* syncing
+      // to simulate a desync (e.g., card was deleted elsewhere)
+      getTestStoreState().actions.removeCard(mockCardId3);
+      const currentState = getTestStoreState();
+      expect(currentState.cards[mockCardId3]).toBeUndefined();
+
+      actions.syncBoardState(dndItems, initialLaneOrder);
+
+      const state = getTestStoreState();
+      const lane1 = state.lanes.find((l) => l.id === mockLaneId1);
+      expect(lane1?.cards).toEqual([mockCardId1, mockCardId2]); // 'non-existent-card' should be filtered out
+      expect(state.cards[mockCardId1].laneId).toBe(mockLaneId1);
+      expect(Object.keys(state.cards)).not.toContain("non-existent-card");
+      expect(Object.keys(state.cards)).not.toContain(mockCardId3); // Still removed
+    });
+
+    it("should handle a new lane being added in localItems (not by addLane action)", () => {
+      const { actions } = getTestStoreState();
+      const newLocalLaneId = "new-local-lane";
+      const newLocalCardId = "new-local-card";
+
+      // Simulate a scenario where a new lane/card appears in dndItems that wasn't created via addLane/addCard actions
+      // This usually shouldn't happen with the DND-Kit integration as currently structured,
+      // but testing robustness of `syncBoardState`.
+      const dndItems: Record<ID, ID[]> = {
+        [mockLaneId1]: [mockCardId1],
+        [newLocalLaneId]: [newLocalCardId], // This lane/card doesn't exist in the store yet
+      };
+      const newLaneOrder = [mockLaneId1, newLocalLaneId];
+
       const stateBefore = getTestStoreState();
-      actions.moveCard(lane1Id, lane2Id, "non-existent-card", 0);
-      expect(getTestStoreState()).toEqual(stateBefore);
+      // Ensure the new local IDs do not exist in the store initially
+      expect(stateBefore.lanes.some((l) => l.id === newLocalLaneId)).toBe(
+        false,
+      );
+      expect(stateBefore.cards[newLocalCardId]).toBeUndefined();
+
+      actions.syncBoardState(dndItems, newLaneOrder);
+
+      const stateAfter = getTestStoreState();
+      // The `syncBoardState` should **not** create new lanes/cards if they don't exist in the store.
+      // It only reorders/reassigns existing ones and removes missing ones.
+      expect(stateAfter.lanes.map((l) => l.id)).not.toContain(newLocalLaneId);
+      expect(stateAfter.lanes).toHaveLength(1); // Only mockLaneId1 should remain from the original
+      expect(stateAfter.cards[newLocalCardId]).toBeUndefined();
+      expect(stateAfter.cards).toHaveProperty(mockCardId1);
+
+      const lane1 = stateAfter.lanes.find((l) => l.id === mockLaneId1);
+      expect(lane1?.cards).toEqual([mockCardId1]);
     });
   });
 });

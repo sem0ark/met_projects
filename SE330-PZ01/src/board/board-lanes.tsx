@@ -87,12 +87,11 @@ const Container = forwardRef<HTMLDivElement, ContainerProps>(
           >
             <h3 className="text-base-content text-lg font-semibold">{label}</h3>
             <div className="flex gap-1">
-              {!!onRemove && (
-                <Remove
-                  onClick={onRemove}
-                />
-              )}
-              <Handle className="-my-4 -mr-4 py-8 pr-8 rounded-none rounded-tr-md" {...handleProps} />
+              {!!onRemove && <Remove onClick={onRemove} />}
+              <Handle
+                className="-my-4 -mr-4 rounded-none rounded-tr-md py-8 pr-8"
+                {...handleProps}
+              />
             </div>
           </div>
         )}

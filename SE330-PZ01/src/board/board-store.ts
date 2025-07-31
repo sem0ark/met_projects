@@ -7,8 +7,7 @@ import {
 import { v4 as uuid4 } from "uuid";
 import { persist } from "zustand/middleware";
 
-export {uuid4};
-export type ID = number | string;
+type ID = number | string;
 
 export interface Lane {
   id: ID;
@@ -120,7 +119,7 @@ export const createBoardStore = () => {
             const laneToRemove = state.lanes.find((lane) => lane.id === laneId);
 
             if (laneToRemove) {
-              laneToRemove.cards.forEach(cardId => {
+              laneToRemove.cards.forEach((cardId) => {
                 delete state.cards[cardId];
               });
             }
@@ -177,9 +176,11 @@ export const createBoardStore = () => {
           set((state) => {
             if (newLaneOrder && newLaneOrder.length > 0) {
               const reorderedLanes: Lane[] = [];
-              const existingLanesMap = new Map(state.lanes.map(lane => [lane.id, lane]));
+              const existingLanesMap = new Map(
+                state.lanes.map((lane) => [lane.id, lane]),
+              );
 
-              newLaneOrder.forEach(laneId => {
+              newLaneOrder.forEach((laneId) => {
                 const lane = existingLanesMap.get(laneId);
                 if (lane) {
                   reorderedLanes.push(lane);
@@ -187,16 +188,18 @@ export const createBoardStore = () => {
                 }
               });
 
-              existingLanesMap.forEach(lane => reorderedLanes.push(lane));
+              existingLanesMap.forEach((lane) => reorderedLanes.push(lane));
               state.lanes = reorderedLanes;
             }
 
             Object.entries(dndItems).forEach(([laneId, cardIdsInOrder]) => {
-              const lane = state.lanes.find(l => l.id === laneId);
+              const lane = state.lanes.find((l) => l.id === laneId);
               if (lane) {
-                lane.cards = cardIdsInOrder.filter(cardId => !!state.cards[cardId]);
+                lane.cards = cardIdsInOrder.filter(
+                  (cardId) => !!state.cards[cardId],
+                );
 
-                cardIdsInOrder.forEach(cardId => {
+                cardIdsInOrder.forEach((cardId) => {
                   if (state.cards[cardId]) {
                     state.cards[cardId].laneId = laneId;
                   }
@@ -205,18 +208,22 @@ export const createBoardStore = () => {
             });
 
             const allActiveCardIdsInDndItems = new Set<ID>();
-            Object.values(dndItems).forEach(cardIds => {
-                cardIds.forEach(cardId => allActiveCardIdsInDndItems.add(cardId));
+            Object.values(dndItems).forEach((cardIds) => {
+              cardIds.forEach((cardId) =>
+                allActiveCardIdsInDndItems.add(cardId),
+              );
             });
 
-            Object.keys(state.cards).forEach(cardId => {
-                if (!allActiveCardIdsInDndItems.has(cardId)) {
-                    delete state.cards[cardId];
-                }
+            Object.keys(state.cards).forEach((cardId) => {
+              if (!allActiveCardIdsInDndItems.has(cardId)) {
+                delete state.cards[cardId];
+              }
             });
 
             const activeLaneIdsInDndItems = new Set<ID>(Object.keys(dndItems));
-            state.lanes = state.lanes.filter(lane => activeLaneIdsInDndItems.has(lane.id));
+            state.lanes = state.lanes.filter((lane) =>
+              activeLaneIdsInDndItems.has(lane.id),
+            );
           });
         },
       },

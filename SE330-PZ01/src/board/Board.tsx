@@ -48,7 +48,9 @@ export function Board({ scrollable }: Props) {
   }, [initializeBoard]);
 
   const [items, setItems] = useState<Items>(initializeBoard);
-  const [containers, setContainers] = useState(Object.keys(items) as UniqueIdentifier[]);
+  const [containers, setContainers] = useState(
+    Object.keys(items) as UniqueIdentifier[],
+  );
 
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [clonedItems, setClonedItems] = useState<Items | null>(null);
@@ -59,11 +61,11 @@ export function Board({ scrollable }: Props) {
   const isDraggingContainer =
     activeId != null ? containers.includes(activeId) : false;
 
-    const itemsThrottled = useThrottle(items);
+  const itemsThrottled = useThrottle(items);
   const containersThrottled = useThrottle(containers);
   useEffect(() => {
-    syncBoardState(itemsThrottled, containersThrottled)
-  }, [itemsThrottled, containersThrottled, syncBoardState])
+    syncBoardState(itemsThrottled, containersThrottled);
+  }, [itemsThrottled, containersThrottled, syncBoardState]);
 
   const sensors = useSensors(
     useSensor(MouseSensor),
@@ -241,7 +243,6 @@ export function Board({ scrollable }: Props) {
           });
         }
       }}
-
       onDragEnd={({ active, over }) => {
         if (active.id in items && over?.id) {
           setContainers((containers) => {
@@ -272,8 +273,8 @@ export function Board({ scrollable }: Props) {
             canRemove: true,
             canRemoveCards: true,
             considerCardDone: false,
-          })
-          const newContainerId = lane.id
+          });
+          const newContainerId = lane.id;
           setContainers((containers) => [...containers, newContainerId]);
 
           setItems((items) => ({

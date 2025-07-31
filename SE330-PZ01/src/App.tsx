@@ -5,7 +5,7 @@ function App() {
   return (
     <div className="h-dvh overflow-y-hidden">
       <Navbar />
-      <div className="mx-auto overflow-auto h-full">
+      <div className="mx-auto h-full overflow-auto">
         <Board handle={true} />
       </div>
     </div>
