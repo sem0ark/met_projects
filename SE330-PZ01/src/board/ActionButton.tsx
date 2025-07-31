@@ -10,16 +10,19 @@ export type ActionProps = {
 } & React.HTMLAttributes<HTMLButtonElement>;
 
 export const Action = forwardRef<HTMLButtonElement, ActionProps>(
-  ({ activeClassName, hoverClassName, grab, children, ...props }, ref) => {
+  ({ className, activeClassName, hoverClassName, grab, children, ...props }, ref) => {
     return (
       <button
         ref={ref}
         {...props}
         className={clsx(
           "relative",
-          "btn btn-ghost btn-square btn-sm rounded-btn text-accent",
+          "btn btn-ghost btn-square btn-sm text-accent",
           "gap-0",
           grab && "cursor-grab",
+
+          "transition-colors duration-300 ease-in-out",
+          className,
 
           hoverClassName ?? "hover:bg-base-200",
           activeClassName ?? "active:bg-base-200 active:text-base-content",

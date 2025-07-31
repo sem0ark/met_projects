@@ -3,12 +3,12 @@ import { Navbar } from "./Navbar";
 
 function App() {
   return (
-    <>
+    <div className="h-dvh overflow-y-hidden">
       <Navbar />
-      <div className="mx-auto w-fit">
+      <div className="mx-auto overflow-auto h-full">
         <Board handle={true} />
       </div>
-    </>
+    </div>
   );
 }
 

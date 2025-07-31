@@ -93,7 +93,7 @@ const Item = memo(
             {value}
             <span className="-my-3 ml-auto flex h-full flex-col justify-center">
               {onRemove ? <Remove onClick={onRemove} /> : null}
-              {handle ? <Handle {...handleProps} {...listeners} /> : null}
+              {handle ? <Handle  className="-my-4 -mr-4 py-7 pr-7 rounded-none rounded-r-md" {...handleProps} {...listeners} /> : null}
             </span>
           </div>
         </li>

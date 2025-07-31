@@ -41,7 +41,7 @@ interface Props {
 }
 
 export function Board({ scrollable }: Props) {
-  const { initializeBoard } = useBoardStoreActions();
+  const { initializeBoard, addLane, removeLane, moveCard, moveLane } = useBoardStoreActions();
   useEffect(() => {
     initializeBoard();
   }, [initializeBoard]);
@@ -146,24 +146,26 @@ export function Board({ scrollable }: Props) {
       delete newItems[containerID];
       return newItems;
     });
-  }, []);
 
-  const getNextContainerId = useCallback(() => {
-    const containerIds = Object.keys(items);
-    if (containerIds.length === 0) return "A";
-    const lastContainerId = containerIds[containerIds.length - 1];
-    // Assuming IDs are single characters for this logic
-    return String.fromCharCode(lastContainerId.charCodeAt(0) + 1);
-  }, [items]);
+    removeLane(containerID);
+  }, [removeLane]);
+
 
   const handleAddColumn = useCallback(() => {
-    const newContainerId = getNextContainerId();
+    const lane = addLane({
+      title: "New Column",
+      considerCardDone: false,
+      canRemove: true,
+      canRemoveCards: true,
+    });
+    const newContainerId = lane.id;
+
     setContainers((prevContainers) => [...prevContainers, newContainerId]);
     setItems((prevItems) => ({
       ...prevItems,
       [newContainerId]: [],
     }));
-  }, [getNextContainerId]);
+  }, [addLane]);
 
   return (
     <DndContext
@@ -236,11 +238,11 @@ export function Board({ scrollable }: Props) {
         }
       }}
       onDragEnd={({ active, over }) => {
-        // Handle drag of a container (lane)
         if (active.id in items && over?.id) {
           setContainers((containers) => {
             const activeIndex = containers.indexOf(active.id);
             const overIndex = containers.indexOf(over.id);
+            moveLane(activeIndex, overIndex)
 
             return arrayMove(containers, activeIndex, overIndex);
           });
@@ -261,17 +263,24 @@ export function Board({ scrollable }: Props) {
         }
 
         if (overId === PLACEHOLDER_ID) {
-          const newContainerId = getNextContainerId();
-
+          const lane = addLane({
+            title: "New Column",
+            canRemove: true,
+            canRemoveCards: true,
+            considerCardDone: false,
+          })
+          const newContainerId = lane.id
           setContainers((containers) => [...containers, newContainerId]);
 
           setItems((items) => ({
             ...items,
             [activeContainer]: items[activeContainer].filter(
-              (id) => id !== activeId,
+              (id) => id !== active.id,
             ),
             [newContainerId]: [active.id],
           }));
+          moveCard(activeContainer, newContainerId, active.id, 0)
+
           setActiveId(null);
           return;
         }
@@ -292,6 +301,8 @@ export function Board({ scrollable }: Props) {
               ),
             }));
           }
+
+          moveCard(activeContainer, overContainer, active.id, overIndex)
         }
 
         setActiveId(null); // Reset active drag ID

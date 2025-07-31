@@ -5,9 +5,10 @@ import {
   type SetState,
 } from "../utils/store-utils";
 import { v4 as uuid4 } from "uuid";
-// import { persist } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 
-type ID = number | string;
+export {uuid4};
+export type ID = number | string;
 
 export interface Lane {
   id: ID;
@@ -37,7 +38,7 @@ function createRange<T>(
   return [...new Array(length)].map((_, index) => initializer(index));
 }
 
-const createBoardStore = () => {
+export const createBoardStore = () => {
   function store(set: SetState<typeof store>, get: GetState<typeof store>) {
     return {
       lanes: [] as Lane[],
@@ -45,47 +46,46 @@ const createBoardStore = () => {
 
       actions: {
         initializeBoard: (): Record<ID, ID[]> => {
-          set((state) => {
-            if (get().lanes.length > 0) return;
+          if (get().lanes.length === 0)
+            set((state) => {
+              const newLanes: Lane[] = [];
+              const newCards: Record<ID, Card> = {};
 
-            const newLanes: Lane[] = [];
-            const newCards: Record<ID, Card> = {};
-
-            INIT_LANE_TITLES.forEach((title) => {
-              const laneId = uuid4();
-              const newLane: Lane = {
-                id: laneId,
-                title: title,
-                cards: [],
-                considerCardDone: false,
-                canRemove: false,
-                canRemoveCards: false,
-              };
-              newLanes.push(newLane);
-
-              createRange(
-                INIT_ITEMS_PER_LANE,
-                (i) => `${title[0]}${i + 1}`,
-              ).forEach((cardTitle) => {
-                const cardId = uuid4();
-                const newCard: Card = {
-                  id: cardId,
-                  laneId: laneId,
-                  title: cardTitle,
-                  description: "",
+              INIT_LANE_TITLES.forEach((title) => {
+                const laneId = uuid4();
+                const newLane: Lane = {
+                  id: laneId,
+                  title: title,
+                  cards: [],
+                  considerCardDone: false,
+                  canRemove: false,
+                  canRemoveCards: false,
                 };
-                newCards[cardId] = newCard;
-                newLane.cards.push(cardId);
+                newLanes.push(newLane);
+
+                createRange(
+                  INIT_ITEMS_PER_LANE,
+                  (i) => `${title[0]}${i + 1}`,
+                ).forEach((cardTitle) => {
+                  const cardId = uuid4();
+                  const newCard: Card = {
+                    id: cardId,
+                    laneId: laneId,
+                    title: cardTitle,
+                    description: "",
+                  };
+                  newCards[cardId] = newCard;
+                  newLane.cards.push(cardId);
+                });
               });
+
+              const doneLane = newLanes.at(-1)!;
+              doneLane.canRemove = true;
+              doneLane.considerCardDone = true;
+
+              state.lanes = newLanes;
+              state.cards = newCards;
             });
-
-            const doneLane = newLanes.at(-1)!;
-            doneLane.canRemove = true;
-            doneLane.considerCardDone = true;
-
-            state.lanes = newLanes;
-            state.cards = newCards;
-          });
 
           return Object.fromEntries(
             get().lanes.map((lane) => [lane.id, lane.cards]),
@@ -117,10 +117,18 @@ const createBoardStore = () => {
 
         removeLane: (laneId: ID) =>
           set((state) => {
+            const laneToRemove = state.lanes.find((lane) => lane.id === laneId);
+
+            if (laneToRemove) {
+              laneToRemove.cards.forEach(cardId => {
+                delete state.cards[cardId];
+              });
+            }
+
             state.lanes = state.lanes.filter((lane) => lane.id !== laneId);
           }),
 
-        moveLane: (oldIndex: number, newIndex: number) =>
+          moveLane: (oldIndex: number, newIndex: number) =>
           set((state) => {
             const [movedLane] = state.lanes.splice(oldIndex, 1);
             state.lanes.splice(newIndex, 0, movedLane);
@@ -148,23 +156,30 @@ const createBoardStore = () => {
 
         updateCard: (updatedCard: Partial<Card> & Pick<Card, "id">) =>
           set((state) => {
+            if (!state.cards[updatedCard.id]) {
+              return;
+            }
+
             state.cards[updatedCard.id] = {
-              ...get().cards[updatedCard.id],
+              ...state.cards[updatedCard.id],
               ...updatedCard,
             };
           }),
 
-        removeCard: (laneId: ID, cardId: ID) =>
+        removeCard: (cardId: ID) =>
           set((state) => {
-            delete state.cards[cardId];
+            const card = state.cards[cardId];
+            if (!card) return;
 
-            const lane = state.lanes.find((l) => l.id === laneId);
+            const lane = state.lanes.find((l) => l.id === card.laneId);
             if (lane) {
-              lane.cards = lane.cards.filter((card) => card !== cardId);
+              lane.cards = lane.cards.filter((id) => id !== cardId);
             }
+
+            delete state.cards[cardId];
           }),
 
-        moveCardAcrossLanes: (
+        moveCard: (
           fromLaneId: ID,
           toLaneId: ID,
           cardId: ID,
@@ -173,15 +188,13 @@ const createBoardStore = () => {
           set((state) => {
             const fromLane = state.lanes.find((l) => l.id === fromLaneId);
             const toLane = state.lanes.find((l) => l.id === toLaneId);
-            if (!fromLane || !toLane) return;
+            const card = state.cards[cardId];
+            if (!fromLane || !toLane || !card) return;
 
-            const cardIndex = fromLane.cards.findIndex(
-              (card) => card === cardId,
-            );
-            if (cardIndex === -1) return;
+            if (!fromLane.cards.includes(cardId)) return;
 
-            const [movedCard] = fromLane.cards.splice(cardIndex, 1);
-            toLane.cards.splice(index, 0, movedCard);
+            fromLane.cards = fromLane.cards.filter(id => id !== cardId);
+            toLane.cards.splice(index, 0, cardId);
             state.cards[cardId].laneId = toLaneId;
           }),
       },
@@ -191,21 +204,21 @@ const createBoardStore = () => {
   return immer(store);
 };
 
-// const createBoardStorePersisted = () =>
-//   persist(createBoardStore(), {
-//     name: "board-store",
-//     version: 1,
-//     partialize: (state) => ({
-//       lanes: state.lanes,
-//       cards: state.cards,
-//     }),
-//   });
+const createBoardStorePersisted = () =>
+  persist(createBoardStore(), {
+    name: "board-store",
+    version: 1,
+    partialize: (state) => ({
+      lanes: state.lanes,
+      cards: state.cards,
+    }),
+  });
 
 export const {
   useStore: useBoardStore,
   useStoreShallow: useBoardStoreShallow,
   getStoreState: getBoardState,
-} = createGlobalStore(createBoardStore);
+} = createGlobalStore(createBoardStorePersisted);
 
 export const useLane = (laneId: ID) =>
   useBoardStoreShallow((state) =>

@@ -89,11 +89,10 @@ const Container = forwardRef<HTMLDivElement, ContainerProps>(
             <div className="flex gap-1">
               {!!onRemove && (
                 <Remove
-                  className="opacity-0 group-hover:opacity-100 focus-visible:!opacity-100"
                   onClick={onRemove}
                 />
               )}
-              <Handle {...handleProps} />
+              <Handle className="-my-4 -mr-4 py-8 pr-8 rounded-none rounded-tr-md" {...handleProps} />
             </div>
           </div>
         )}
