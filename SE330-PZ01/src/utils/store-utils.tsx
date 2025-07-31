@@ -13,8 +13,7 @@ import {
   type StoreApi,
   type UseBoundStore,
 } from "zustand";
-import { shallow } from "zustand/shallow";
-import { useStoreWithEqualityFn } from "zustand/traditional";
+import { shallow, useShallow } from "zustand/shallow";
 
 type StoreCreatorTypes<StoreType> =
   | StateCreator<StoreType, [], any[]>
@@ -104,7 +103,7 @@ export function createStoreContext<StoreType, StorePropsType>(
   const useStoreShallow_ = (selector: any) => {
     const context = useContext(StoreContext);
     if (!context) throw new Error("StoreContext was not initialized!");
-    return useStoreWithEqualityFn(context, selector, shallow);
+    return useStore(context, useShallow(selector));
   };
 
   const useGetStoreState_ = () => {
@@ -129,10 +128,11 @@ export function createGlobalStore<StoreType>(
   getStoreState: () => StoreType;
 } {
   const store = createStore<StoreType>()(storeCreatorFunction());
+  console.debug("Recreated store: ", store.getState());
 
   const useStore_ = (selector: any) => useStore(store, selector);
   const useStoreShallow_ = (selector: any) =>
-    useStoreWithEqualityFn(store, selector, shallow);
+    useStore(store, useShallow(selector));
 
   return {
     useStore: useStore_ as UseStore<StoreType>,

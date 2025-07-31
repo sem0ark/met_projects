@@ -1,46 +1,106 @@
+import { immer } from "zustand/middleware/immer";
 import {
   createGlobalStore,
   type GetState,
   type SetState,
 } from "../utils/store-utils";
+import { v4 as uuid4 } from "uuid";
+import { persist } from "zustand/middleware";
 
+type ID = number | string;
 
 export interface Lane {
-  id: string;
-  title?: string;
-  cards: Card[];
-  droppable?: boolean;
-  disallowAddingCard?: boolean;
+  id: ID;
+  title: string;
+  cards: ID[];
+
+  considerCardDone: boolean;
+  canRemove: boolean;
+  canRemoveCards: boolean;
 }
 
 export interface Card {
-  id: string;
-  title?: string;
-  description?: string;
-  laneId?: string;
-  draggable?: boolean;
+  id: ID;
+  laneId: ID;
+
+  title: string;
+  description: string;
 }
 
+const INIT_LANE_TITLES = ["To Do", "In Progress", "Done"];
+const INIT_ITEMS_PER_LANE = 3;
 
-const createBoardStore = () =>
+function createRange<T>(
+  length: number,
+  initializer: (index: number) => T,
+): T[] {
+  return [...new Array(length)].map((_, index) => initializer(index));
+}
+
+const createBoardStore = () => {
   function store(set: SetState<typeof store>, get: GetState<typeof store>) {
     return {
       lanes: [] as Lane[],
+      cards: {} as Record<ID, Card>,
 
       actions: {
-        loadBoard: (boardData: { lanes: Lane[] }) =>
+        initializeBoard: (): Record<ID, ID[]> => {
           set((state) => {
-            state.lanes = boardData.lanes.map((lane) => {
-              lane.cards = lane.cards ?? [];
-              lane.cards.forEach((card) => (card.laneId = lane.id));
-              return lane;
-            });
-          }),
+            if (get().lanes.length > 0) return;
 
-        addLane: (newLane: Omit<Lane, "cards">) =>
+            const newLanes: Lane[] = [];
+            const newCards: Record<ID, Card> = {};
+
+            INIT_LANE_TITLES.forEach((title) => {
+              const laneId = uuid4();
+              const newLane: Lane = {
+                id: laneId,
+                title: title,
+                cards: [],
+                considerCardDone: false,
+                canRemove: false,
+                canRemoveCards: false,
+              };
+              newLanes.push(newLane);
+
+              createRange(
+                INIT_ITEMS_PER_LANE,
+                (i) => `${title[0]}${i + 1}`,
+              ).forEach((cardTitle) => {
+                const cardId = uuid4();
+                const newCard: Card = {
+                  id: cardId,
+                  laneId: laneId,
+                  title: cardTitle,
+                  description: "",
+                };
+                newCards[cardId] = newCard;
+                newLane.cards.push(cardId);
+              });
+            });
+
+            const doneLane = newLanes.at(-1)!;
+            doneLane.canRemove = true;
+            doneLane.considerCardDone = true;
+
+            state.lanes = newLanes;
+            state.cards = newCards;
+          });
+
+          return Object.fromEntries(
+            get().lanes.map((lane) => [lane.id, lane.cards]),
+          );
+        },
+
+        addLane: (lane: Omit<Lane, "id" | "cards">): Lane => {
+          const id = uuid4();
+          const newLane = { id, cards: [], ...lane };
           set((state) => {
-            state.lanes.push({ cards: [], ...newLane });
-          }),
+            state.lanes.push(newLane);
+          });
+
+          return newLane;
+        },
 
         updateLane: (updatedLane: Partial<Lane> & Pick<Lane, "id">) =>
           set((state) => {
@@ -55,7 +115,7 @@ const createBoardStore = () =>
             }
           }),
 
-        removeLane: (laneId: string) =>
+        removeLane: (laneId: ID) =>
           set((state) => {
             state.lanes = state.lanes.filter((lane) => lane.id !== laneId);
           }),
@@ -66,119 +126,93 @@ const createBoardStore = () =>
             state.lanes.splice(newIndex, 0, movedLane);
           }),
 
-        addCard: (laneId: string, card: Card, index?: number) =>
+        addCard: (card: Omit<Card, "id">, index?: number) => {
+          const id = uuid4();
+
           set((state) => {
-            const lane = state.lanes.find((l) => l.id === laneId);
-            if (lane) {
-              const newCard = { ...card, laneId };
-              if (index !== undefined) {
-                lane.cards.splice(index, 0, newCard);
-              } else {
-                lane.cards.push(newCard);
-              }
+            const lane = state.lanes.find((l) => l.id === card.laneId);
+            if (!lane) return;
+
+            const newCard = { ...card, id };
+            state.cards[newCard.id] = newCard;
+
+            if (index !== undefined) {
+              lane.cards.splice(index, 0, newCard.id);
+            } else {
+              lane.cards.push(newCard.id);
             }
+          });
+
+          return id;
+        },
+
+        updateCard: (updatedCard: Partial<Card> & Pick<Card, "id">) =>
+          set((state) => {
+            state.cards[updatedCard.id] = {
+              ...get().cards[updatedCard.id],
+              ...updatedCard,
+            };
           }),
 
-        updateCard: (
-          laneId: string,
-          updatedCard: Partial<Card> & Pick<Card, "id">,
-        ) =>
+        removeCard: (laneId: ID, cardId: ID) =>
           set((state) => {
-            const lane = state.lanes.find((l) => l.id === laneId);
-            if (lane) {
-              const cardIndex = lane.cards.findIndex(
-                (c) => c.id === updatedCard.id,
-              );
-              if (cardIndex !== -1) {
-                lane.cards[cardIndex] = {
-                  ...lane.cards[cardIndex],
-                  ...updatedCard,
-                };
-              }
-            }
-          }),
+            delete state.cards[cardId];
 
-        removeCard: (laneId: string, cardId: string) =>
-          set((state) => {
             const lane = state.lanes.find((l) => l.id === laneId);
             if (lane) {
-              lane.cards = lane.cards.filter((card) => card.id !== cardId);
+              lane.cards = lane.cards.filter((card) => card !== cardId);
             }
           }),
 
         moveCardAcrossLanes: (
-          fromLaneId: string,
-          toLaneId: string,
-          cardId: string,
+          fromLaneId: ID,
+          toLaneId: ID,
+          cardId: ID,
           index: number,
         ) =>
           set((state) => {
             const fromLane = state.lanes.find((l) => l.id === fromLaneId);
             const toLane = state.lanes.find((l) => l.id === toLaneId);
+            if (!fromLane || !toLane) return;
 
-            if (fromLane && toLane) {
-              const cardIndex = fromLane.cards.findIndex(
-                (card) => card.id === cardId,
-              );
-              if (cardIndex !== -1) {
-                const [movedCard] = fromLane.cards.splice(cardIndex, 1);
-                movedCard.laneId = toLaneId; // Update laneId of the moved card
-                toLane.cards.splice(index, 0, movedCard);
-              }
-            }
+            const cardIndex = fromLane.cards.findIndex(
+              (card) => card === cardId,
+            );
+            if (cardIndex === -1) return;
+
+            const [movedCard] = fromLane.cards.splice(cardIndex, 1);
+            toLane.cards.splice(index, 0, movedCard);
+            state.cards[cardId].laneId = toLaneId;
           }),
-
-        updateCards: (laneId: string, cards: Card[]) =>
-          set((state) => {
-            const lane = state.lanes.find((l) => l.id === laneId);
-            if (lane) {
-              lane.cards = cards.map((c) => ({ ...c, laneId }));
-            }
-          }),
-
-        updateLanes: (newConfiguredLanes: Lane[]) =>
-          set((state) => {
-            state.lanes = newConfiguredLanes.map((lane) => ({
-              ...lane,
-              cards: lane.cards ?? [], // Ensure cards array exists
-            }));
-          }),
-      },
-
-      getCardDetails: (laneId: string, cardIndex: number) => {
-        const state = get();
-        const lane = state.lanes.find((l) => l.id === laneId);
-        return lane ? lane.cards[cardIndex] : null;
-      },
-
-      getLaneDetails: (index: number) => {
-        const state = get();
-        return state.lanes[index];
-      },
-
-      getLaneById: (laneId: string) => {
-        const state = get();
-        return state.lanes.find((lane) => lane.id === laneId);
-      },
-
-      getAllLaneIds: () => {
-        const state = get();
-        return state.lanes.map((lane) => lane.id);
-      },
-
-      getCardsByLaneId: (laneId: string) => {
-        const state = get();
-        return state.lanes.find((lane) => lane.id === laneId)?.cards || [];
       },
     };
-  };
+  }
 
+  return immer(store);
+};
 
-const { useStore: useBoardStore } = createGlobalStore(createBoardStore);
+const createBoardStorePersisted = () =>
+  persist(createBoardStore(), {
+    name: "board-store",
+    version: 1,
+    partialize: (state) => ({
+      lanes: state.lanes,
+      cards: state.cards,
+    }),
+  });
 
-export const useLanes = () => useBoardStore((state) => state.lanes);
-export const useLaneById = (laneId: string) => useBoardStore((state) => state.getLaneById(laneId));
-export const useCardsByLaneId = (laneId: string) => useBoardStore((state) => state.getCardsByLaneId(laneId));
-export const useCardDetails = (laneId: string, cardIndex: number) => useBoardStore((state) => state.getCardDetails(laneId, cardIndex));
-export const useAllLaneIds = () => useBoardStore((state) => state.getAllLaneIds());
-export const useBoardStoreActions = () => useBoardStore((state) => state.actions);
+export const {
+  useStore: useBoardStore,
+  useStoreShallow: useBoardStoreShallow,
+  getStoreState: getBoardState,
+} = createGlobalStore(createBoardStorePersisted);
+
+export const useLane = (laneId: ID) =>
+  useBoardStoreShallow((state) =>
+    state.lanes.find((lane) => lane.id === laneId),
+  );
+export const useCard = (cardId: ID) =>
+  useBoardStoreShallow((state) => state.cards[cardId]);
+
+export const useBoardStoreActions = () =>
+  useBoardStoreShallow((state) => state.actions);

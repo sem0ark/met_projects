@@ -1,11 +1,16 @@
+import { useCard, type Card } from "./board-store";
+import type { UniqueIdentifier } from "@dnd-kit/core";
+
 import { forwardRef, memo } from "react";
 import clsx from "clsx";
 import type { DraggableSyntheticListeners } from "@dnd-kit/core";
 import { CSS, type Transform } from "@dnd-kit/utilities";
 
 import { Handle, Remove, type ActionProps } from "./ActionButton";
+import { useIsUsingHandleCard } from "./app-store";
+import { useSortable } from "@dnd-kit/sortable";
 
-export interface ItemProps {
+interface ItemProps {
   dragOverlay?: boolean;
   disabled?: boolean;
   dragging?: boolean;
@@ -24,7 +29,7 @@ export interface ItemProps {
   onRemove?(): void;
 }
 
-export const Item = memo(
+const Item = memo(
   forwardRef<HTMLLIElement, ItemProps>(
     (
       {
@@ -86,10 +91,8 @@ export const Item = memo(
             tabIndex={!handle ? 0 : undefined}
           >
             {value}
-            <span
-              className="-my-3 ml-auto flex h-full flex-col justify-center"
-            >
-              {onRemove ? (<Remove onClick={onRemove} />) : null}
+            <span className="-my-3 ml-auto flex h-full flex-col justify-center">
+              {onRemove ? <Remove onClick={onRemove} /> : null}
               {handle ? <Handle {...handleProps} {...listeners} /> : null}
             </span>
           </div>
@@ -98,3 +101,77 @@ export const Item = memo(
     },
   ),
 );
+
+const CardContent = ({ card }: { card: Card }) => {
+  if (!card) {
+    return (
+      <div style={{ padding: "8px", opacity: 0.7, color: "gray" }}>
+        Loading card...
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <strong>{card.title || "Untitled Card"}</strong>
+      {card.description && <p> {card.description} </p>}
+    </>
+  );
+};
+
+type CardProps = Omit<ItemProps, "value"> & { id: UniqueIdentifier };
+const CardItem = forwardRef<HTMLLIElement, CardProps>(
+  ({ id, ...props }, ref) => {
+    const cardData = useCard(id);
+    return (
+      <Item
+        ref={ref} // Pass the ref from useSortable to the underlying DOM element
+        {...props}
+        value={<CardContent card={cardData} />}
+      />
+    );
+  },
+);
+CardItem.displayName = "CardItem";
+
+export function SortableCard({
+  disabled,
+  id,
+  index,
+}: {
+  id: UniqueIdentifier;
+  index: number;
+  disabled?: boolean;
+}) {
+  const isUsingHandle = useIsUsingHandleCard();
+  const {
+    setNodeRef,
+    setActivatorNodeRef,
+    listeners,
+    isDragging,
+    transform,
+    transition,
+  } = useSortable({ id });
+
+  return (
+    <CardItem
+      ref={disabled ? undefined : setNodeRef}
+      id={id}
+      dragging={isDragging}
+      handle={isUsingHandle}
+      handleProps={
+        isUsingHandle ? { ref: setActivatorNodeRef, ...listeners } : listeners
+      }
+      index={index}
+      transition={transition}
+      transform={transform}
+      disabled={disabled}
+    />
+  );
+}
+
+export function OverlayCard({ id }: { id: UniqueIdentifier }) {
+  const isUsingHandle = useIsUsingHandleCard();
+
+  return <CardItem id={id} handle={isUsingHandle} />;
+}

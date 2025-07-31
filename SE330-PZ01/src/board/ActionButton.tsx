@@ -17,7 +17,7 @@ export const Action = forwardRef<HTMLButtonElement, ActionProps>(
         {...props}
         className={clsx(
           "relative",
-          "btn btn-ghost btn-square btn-sm rounded-btn text-base-content/50",
+          "btn btn-ghost btn-square btn-sm rounded-btn text-accent",
           "gap-0",
           grab && "cursor-grab",
 
