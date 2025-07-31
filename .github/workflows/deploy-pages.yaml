@@ -23,7 +23,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}/${{ github.event.inputs.project }}
+      url: ${{ steps.deployment.outputs.page_url }}${{ github.event.inputs.project }}/
 
     runs-on: ubuntu-22.04
     steps:
