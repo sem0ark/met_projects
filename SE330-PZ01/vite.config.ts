@@ -4,5 +4,5 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: "/met_projects/SE330-PZ01",
+  base: "/met_projects-SE330-PZ01",
 });
