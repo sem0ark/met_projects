@@ -2,23 +2,24 @@
 
 This project is designed to help individuals **track, organize, and manage various recurring "life administration" tasks** such as registrations, appointments, or just daily routines. It aims to provide a centralized place for these often-overlooked but crucial personal responsibilities.
 
-## 🚀 Project Stack
+Done by Arkadii Semenov 5833 SI FIT
+
+## Project Stack
 
 This project leverages a modern web development stack to deliver a responsive and intuitive user experience:
 
-  * **Framework**: [React](https://react.dev/) (v19) for building the user interface.
+  * **Framework**: [React](https://react.dev/) (v19)
   * **State Management**: [Zustand](https://www.google.com/search?q=https://zustand-bear.github.io/zustand/) for a simple and powerful state management solution, with [Immer](https://immerjs.github.io/immer/) middleware for immutable state updates.
   * **Drag and Drop**: [Dnd Kit](https://dndkit.com/) for a highly customizable and accessible drag-and-drop experience.
   * **Styling**:
-      * [Tailwind CSS](https://tailwindcss.com/) (v4) for utility-first CSS styling.
-      * [DaisyUI](https://daisyui.com/) (v5) as a Tailwind CSS component library for beautiful and ready-to-use UI components.
-  * **Build Tool**: [Vite](https://vitejs.dev/) (v7) for a fast development server and optimized builds.
-  * **Language**: [TypeScript](https://www.typescriptlang.org/) (v5) for type safety and improved code quality.
+      * [Tailwind CSS](https://tailwindcss.com/) (v4)
+      * [DaisyUI](https://daisyui.com/) (v5) - Tailwind CSS component library for beautiful and ready-to-use UI components.
+  * **Build Tool**: [Vite](https://vitejs.dev/) (v7)
+  * **Language**: [TypeScript](https://www.typescriptlang.org/) (v5)
   * **Testing**: [Vitest](https://vitest.dev/) for unit and integration testing.
   * **Linting/Formatting**: [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) for code consistency and quality.
-  * **Unique IDs**: [uuid](https://www.npmjs.com/package/uuid) for generating unique identifiers.
 
-## ⚙️ Initial Setup
+## Initial Setup
 
 To get this project up and running on your local machine, follow these steps:
 
@@ -38,7 +39,7 @@ To get this project up and running on your local machine, follow these steps:
 
     This command will download and install all the necessary libraries and tools listed in `package.json`.
 
-## 🏃 How to Run Locally
+## How to Run Locally
 
 Once you've completed the initial setup, you can start the development server:
 
@@ -54,7 +55,7 @@ This command will:
 
 Any changes you make to the source code will trigger a hot reload, instantly updating your browser without needing a manual refresh.
 
-## 📦 How to Build for Production
+## How to Build for Production
 
 When you're ready to deploy your application, you can create an optimized production build:
 
@@ -72,7 +73,7 @@ This command will:
 
 The `dist/` folder will contain the static files that can be served by any web server.
 
-## ✨ Linting and Formatting
+## Linting and Formatting
 
 To maintain code quality and consistency, you can run the linting and formatting scripts:
 
@@ -82,7 +83,7 @@ To maintain code quality and consistency, you can run the linting and formatting
     ```
     This command will automatically format your source code files using Prettier, fixing common style issues.
 
-## 🧪 Running Tests
+## Running Tests
 
 To run the project's tests using Vitest:
 
