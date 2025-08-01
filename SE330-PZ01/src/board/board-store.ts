@@ -29,9 +29,11 @@ export interface Card {
 
   title: string;
   description: string;
+
+  dueDate?: string; // Optional ISO date
 }
 
-const INIT_ITEMS_PER_LANE = 3;
+const INIT_ITEMS_PER_LANE = 2;
 
 function createRange<T>(
   length: number,
@@ -242,6 +244,31 @@ export const createBoardStore = ({ storeName }: { storeName: string }) => {
           const lane = get().lanes.find((lane) => cardLaneId === lane.id);
 
           return lane && lane.considerCardDone;
+        },
+
+        isCardNearingDueDate: (cardId: ID) => {
+          const card = get().cards[cardId];
+          if (!card?.dueDate || get().getters.isCardDone(cardId)) return false;
+
+          const dueDate = new Date(card.dueDate);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const diffTime = dueDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          return diffDays >= 0 && diffDays <= 7;
+        },
+
+        isCardOverdue: (cardId: ID) => {
+          const card = get().cards[cardId];
+          if (!card?.dueDate || get().getters.isCardDone(cardId)) return false;
+
+          const dueDate = new Date(card.dueDate);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          return dueDate.getTime() < today.getTime();
         },
       },
     };

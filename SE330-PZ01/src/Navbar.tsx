@@ -91,7 +91,13 @@ export function Navbar() {
   return (
     <div className="navbar bg-base-100 z-10 shadow-sm">
       <div className="flex-1">
-        <a className="btn btn-ghost text-xl" target="_blank" href="https://github.com/sem0ark/met_projects/tree/main/SE330-PZ01">SE330 Life Admin</a>
+        <a
+          className="btn btn-ghost text-xl"
+          target="_blank"
+          href="https://github.com/sem0ark/met_projects/tree/main/SE330-PZ01"
+        >
+          SE330 Life Admin
+        </a>
       </div>
 
       {/* Store Navigation */}

@@ -15,6 +15,19 @@ export type CardContentProps = {
   dragging?: boolean;
 };
 
+// Helper function to format date for display or input value
+const formatDateForInput = (dateString?: string): string => {
+  if (!dateString) return "";
+  try {
+    const date = new Date(dateString);
+    // Ensure date is valid before formatting
+    if (isNaN(date.getTime())) return "";
+    return date.toISOString().split("T")[0]; // Returns YYYY-MM-DD
+  } catch {
+    return "";
+  }
+};
+
 const CardEditForm = ({
   id,
   onClose,
@@ -22,7 +35,7 @@ const CardEditForm = ({
   autoFocusRef,
 }: CardContentProps & {
   onClose: () => void;
-  onSave: (title: string, description: string) => void;
+  onSave: (title: string, description: string, dueDate?: string) => void; // Updated signature
   autoFocusRef: React.RefObject<HTMLInputElement | null>;
 }) => {
   const card = useCard(id);
@@ -31,21 +44,31 @@ const CardEditForm = ({
   const [editedDescription, setEditedDescription] = useState(
     card?.description ?? "",
   );
+  // New state for due date
+  const [editedDueDate, setEditedDueDate] = useState<string>(
+    formatDateForInput(card?.dueDate),
+  );
 
   useEffect(() => {
     if (card) {
       setEditedTitle(card.title ?? "");
       setEditedDescription(card.description ?? "");
+      setEditedDueDate(formatDateForInput(card.dueDate)); // Initialize due date
     }
   }, [card]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Only call onSave if any field has changed
     if (
       editedTitle !== card?.title ||
-      editedDescription !== card?.description
+      editedDescription !== card?.description ||
+      editedDueDate !== formatDateForInput(card?.dueDate) // Compare formatted dates
     ) {
-      onSave(editedTitle, editedDescription);
+      // Pass all updated fields, including dueDate
+      // If editedDueDate is empty, pass undefined to clear it in the store
+      onSave(editedTitle, editedDescription, editedDueDate || undefined);
     }
     onClose();
   };
@@ -102,6 +125,22 @@ const CardEditForm = ({
             </p>
           </fieldset>
 
+          {/* New Fieldset for Due Date */}
+          <fieldset className="form-control w-full">
+            <legend className="label">
+              <span className="label-text">Due Date</span>
+            </legend>
+            <input
+              type="date" // Use type="date" for native date picker
+              className="input input-bordered w-full"
+              value={editedDueDate}
+              onChange={(e) => setEditedDueDate(e.target.value)}
+            />
+            <p className="label text-base-content-secondary mt-1 text-sm">
+              Optional: When this task should be completed.
+            </p>
+          </fieldset>
+
           <div className="mt-4 flex justify-end gap-2">
             <button
               type="button"
@@ -122,7 +161,8 @@ const CardEditForm = ({
 
 export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
   const card = useCard(id);
-  const { canRemoveCard, isCardDone } = useBoardStoreGetters();
+  const { canRemoveCard, isCardDone, isCardNearingDueDate, isCardOverdue } =
+    useBoardStoreGetters();
   const { updateCard } = useBoardStoreActions();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -132,7 +172,6 @@ export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
   const [isInlineEditingTitle, setIsInlineEditingTitle] = useState(false);
   const [inlineEditedTitle, setInlineEditedTitle] = useState(card?.title ?? "");
 
-  // Effect to manage inline editing state and focus when title is empty
   useEffect(() => {
     if (card && card.title === "" && !isInlineEditingTitle) {
       setIsInlineEditingTitle(true);
@@ -154,8 +193,8 @@ export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
   }, []);
 
   const handleSaveCard = useCallback(
-    (title: string, description: string) => {
-      updateCard({ id: card.id, title, description });
+    (title: string, description: string, dueDate?: string) => {
+      updateCard({ id: card.id, title, description, dueDate });
     },
     [card.id, updateCard],
   );
@@ -165,8 +204,8 @@ export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
       e.preventDefault();
 
       if (inlineEditedTitle.trim() === "") {
-        setInlineEditedTitle(card?.title ?? ""); // Revert to original or default
-        setIsInlineEditingTitle(false); // Exit inline edit mode
+        setInlineEditedTitle(card?.title ?? "");
+        setIsInlineEditingTitle(false);
         return;
       }
       if (inlineEditedTitle !== card?.title) {
@@ -176,13 +215,16 @@ export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
           description: card?.description ?? "",
         });
       }
-      setIsInlineEditingTitle(false); // Exit inline edit mode after submission
+      setIsInlineEditingTitle(false);
     },
     [inlineEditedTitle, card?.id, card?.title, card?.description, updateCard],
   );
 
   const canRemove = !!onRemove && canRemoveCard(id);
   const isDone = isCardDone(id);
+
+  const isNearing = isCardNearingDueDate(id);
+  const isOverdue = isCardOverdue(id);
 
   if (!card) return null;
 
@@ -226,6 +268,20 @@ export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
             >
               {card.title || "Untitled Card"}
             </strong>
+          )}
+
+          {/* Display Due Date if available */}
+          {card.dueDate && (
+            <p
+              className={clsx(
+                "mt-1 text-sm",
+                !isOverdue && !isNearing && "text-base-content",
+                isOverdue && "text-error",
+                isNearing && "text-info",
+              )}
+            >
+              Due: {new Date(card.dueDate).toLocaleDateString()}
+            </p>
           )}
         </div>
         <div className="flex-1"></div>
