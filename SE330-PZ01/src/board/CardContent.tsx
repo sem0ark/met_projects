@@ -15,14 +15,13 @@ export type CardContentProps = {
   dragging?: boolean;
 };
 
-// Helper function to format date for display or input value
 const formatDateForInput = (dateString?: string): string => {
   if (!dateString) return "";
   try {
     const date = new Date(dateString);
-    // Ensure date is valid before formatting
+
     if (isNaN(date.getTime())) return "";
-    return date.toISOString().split("T")[0]; // Returns YYYY-MM-DD
+    return date.toISOString().split("T")[0];
   } catch {
     return "";
   }
@@ -60,14 +59,11 @@ const CardEditForm = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Only call onSave if any field has changed
     if (
       editedTitle !== card?.title ||
       editedDescription !== card?.description ||
       editedDueDate !== formatDateForInput(card?.dueDate) // Compare formatted dates
     ) {
-      // Pass all updated fields, including dueDate
-      // If editedDueDate is empty, pass undefined to clear it in the store
       onSave(editedTitle, editedDescription, editedDueDate || undefined);
     }
     onClose();
