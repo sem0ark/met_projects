@@ -6,7 +6,7 @@ import type { DraggableSyntheticListeners } from "@dnd-kit/core";
 import { CSS, type Transform } from "@dnd-kit/utilities";
 
 import { Handle, type ActionProps } from "./ActionButton";
-import { useIsUsingHandleCard } from "./app-store";
+import { useIsUsingHandleCard } from "../app-store";
 import { useSortable } from "@dnd-kit/sortable";
 import { CardContent, type CardContentProps } from "./CardContent";
 

@@ -1,6 +1,7 @@
 import { immer } from "zustand/middleware/immer";
+import { devtools } from "zustand/middleware";
 import {
-  createGlobalStore,
+  createStoreContext,
   type GetState,
   type SetState,
 } from "../utils/store-utils";
@@ -80,48 +81,37 @@ const getDefaultLanes = (): Lane[] => {
   ];
 };
 
-export const createBoardStore = () => {
+export const createBoardStore = ({ storeName }: { storeName: string }) => {
+  const newLanes: Lane[] = getDefaultLanes();
+  const newCards: Record<ID, Card> = {};
+
+  newLanes.forEach(({ title, id: laneId, cards: laneCards }) => {
+    createRange(
+      INIT_ITEMS_PER_LANE,
+      (i) => `${title.split(" ")[0]} ${i + 1}`,
+    ).forEach((cardTitle) => {
+      const cardId = uuid4();
+      const newCard: Card = {
+        id: cardId,
+        laneId: laneId,
+        title: cardTitle,
+        description: "Sample description",
+      };
+      newCards[cardId] = newCard;
+      laneCards.push(cardId);
+    });
+  });
+
+  const doneLane = newLanes.at(-1)!;
+  doneLane.considerCardDone = true;
+
   function store(set: SetState<typeof store>, get: GetState<typeof store>) {
     return {
-      lanes: [] as Lane[],
-      cards: {} as Record<ID, Card>,
+      storeName: storeName,
+      lanes: newLanes as Lane[],
+      cards: newCards as Record<ID, Card>,
 
       actions: {
-        initializeBoard: (): Record<ID, ID[]> => {
-          if (get().lanes.length === 0)
-            set((state) => {
-              const newLanes: Lane[] = getDefaultLanes();
-              const newCards: Record<ID, Card> = {};
-
-              newLanes.forEach(({ title, id: laneId, cards: laneCards }) => {
-                createRange(
-                  INIT_ITEMS_PER_LANE,
-                  (i) => `${title.split(" ")[0]} ${i + 1}`,
-                ).forEach((cardTitle) => {
-                  const cardId = uuid4();
-                  const newCard: Card = {
-                    id: cardId,
-                    laneId: laneId,
-                    title: cardTitle,
-                    description: "Sample description",
-                  };
-                  newCards[cardId] = newCard;
-                  laneCards.push(cardId);
-                });
-              });
-
-              const doneLane = newLanes.at(-1)!;
-              doneLane.considerCardDone = true;
-
-              state.lanes = newLanes;
-              state.cards = newCards;
-            });
-
-          return Object.fromEntries(
-            get().lanes.map((lane) => [lane.id, lane.cards]),
-          );
-        },
-
         addLane: (lane: Omit<Lane, "id" | "cards">): Lane => {
           const id = uuid4();
           const newLane = { id, cards: [], ...lane };
@@ -177,7 +167,13 @@ export const createBoardStore = () => {
             };
           }),
 
-        syncBoardState: (dndItems: Record<ID, ID[]>, newLaneOrder?: ID[]) => {
+        syncBoardState: (
+          storeName: string,
+          dndItems: Record<ID, ID[]>,
+          newLaneOrder?: ID[],
+        ) => {
+          if (storeName !== get().storeName) return;
+
           set((state) => {
             if (newLaneOrder && newLaneOrder.length > 0) {
               const reorderedLanes: Lane[] = [];
@@ -254,21 +250,28 @@ export const createBoardStore = () => {
   return immer(store);
 };
 
-const createBoardStorePersisted = () =>
-  persist(createBoardStore(), {
-    name: "board-store",
-    version: 1,
-    partialize: (state) => ({
-      lanes: state.lanes,
-      cards: state.cards,
+const createBoardStorePersisted = ({ storeName }: { storeName: string }) =>
+  devtools(
+    persist(createBoardStore({ storeName }), {
+      name: `board-store-${storeName}`,
+      version: 1,
+      partialize: (state) => ({
+        lanes: state.lanes,
+        cards: state.cards,
+      }),
     }),
-  });
+    {
+      name: `board-store-${storeName}`,
+      trace: true,
+    },
+  );
 
 export const {
   useStore: useBoardStore,
   useStoreShallow: useBoardStoreShallow,
-  getStoreState: getBoardState,
-} = createGlobalStore(createBoardStorePersisted);
+  useGetStoreState: useGetBoardState,
+  StoreProvider: BoardStoreProvider,
+} = createStoreContext(createBoardStorePersisted);
 
 export const useLane = (laneId: ID) =>
   useBoardStoreShallow((state) =>

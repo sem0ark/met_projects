@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  type CancelDrop,
   closestCenter,
   pointerWithin,
   rectIntersection,
@@ -20,7 +19,6 @@ import {
 import {
   SortableContext,
   arrayMove,
-  type SortingStrategy,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
@@ -30,28 +28,22 @@ import { OverlayCard } from "./board-cards";
 import { ColumnPlaceholder, OverlayLane, SortableLane } from "./board-lanes";
 import { PLACEHOLDER_ID } from "./constants";
 import { useThrottle } from "../utils/hooks";
+import { useCurrentStore } from "../app-store";
 
 type Items = Record<UniqueIdentifier, UniqueIdentifier[]>;
 
-interface Props {
-  cancelDrop?: CancelDrop;
-  handle?: boolean;
-  strategy?: SortingStrategy;
-  scrollable?: boolean;
-  vertical?: boolean;
-}
+export function Board({
+  initialContainers,
+  intialItems,
+}: {
+  initialContainers: UniqueIdentifier[];
+  intialItems: Record<UniqueIdentifier, UniqueIdentifier[]>;
+}) {
+  const storeName = useCurrentStore();
+  const { addLane, addCard, syncBoardState } = useBoardStoreActions();
 
-export function Board({ scrollable }: Props) {
-  const { addLane, addCard, initializeBoard, syncBoardState } =
-    useBoardStoreActions();
-  useEffect(() => {
-    initializeBoard();
-  }, [initializeBoard]);
-
-  const [items, setItems] = useState<Items>(initializeBoard);
-  const [containers, setContainers] = useState(
-    Object.keys(items) as UniqueIdentifier[],
-  );
+  const [items, setItems] = useState<Items>(intialItems);
+  const [containers, setContainers] = useState(initialContainers);
 
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [clonedItems, setClonedItems] = useState<Items | null>(null);
@@ -65,8 +57,8 @@ export function Board({ scrollable }: Props) {
   const itemsThrottled = useThrottle(items);
   const containersThrottled = useThrottle(containers);
   useEffect(() => {
-    syncBoardState(itemsThrottled, containersThrottled);
-  }, [itemsThrottled, containersThrottled, syncBoardState]);
+    syncBoardState(storeName, itemsThrottled, containersThrottled);
+  }, [storeName, itemsThrottled, containersThrottled, syncBoardState]);
 
   const sensors = useSensors(
     useSensor(MouseSensor),
@@ -135,11 +127,11 @@ export function Board({ scrollable }: Props) {
   const onDragCancel = useCallback(() => {
     if (clonedItems) {
       setItems(clonedItems);
-      syncBoardState(clonedItems);
+      syncBoardState(storeName, clonedItems);
     }
     setActiveId(null);
     setClonedItems(null);
-  }, [clonedItems, syncBoardState]);
+  }, [storeName, clonedItems, syncBoardState]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -232,7 +224,6 @@ export function Board({ scrollable }: Props) {
           return;
         }
 
-        // Handle moving item between different containers
         if (activeContainer !== overContainer) {
           setItems((items) => {
             const activeItems = items[activeContainer];
@@ -355,7 +346,6 @@ export function Board({ scrollable }: Props) {
               key={containerId}
               id={containerId}
               cards={items[containerId]}
-              scrollable={scrollable}
               onRemove={() => handleRemoveColumn(containerId)}
               disabled={isDraggingContainer}
               onAddCard={handleAddCard}

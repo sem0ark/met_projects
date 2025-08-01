@@ -73,9 +73,6 @@ export function createStoreContext<StoreType, StorePropsType>(
       )
     ) {
       storeRef.current = createStore<StoreType>()(
-        // To use before react 18:
-        // const withBatchUpdates = <T,>(config: StoreCreatorTypes<T>) => (set: any, get: any, api: any) => config((args: any) => unstable_batchedUpdates(() => set(args)), get, api)
-        // withBatchUpdates(storeCreatorFunction(props as StorePropsType))
         storeCreatorFunction(props as StorePropsType),
       );
 

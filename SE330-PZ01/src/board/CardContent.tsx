@@ -68,7 +68,7 @@ const CardEditForm = ({
         onClick={onClose}
       ></label>
 
-      <div className="bg-base-100 text-base-content min-h-full w-80 p-4">
+      <div className="bg-base-100 text-base-content min-h-full w-lg p-4">
         <h2 className="mb-4 text-xl font-bold">Edit Card</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Fieldset for Title */}
@@ -218,12 +218,18 @@ export const CardContent = ({ id, onRemove, dragging }: CardContentProps) => {
               />
             </form>
           ) : (
-            <strong>{card.title || "Untitled Card"}</strong>
+            <strong
+              onClick={card.title === "" ? undefined : handleEditClick} // Only allow click to edit if not empty
+              className={clsx(
+                card.title === "" ? "" : "cursor-pointer hover:underline",
+              )}
+            >
+              {card.title || "Untitled Card"}
+            </strong>
           )}
         </div>
         <div className="flex-1"></div>
 
-        {/* Edit button only visible if not dragging AND not in inline editing mode */}
         {!dragging && !showInlineTitleInput && (
           <label
             htmlFor={`card-drawer-toggle-${card.id}`}
