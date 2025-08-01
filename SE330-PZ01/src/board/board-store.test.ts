@@ -671,7 +671,6 @@ describe("createBoardStore - Sync Board State and Getters", () => {
     });
   });
 
-
   describe("getters - Due Dates", () => {
     let cardIdWithDueDate: ID;
     let cardIdNoDueDate: ID;
