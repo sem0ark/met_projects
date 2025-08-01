@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 
 import { createBoardStore } from "./board-store";
 import { createStore } from "zustand";
@@ -12,9 +12,8 @@ vi.mock("uuid", () => ({
 
 // Helper to create a non-persisted store instance for testing
 // This helps isolate the store's logic from persistence issues during unit tests
-const createTestStore = () => {
-  // Use createGlobalStore for consistency, but wrap the core logic without persistence
-  return createStore(createBoardStore());
+const createTestStore = (storeName: string = "test-store") => {
+  return createStore(createBoardStore({ storeName }));
 };
 
 describe("createBoardStore", () => {
@@ -77,80 +76,6 @@ describe("createBoardStore", () => {
         default:
           return `mock-uuid-extra-${uuidCount}`; // Fallback for unexpected calls
       }
-    });
-  });
-
-  // Test initializeBoard
-  describe("initializeBoard", () => {
-    it("should initialize the board with default lanes and cards if empty", () => {
-      const { actions } = getTestStoreState();
-      const initialMap = actions.initializeBoard();
-
-      const state = getTestStoreState();
-
-      expect(state.lanes).toHaveLength(3);
-
-      // Verify "To Do" lane properties
-      expect(state.lanes[0].title).toBe("To Do");
-      expect(state.lanes[0].canRemove).toBe(true);
-      expect(state.lanes[0].considerCardDone).toBe(false);
-      expect(state.lanes[0].canAddCard).toBe(true);
-      expect(state.lanes[0].canEditCards).toBe(true);
-      expect(state.lanes[0].canRemoveCards).toBe(true);
-
-      // Verify "In Progress" lane properties
-      expect(state.lanes[1].title).toBe("In Progress");
-      expect(state.lanes[1].canRemove).toBe(false);
-      expect(state.lanes[1].considerCardDone).toBe(false);
-      expect(state.lanes[1].canAddCard).toBe(true);
-      expect(state.lanes[1].canEditCards).toBe(true);
-      expect(state.lanes[1].canRemoveCards).toBe(true);
-
-      // Verify "Done" lane properties
-      expect(state.lanes[2].title).toBe("Done");
-      expect(state.lanes[2].canRemove).toBe(false); // Can't remove "Done" lane
-      expect(state.lanes[2].considerCardDone).toBe(true);
-      expect(state.lanes[2].canAddCard).toBe(false); // Can't add cards to "Done" lane
-      expect(state.lanes[2].canEditCards).toBe(false); // Can't edit cards in "Done" lane
-      expect(state.lanes[2].canRemoveCards).toBe(true);
-
-      expect(Object.keys(state.cards)).toHaveLength(9); // 3 lanes * 3 cards/lane
-
-      state.lanes.forEach((lane) => {
-        expect(lane.cards).toHaveLength(3);
-        lane.cards.forEach((cardId) => {
-          expect(state.cards[cardId]).toBeDefined();
-          expect(state.cards[cardId].laneId).toBe(lane.id);
-        });
-      });
-
-      // Check returned map
-      expect(initialMap).toEqual(
-        Object.fromEntries(state.lanes.map((lane) => [lane.id, lane.cards])),
-      );
-    });
-
-    it("should not re-initialize if lanes already exist", () => {
-      const { actions } = getTestStoreState();
-
-      // Manually add a lane to simulate existing state with default new properties
-      actions.addLane({
-        title: "Existing Lane",
-        canRemove: false,
-        canEdit: false,
-        considerCardDone: false,
-        canAddCard: true,
-        canEditCards: true,
-        canRemoveCards: true,
-      });
-      const stateBeforeInit = getTestStoreState();
-      expect(stateBeforeInit.lanes).toHaveLength(1);
-
-      actions.initializeBoard(); // Call initialize
-
-      const stateAfterInit = getTestStoreState();
-      expect(stateAfterInit.lanes).toHaveLength(1); // Should still be 1, not reset to 3
-      expect(stateAfterInit.lanes[0].title).toBe("Existing Lane");
     });
   });
 
@@ -445,9 +370,6 @@ describe("createBoardStore - Sync Board State and Getters", () => {
           return `mock-uuid-extra-${uuidCount}`; // Fallback for unexpected calls
       }
     });
-
-    // Initialize the board for each test to have a consistent starting point
-    getTestStoreState().actions.initializeBoard();
   });
 
   describe("syncBoardState", () => {
@@ -461,6 +383,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       const initialLaneOrder = [mockLaneId1, mockLaneId2, mockLaneId3];
 
       getTestStoreState().actions.syncBoardState(
+        "test-store",
         initialDndItems,
         initialLaneOrder,
       );
@@ -479,7 +402,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       };
       const initialLaneOrder = [mockLaneId1, mockLaneId2, mockLaneId3];
 
-      actions.syncBoardState(dndItems, initialLaneOrder);
+      actions.syncBoardState("test-store", dndItems, initialLaneOrder);
 
       const state = getTestStoreState();
       const lane1 = state.lanes.find((l) => l.id === mockLaneId1);
@@ -497,7 +420,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       };
       const initialLaneOrder = [mockLaneId1, mockLaneId2, mockLaneId3];
 
-      actions.syncBoardState(dndItems, initialLaneOrder);
+      actions.syncBoardState("test-store", dndItems, initialLaneOrder);
 
       const state = getTestStoreState();
       const lane1 = state.lanes.find((l) => l.id === mockLaneId1);
@@ -522,7 +445,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       };
       const newLaneOrder = [mockLaneId2, mockLaneId3, mockLaneId1]; // Swap order
 
-      actions.syncBoardState(dndItems, newLaneOrder);
+      actions.syncBoardState("test-store", dndItems, newLaneOrder);
 
       const state = getTestStoreState();
       expect(state.lanes.map((l) => l.id)).toEqual(newLaneOrder);
@@ -543,7 +466,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
         [mockLaneId3]: [mockCardId8, mockCardId9, mockCardId1], // D2, D3, T1
       };
 
-      actions.syncBoardState(dndItems, newLaneOrder);
+      actions.syncBoardState("test-store", dndItems, newLaneOrder);
 
       const state = getTestStoreState();
       expect(state.lanes.map((l) => l.id)).toEqual(newLaneOrder);
@@ -574,7 +497,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       };
       const initialLaneOrder = [mockLaneId1, mockLaneId2, mockLaneId3];
 
-      actions.syncBoardState(dndItems, initialLaneOrder);
+      actions.syncBoardState("test-store", dndItems, initialLaneOrder);
 
       const state = getTestStoreState();
       expect(state.cards[mockCardId3]).toBeUndefined();
@@ -594,7 +517,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       };
       const newLaneOrder = [mockLaneId1]; // Only lane 1 remains
 
-      actions.syncBoardState(dndItems, newLaneOrder);
+      actions.syncBoardState("test-store", dndItems, newLaneOrder);
 
       const state = getTestStoreState();
       expect(state.lanes).toHaveLength(1);
@@ -615,7 +538,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       };
       const initialLaneOrder = [mockLaneId1, mockLaneId2, mockLaneId3];
 
-      actions.syncBoardState(dndItems, initialLaneOrder);
+      actions.syncBoardState("test-store", dndItems, initialLaneOrder);
 
       const state = getTestStoreState();
       expect(state.lanes.every((lane) => lane.cards.length === 0)).toBe(true);
@@ -633,7 +556,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       const newLaneOrder: ID[] = []; // Empty array
 
       const stateBeforeLaneOrder = getTestStoreState().lanes.map((l) => l.id);
-      actions.syncBoardState(dndItems, newLaneOrder);
+      actions.syncBoardState("test-store", dndItems, newLaneOrder);
       const stateAfter = getTestStoreState();
 
       // Lane order should remain the same as before if newLaneOrder is empty
@@ -664,7 +587,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       );
       expect(stateBefore.cards[newLocalCardId]).toBeUndefined();
 
-      actions.syncBoardState(dndItems, newLaneOrder);
+      actions.syncBoardState("test-store", dndItems, newLaneOrder);
 
       const stateAfter = getTestStoreState();
       // The `syncBoardState` should **not** create new lanes/cards if they don't exist in the store.
@@ -704,6 +627,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       // Temporarily remove a lane to test non-existent lane
       const { actions } = getTestStoreState();
       actions.syncBoardState(
+        "test-store",
         { [mockLaneId1]: [mockCardId1, mockCardId2, mockCardId3] },
         [mockLaneId1],
       ); // Remove lane2 and lane3
@@ -736,6 +660,7 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       // Temporarily remove a lane to test non-existent lane
       const { actions } = getTestStoreState();
       actions.syncBoardState(
+        "test-store",
         { [mockLaneId1]: [mockCardId1, mockCardId2, mockCardId3] },
         [mockLaneId1],
       ); // Remove lane2 and lane3
@@ -743,6 +668,150 @@ describe("createBoardStore - Sync Board State and Getters", () => {
       // Now, try to check a card that was in a removed lane
       expect(getTestStoreState().cards[mockCardId7]).toBeUndefined(); // Ensure it's gone
       expect(getters.isCardDone(mockCardId7)).toBe(false);
+    });
+  });
+
+
+  describe("getters - Due Dates", () => {
+    let cardIdWithDueDate: ID;
+    let cardIdNoDueDate: ID;
+
+    beforeEach(() => {
+      vi.clearAllMocks(); // Clear mocks from global beforeEach
+      const store = createTestStore("test-board-getters-duedate");
+      getTestStoreState = () => store.getState();
+
+      // Configure UUID mocks specifically for this setup
+      let uuidCount = 0;
+      vi.mocked(uuid4 as unknown as () => string).mockImplementation(() => {
+        uuidCount++;
+        if (uuidCount === 1) return mockLaneId1; // For the lane
+        if (uuidCount === 2) return "card-with-due-date"; // For the card with due date
+        if (uuidCount === 3) return "card-no-due-date"; // For the card without due date
+        return `extra-uuid-${uuidCount}`;
+      });
+
+      const { actions } = getTestStoreState();
+      const newLane = actions.addLane({
+        title: "Test Lane",
+        considerCardDone: false,
+        canRemove: false,
+        canEdit: false,
+        canAddCard: true,
+        canEditCards: true,
+        canRemoveCards: true,
+      });
+
+      // Add a card with a due date
+      const cardWithDate = actions.addCard({
+        laneId: newLane.id,
+        title: "Task with Due Date",
+        description: "Important task",
+        dueDate: "2025-08-08", // August 8, 2025
+      });
+      cardIdWithDueDate = cardWithDate.id;
+
+      // Add a card without a due date
+      const cardNoDate = actions.addCard({
+        laneId: newLane.id,
+        title: "Task No Due Date",
+        description: "Regular task",
+      });
+      cardIdNoDueDate = cardNoDate.id;
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    describe("isCardNearingDueDate", () => {
+      it("should return false if card has no due date", () => {
+        const { getters } = getTestStoreState();
+        expect(getters.isCardNearingDueDate(cardIdNoDueDate)).toBe(false);
+      });
+
+      it("should return false if card does not exist", () => {
+        const { getters } = getTestStoreState();
+        expect(getters.isCardNearingDueDate("non-existent-card")).toBe(false);
+      });
+
+      it("should return true if due date is today", () => {
+        vi.useFakeTimers();
+        // Set current date to August 8, 2025 (the card's due date)
+        vi.setSystemTime(new Date("2025-08-08T10:00:00Z"));
+
+        const { getters } = getTestStoreState();
+        expect(getters.isCardNearingDueDate(cardIdWithDueDate)).toBe(true); // Due today
+      });
+
+      it("should return true if due date is within the next 7 days (inclusive of today)", () => {
+        vi.useFakeTimers();
+        // Set current date to August 1, 2025
+        vi.setSystemTime(new Date("2025-08-01T10:00:00Z")); // Due on 2025-08-08
+
+        const { getters } = getTestStoreState();
+        expect(getters.isCardNearingDueDate(cardIdWithDueDate)).toBe(true);
+      });
+
+      it("should return false if due date is more than 7 days away", () => {
+        vi.useFakeTimers();
+        // Set current date to August 1, 2025
+        vi.setSystemTime(new Date("2025-07-31T10:00:00Z")); // Due on 2025-08-08 (8 days away)
+
+        const { getters } = getTestStoreState();
+        expect(getters.isCardNearingDueDate(cardIdWithDueDate)).toBe(false);
+      });
+
+      it("should return false if due date is in the past (overdue)", () => {
+        vi.useFakeTimers();
+        // Set current date to August 9, 2025
+        vi.setSystemTime(new Date("2025-08-09T10:00:00Z"));
+
+        const { getters } = getTestStoreState();
+        expect(getters.isCardNearingDueDate(cardIdWithDueDate)).toBe(false); // Overdue cards are not "nearing"
+      });
+    });
+
+    describe("isCardOverdue", () => {
+      it("should return false if card has no due date", () => {
+        const { getters } = getTestStoreState();
+        expect(getters.isCardOverdue(cardIdNoDueDate)).toBe(false);
+      });
+
+      it("should return false if card does not exist", () => {
+        const { getters } = getTestStoreState();
+        expect(getters.isCardOverdue("non-existent-card")).toBe(false);
+      });
+
+      it("should return true if due date is yesterday or earlier", () => {
+        vi.useFakeTimers();
+        // Card due: August 8, 2025
+        // Current date: August 9, 2025 (past due)
+        vi.setSystemTime(new Date("2025-08-09T10:00:00Z"));
+
+        const { getters } = getTestStoreState();
+        expect(getters.isCardOverdue(cardIdWithDueDate)).toBe(true);
+      });
+
+      it("should return false if due date is today", () => {
+        vi.useFakeTimers();
+        // Card due: August 8, 2025
+        // Current date: August 8, 2025
+        vi.setSystemTime(new Date("2025-08-08T10:00:00Z"));
+
+        const { getters } = getTestStoreState();
+        expect(getters.isCardOverdue(cardIdWithDueDate)).toBe(false);
+      });
+
+      it("should return false if due date is in the future", () => {
+        vi.useFakeTimers();
+        // Card due: August 8, 2025
+        // Current date: August 7, 2025
+        vi.setSystemTime(new Date("2025-08-07T10:00:00Z"));
+
+        const { getters } = getTestStoreState();
+        expect(getters.isCardOverdue(cardIdWithDueDate)).toBe(false);
+      });
     });
   });
 });
