@@ -1,4 +1,4 @@
-FROM node:20-alpine3.20 As build
+FROM node:20-alpine3.20 AS build
 
 WORKDIR /usr/src/app
 
@@ -14,7 +14,7 @@ COPY ./ ./
 # Build the Vite application (Vite typically uses 'build' script)
 RUN pnpm run build
 
-FROM nginx:stable-alpine as serve
+FROM nginx:stable-alpine AS serve
 
 COPY --from=build /usr/src/app/nginx.conf /etc/nginx/conf.d/default.conf
 
