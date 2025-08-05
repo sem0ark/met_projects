@@ -23,21 +23,29 @@ services:
       retries: 5
       start_period: 30s
     restart: on-failure
+    resources:
+      limits:
+        cpus: '1'
+        memory: 1GB
 
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:80" # Maps port 3000 on host
-  #   environment:
-  #     VITE_API_URL: http://backend:8080
-  #   depends_on:
-  #     backend:
-  #       condition: service_healthy # Ensure backend is ready before frontend tries to connect
-  #   networks:
-  #     - app-network
-  #   restart: on-failure # Or 'always' depending on preference
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80" # Maps port 3000 on host
+    environment:
+      VITE_API_URL: http://backend:8080
+    depends_on:
+      backend:
+        condition: service_healthy # Ensure backend is ready before frontend tries to connect
+    networks:
+      - app-network
+    restart: on-failure # Or 'always' depending on preference
+    resources:
+      limits:
+        cpus: '1'
+        memory: 1GB
 
   mysql-db:
     image: mysql:8.0
@@ -59,6 +67,10 @@ services:
     networks:
       - app-network
     restart: always
+    resources:
+      limits:
+        cpus: '1'
+        memory: 1GB
 
 volumes:
   db-data:
