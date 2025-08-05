@@ -1,7 +1,7 @@
 from collections import deque
 import logging
 import random
-from typing import Callable, Optional
+from typing import Callable, Optional, Set
 from vns.abstract import AcceptanceCriterion, ObjectiveFunction, Solution
 
 
@@ -212,3 +212,70 @@ class BeamSeachSkewedAcceptance(BufferedAcceptanceCriterion):
             self.buffer.append(candidate_solution)
 
         return False
+
+
+class ParetoFrontAcceptance(AcceptanceCriterion):
+    """
+    Acceptance Criterion for Multi-Objective VNS.
+    It maintains an archive of non-dominated solutions (Pareto front)
+    by considering a single candidate solution.
+
+    This class refines the logic of the original TakeBestAcceptance
+    to more correctly update a Pareto front.
+    """
+
+    def __init__(self, objective_func: ObjectiveFunction):
+        super().__init__(objective_func)
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+        if self.objective_func.n_dimensions <= 1:
+            self.logger.warning("ParetoFrontAcceptance is designed for multi-objective problems. "
+                                "Consider using TakeBestAcceptance or SkewedAcceptance for single-objective.")
+
+    def accept(self, candidate_solution: Solution) -> bool:
+        """
+        Decides whether to accept candidate_solution and update the archive.
+        Updates the non-dominated archive based on Pareto dominance.
+
+        Returns True if the archive changes (solution added/removed).
+        """
+        self.objective_func.evaluate_and_set(candidate_solution)
+
+        new_archive: Set[Solution] = set()
+        archive_changed = False
+
+        # Check if candidate_solution is dominated by any existing solution in archive.
+        is_candidate_dominated = False
+        for existing_sol in self.archive:
+            if self.objective_func.is_better(existing_sol, candidate_solution):
+                is_candidate_dominated = True
+                break
+        
+        # If candidate is dominated, it doesn't get added.
+        # Current archive remains.
+        if is_candidate_dominated:
+            new_archive.update(self.archive)
+        else:
+            # If candidate is not dominated, it's a potential new non-dominated solution. Add it.
+            new_archive.add(candidate_solution.copy())
+            archive_changed = True # Candidate is new, so archive changes (at least by adding this).
+
+            # Remove solutions from the *old* archive that are now dominated by the candidate.
+            for existing_sol in self.archive:
+                if not self.objective_func.is_better(candidate_solution, existing_sol):
+                    # If candidate does NOT dominate existing_sol, keep existing_sol.
+                    new_archive.add(existing_sol.copy())
+                else:
+                    # If candidate DOMINATES existing_sol, existing_sol is removed, so archive changes.
+                    archive_changed = True
+        
+        # Convert set back to list for the archive attribute, ensuring consistency
+        # Sort for stable representation, though not strictly required for functionality
+        sorted_new_archive = sorted(list(new_archive), key=lambda s: s.get_objectives())
+
+        if self.archive != sorted_new_archive:
+            self.archive = sorted_new_archive
+            archive_changed = True
+            # Ensure this is true if the set of solutions changes
+
+        return archive_changed
