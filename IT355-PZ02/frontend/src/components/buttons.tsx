@@ -9,7 +9,7 @@ export const CategoryTag = ({ id }: { id: number }) => {
     isSuccess && (
       <Link
         to={`/products?categoryId=${id}`}
-        className="border-orange-600 bg-orange-600 hover:bg-orange-300 flex h-5 w-fit cursor-pointer flex-row items-center rounded-full border-2 px-2 text-xs text-nowrap text-white transition-colors duration-300 ease-in-out"
+        className="flex h-5 w-fit cursor-pointer flex-row items-center rounded-full border-2 border-orange-600 bg-orange-600 px-2 text-xs text-nowrap text-white transition-colors duration-300 ease-in-out hover:bg-orange-300"
       >
         <HashTagIcon className="h-4" />
         <div className="text-nowrap">{data.name}</div>
@@ -30,7 +30,7 @@ export const CategoryTagButton = ({
     isSuccess && (
       <Button
         onClick={onClick}
-        className="border-orange-600 bg-orange-600 hover:bg-orange-300 flex h-5 w-fit cursor-pointer flex-row items-center rounded-full border-2 px-2 text-xs text-nowrap text-white transition-colors duration-300 ease-in-out"
+        className="flex h-5 w-fit cursor-pointer flex-row items-center rounded-full border-2 border-orange-600 bg-orange-600 px-2 text-xs text-nowrap text-white transition-colors duration-300 ease-in-out hover:bg-orange-300"
       >
         <HashTagIcon className="h-4" />
         <div className="text-nowrap">{data.name}</div>

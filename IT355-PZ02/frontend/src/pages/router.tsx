@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createHashRouter } from "react-router-dom";
 
 import { Home } from "./Home";
 import { ErrorPage } from "./Error";
@@ -16,7 +16,7 @@ import { AdminCategories } from "./admin/AdminCategories";
 import { AdminUsers } from "./admin/AdminUsers";
 import { RequireAuth } from "./RequireAuth";
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   {
     element: <MainLayout />,
     errorElement: <ErrorPage />,

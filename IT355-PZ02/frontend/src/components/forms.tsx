@@ -4,5 +4,5 @@ export const ErrorText = ({
   message: string | boolean | null | undefined;
 }) =>
   !!message && (
-    <p className="text-orange-600 p-1 text-sm text-wrap">{message}</p>
+    <p className="p-1 text-sm text-wrap text-orange-600">{message}</p>
   );

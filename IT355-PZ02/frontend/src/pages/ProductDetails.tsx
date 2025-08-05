@@ -87,7 +87,7 @@ const Slider = ({ imageUrls }: { imageUrls: string[] }) => {
               "inline-flex h-10 w-10 overflow-hidden rounded-full border-2 transition duration-300 ease-in-out",
               image === url
                 ? "border-orange-400"
-                : "hover:border-orange-400 border-white",
+                : "border-white hover:border-orange-400",
             )}
             onClick={() => setIndex(i)}
           >
@@ -126,7 +126,7 @@ const ProductInfo = ({ product }: { product: Product }) => {
       </div>
 
       <Button
-        className="bg-orange-600 active:bg-orange-200 mt-10 h-10 w-full rounded-full text-white sm:w-40"
+        className="mt-10 h-10 w-full rounded-full bg-orange-600 text-white active:bg-orange-200 sm:w-40"
         onClick={() => (isLoggedIn ? addItem(product, 1) : navigate("/login"))}
       >
         Add to Cart

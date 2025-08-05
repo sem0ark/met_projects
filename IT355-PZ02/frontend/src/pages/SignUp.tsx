@@ -105,7 +105,7 @@ export function SignUp() {
 
         <button
           type="submit"
-          className="border-orange-700 bg-orange-50 animate-pulse rounded-full border-2 px-5 py-2 hover:animate-none disabled:animate-none disabled:border-slate-500 disabled:opacity-20"
+          className="animate-pulse rounded-full border-2 border-orange-700 bg-orange-50 px-5 py-2 hover:animate-none disabled:animate-none disabled:border-slate-500 disabled:opacity-20"
         >
           Sign Up
         </button>

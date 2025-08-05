@@ -34,7 +34,7 @@ const CartTableEntry = ({
         {product?.name !== undefined && <div>{product.name}</div>}
         <div className="flex-1"></div>
         <Button aria-label="Remove" onClick={() => removeProduct(productId)}>
-          <CrossIcon className="text-orange-600 h-8 transition-transform duration-300 hover:scale-125" />
+          <CrossIcon className="h-8 text-orange-600 transition-transform duration-300 hover:scale-125" />
         </Button>
       </td>
       <td className="px-2 text-center sm:p-2 sm:px-6">{quantity}</td>
@@ -67,7 +67,7 @@ const Checkout = () => {
       >
         <div className="fixed inset-0 z-10 w-screen overflow-y-auto backdrop-blur-sm">
           <div className="flex min-h-full items-center justify-center p-4">
-            <DialogPanel className="border-orange-500 bg-orange-100 w-full max-w-md rounded-xl border-2 p-6 duration-300 ease-out data-[closed]:transform-[scale(95%)] data-[closed]:opacity-0">
+            <DialogPanel className="w-full max-w-md rounded-xl border-2 border-orange-500 bg-orange-100 p-6 duration-300 ease-out data-[closed]:transform-[scale(95%)] data-[closed]:opacity-0">
               <DialogTitle
                 as="h3"
                 className="text-base/7 font-medium text-black"
@@ -81,7 +81,7 @@ const Checkout = () => {
               </p>
               <div className="mt-4">
                 <Button
-                  className="bg-orange-700 data-[hover]:bg-orange-600 data-[open]:bg-orange-700 inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm/6 font-semibold text-white shadow-inner focus:outline-none data-[focus]:outline-1 data-[focus]:outline-white"
+                  className="inline-flex items-center gap-2 rounded-md bg-orange-700 px-3 py-1.5 text-sm/6 font-semibold text-white shadow-inner focus:outline-none data-[focus]:outline-1 data-[focus]:outline-white data-[hover]:bg-orange-600 data-[open]:bg-orange-700"
                   onClick={() => {
                     setIsOpen(false);
                     clearCart();
@@ -110,7 +110,7 @@ export function Cart() {
         <p className="text-base italic">Check out our products!</p>
         <Link
           to="/products"
-          className="border-orange-700 bg-orange-50 animate-pulse rounded-full border-2 px-5 py-2 hover:animate-none"
+          className="animate-pulse rounded-full border-2 border-orange-700 bg-orange-50 px-5 py-2 hover:animate-none"
         >
           See Products
         </Link>

@@ -98,7 +98,7 @@ const ProductForm = ({
             <PopoverPanel
               transition
               anchor="bottom"
-              className="bg-orange-50 top-9 z-20 flex flex-col items-center gap-2 rounded-xl border-2 p-5 text-sm/6 transition duration-200 ease-in-out [--anchor-gap:var(--spacing-5)] data-[closed]:-translate-y-1 data-[closed]:opacity-0"
+              className="top-9 z-20 flex flex-col items-center gap-2 rounded-xl border-2 bg-orange-50 p-5 text-sm/6 transition duration-200 ease-in-out [--anchor-gap:var(--spacing-5)] data-[closed]:-translate-y-1 data-[closed]:opacity-0"
             >
               {categoriesFiltered &&
                 categoriesFiltered.map(({ id }) => (
@@ -152,7 +152,7 @@ const ProductForm = ({
       }
 
       <button
-        className="bg-orange-500 rounded-md px-5 text-base font-bold text-white hover:brightness-125"
+        className="rounded-md bg-orange-500 px-5 text-base font-bold text-white hover:brightness-125"
         type="submit"
         disabled={isPending}
       >
@@ -282,7 +282,7 @@ const ProductInfo = ({
 
       <div className="absolute top-0 right-0 flex flex-col gap-2">
         <button
-          className="bg-orange-500 rounded-md px-5 py-2 text-base font-bold text-white hover:brightness-125"
+          className="rounded-md bg-orange-500 px-5 py-2 text-base font-bold text-white hover:brightness-125"
           onClick={setEditing}
           disabled={isPending}
         >
@@ -349,7 +349,7 @@ export const AdminProducts = () => {
     <div className="flex w-full flex-col justify-center gap-5 px-5">
       {!isAddingProduct ? (
         <button
-          className="bg-orange-500 rounded-md px-5 py-2 text-base font-bold text-white hover:brightness-125"
+          className="rounded-md bg-orange-500 px-5 py-2 text-base font-bold text-white hover:brightness-125"
           onClick={() => setIsAddingProduct(true)}
         >
           Add New Product

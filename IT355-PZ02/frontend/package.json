@@ -21,6 +21,7 @@
     "react-hook-form": "^7.62.0",
     "react-router-dom": "^7.7.1",
     "tailwindcss": "^4.1.11",
+    "vite-plugin-svgr": "^4.3.0",
     "zod": "^4.0.14",
     "zustand": "^5.0.7"
   },

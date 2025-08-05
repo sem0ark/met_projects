@@ -55,7 +55,7 @@ const CategoryForm = ({
       <div className="flex-1"></div>
 
       <button
-        className="bg-orange-500 rounded-md px-5 text-base font-bold text-white hover:brightness-125"
+        className="rounded-md bg-orange-500 px-5 text-base font-bold text-white hover:brightness-125"
         type="submit"
         disabled={isPending}
       >
@@ -145,7 +145,7 @@ const CategoryInfo = ({
       <div className="flex-1"></div>
 
       <button
-        className="bg-orange-500 rounded-md px-5 py-2 text-base font-bold text-white hover:brightness-125"
+        className="rounded-md bg-orange-500 px-5 py-2 text-base font-bold text-white hover:brightness-125"
         onClick={setEditing}
         disabled={isPending}
       >
@@ -200,7 +200,7 @@ export const AdminCategories = () => {
     <div className="flex w-full flex-col justify-center gap-5 px-5">
       {!isAddingCategory ? (
         <button
-          className="bg-orange-500 rounded-md px-5 py-2 text-base font-bold text-white hover:brightness-125"
+          className="rounded-md bg-orange-500 px-5 py-2 text-base font-bold text-white hover:brightness-125"
           onClick={() => setIsAddingCategory(true)}
         >
           Add New Category

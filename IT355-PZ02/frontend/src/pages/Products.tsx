@@ -61,7 +61,7 @@ const ProductCard = ({ product }: { product: Product }) => {
 
       <Link
         to={`/products/${product.id}`}
-        className="bg-orange-500 hover:bg-orange-100 w-full cursor-pointer rounded-b-md text-center text-base text-white duration-200 ease-in-out"
+        className="w-full cursor-pointer rounded-b-md bg-orange-500 text-center text-base text-white duration-200 ease-in-out hover:bg-orange-100"
       >
         Buy
       </Link>
@@ -118,7 +118,7 @@ const Sorter = ({
     className={clsx(
       "flex w-24 items-center gap-1 rounded-full p-1",
       sortFunction === currentSortFunction &&
-        "border-orange-200 bg-orange-500 border-2 text-white",
+        "border-2 border-orange-200 bg-orange-500 text-white",
     )}
     onClick={() =>
       sortFunction === currentSortFunction
@@ -178,7 +178,7 @@ const Filters = ({
         <div className="flex w-full flex-wrap justify-center gap-2">
           <Link
             to={`/products`}
-            className="border-orange-600 bg-orange-600 hover:bg-orange-300 flex h-5 w-fit cursor-pointer flex-row items-center rounded-full border-2 px-2 text-xs text-nowrap text-white transition-colors duration-300 ease-in-out"
+            className="flex h-5 w-fit cursor-pointer flex-row items-center rounded-full border-2 border-orange-600 bg-orange-600 px-2 text-xs text-nowrap text-white transition-colors duration-300 ease-in-out hover:bg-orange-300"
           >
             <div className="text-nowrap">All</div>
           </Link>
@@ -267,7 +267,7 @@ export function Products() {
         type="text"
         onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
         placeholder="Search"
-        className="focus:border-orange-500 w-full max-w-lg rounded-full border-2 px-5 py-1 outline-none"
+        className="w-full max-w-lg rounded-full border-2 px-5 py-1 outline-none focus:border-orange-500"
       />
 
       {!!categoryIdParam && (

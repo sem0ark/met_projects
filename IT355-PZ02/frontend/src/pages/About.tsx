@@ -1,7 +1,7 @@
 export function About() {
   return (
-    <div className="flex flex-col  gap-5">
-      <div className="flex flex-col items-center gap-5 justify-center">
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col items-center justify-center gap-5">
         <h1 className="text-3xl font-bold">Welcome!</h1>
 
         <p className="text-caption italic">
@@ -13,7 +13,7 @@ export function About() {
         </p>
       </div>
 
-      <div className="p-5 rounded-lg bg-white drop-shadow-lg flex flex-col gap-3">
+      <div className="flex flex-col gap-3 rounded-lg bg-white p-5 drop-shadow-lg">
         <h2 className="text-lg font-bold">Used stack</h2>
 
         <ul className="flex max-w-lg flex-col justify-start gap-3 text-sm">

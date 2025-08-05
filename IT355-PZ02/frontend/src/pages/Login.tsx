@@ -28,7 +28,7 @@ export function Login() {
       <h1 className="text-3xl font-bold">Login</h1>
 
       <form
-        className="flex w-80 flex-col items-center gap-5 p-5 rounded-lg bg-white drop-shadow-lg"
+        className="flex w-80 flex-col items-center gap-5 rounded-lg bg-white p-5 drop-shadow-lg"
         onSubmit={handleSubmit(onSubmit)}
       >
         {isError && (
@@ -77,7 +77,7 @@ export function Login() {
 
         <button
           type="submit"
-          className="border-orange-700 bg-orange-50 w-40 animate-pulse rounded-full border-2 px-5 py-2 hover:animate-none disabled:animate-none disabled:border-slate-500 disabled:opacity-20"
+          className="w-40 animate-pulse rounded-full border-2 border-orange-700 bg-orange-50 px-5 py-2 hover:animate-none disabled:animate-none disabled:border-slate-500 disabled:opacity-20"
         >
           Log In
         </button>

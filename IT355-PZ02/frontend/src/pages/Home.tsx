@@ -7,7 +7,7 @@ export function Home() {
       <p className="text-lg italic">You can find anything there!</p>
       <Link
         to="/products"
-        className="border-orange-700 bg-orange-50 animate-bounce rounded-full border-2 px-5 py-2 hover:animate-none"
+        className="animate-bounce rounded-full border-2 border-orange-700 bg-orange-50 px-5 py-2 hover:animate-none"
       >
         See Products
       </Link>

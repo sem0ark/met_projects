@@ -24,7 +24,7 @@ const ProfileLink = () => {
         to="/login"
         className={({ isActive }) =>
           clsx(
-            isActive ? "text-orange-400 font-bold" : "hover:text-orange-700",
+            isActive ? "font-bold text-orange-400" : "hover:text-orange-700",
             "relative p-2 text-lg transition duration-100 ease-in-out",
           )
         }
@@ -60,16 +60,16 @@ const CartButton = () => {
       className={({ isActive }) =>
         clsx(
           isActive ? "text-orange-400" : "hover:text-orange-700",
-          "hover:border-orange-600 relative rounded-lg border-2 border-slate-600 bg-slate-200 p-2 text-lg transition duration-100 ease-in-out",
+          "relative rounded-lg border-2 border-slate-600 bg-slate-200 p-2 text-lg transition duration-100 ease-in-out hover:border-orange-600",
         )
       }
     >
       <CartIcon className="h-5" />
       {totalProducts > 0 && (
-        <div className="bg-orange-500 absolute -top-1 -right-1 h-3 w-3 animate-ping rounded-full"></div>
+        <div className="absolute -top-1 -right-1 h-3 w-3 animate-ping rounded-full bg-orange-500"></div>
       )}
       {totalProducts > 0 && (
-        <div className="bg-orange-500 absolute -top-1 -right-1 h-3 w-3 rounded-full"></div>
+        <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-orange-500"></div>
       )}
     </NavLink>
   );
@@ -80,7 +80,7 @@ const NavigationLink = ({ to, title }: { to: string; title: string }) => (
     to={to}
     className={({ isActive }) =>
       clsx(
-        isActive ? "text-orange-400 font-bold" : "hover:text-orange-700",
+        isActive ? "font-bold text-orange-400" : "hover:text-orange-700",
         "text-lg transition duration-300 ease-in",
       )
     }
@@ -114,13 +114,13 @@ const Navigation = () => {
     <div
       className={clsx(
         visible ? "top-0" : "top-[-100px]",
-        "border-orange-600 sticky z-10 flex h-16 w-full items-center border-b-2 bg-white py-2 shadow-md duration-300 ease-in-out",
+        "sticky z-10 flex h-16 w-full items-center border-b-2 border-orange-600 bg-white py-2 shadow-md duration-300 ease-in-out",
       )}
     >
       <div className="container mx-auto flex items-center gap-1 px-2">
         <Link
           to="/"
-          className="text-orange-700 flex flex-1 items-center text-2xl font-bold"
+          className="flex flex-1 items-center text-2xl font-bold text-orange-700"
         >
           True C<BrandIcon />
           lors
@@ -134,7 +134,7 @@ const Navigation = () => {
             <PopoverPanel
               transition
               anchor="bottom"
-              className="bg-orange-50 top-9 z-20 flex flex-col items-center rounded-xl border-2 p-5 text-sm/6 transition duration-200 ease-in-out [--anchor-gap:var(--spacing-5)] data-[closed]:-translate-y-1 data-[closed]:opacity-0"
+              className="top-9 z-20 flex flex-col items-center rounded-xl border-2 bg-orange-50 p-5 text-sm/6 transition duration-200 ease-in-out [--anchor-gap:var(--spacing-5)] data-[closed]:-translate-y-1 data-[closed]:opacity-0"
             >
               <NavigationLink to="/" title="Home" />
               <NavigationLink to="/products" title="Products" />
@@ -168,14 +168,14 @@ const Footer = () => {
 };
 
 export const MainLayout = () => (
-  <div className="bg-orange-50/50 flex h-fit min-h-screen flex-col">
+  <div className="flex h-fit min-h-screen flex-col bg-orange-50/50">
     <Navigation />
 
     <main className="relative container mx-auto my-5 flex max-w-screen-lg flex-1 flex-col items-center justify-center">
       <Outlet />
     </main>
 
-    <div className="border-orange-600 text-orange-700 z-10 h-fit w-full border-t-2 bg-white py-2 shadow-md">
+    <div className="z-10 h-fit w-full border-t-2 border-orange-600 bg-white py-2 text-orange-700 shadow-md">
       <Footer />
     </div>
   </div>
