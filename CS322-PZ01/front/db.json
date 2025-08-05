@@ -1,0 +1,353 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "login": "ito-1",
+      "role": "user",
+      "password": "password"
+    },
+    {
+      "id": "2",
+      "login": "admin",
+      "role": "admin",
+      "password": "password"
+    },
+    {
+      "id": "3",
+      "login": "ito-2",
+      "role": "user",
+      "password": "password"
+    },
+    {
+      "id": "a22c",
+      "login": "ito-3",
+      "password": "password",
+      "role": "user"
+    },
+    {
+      "id": "7faf",
+      "login": "ito-4",
+      "password": "password",
+      "role": "user"
+    }
+  ],
+  "categories": [
+    {
+      "name": "Electronics",
+      "id": "1"
+    },
+    {
+      "name": "Clothes",
+      "id": "2"
+    },
+    {
+      "id": "3",
+      "name": "Home Appliances"
+    },
+    {
+      "id": "b418",
+      "name": "Flowers"
+    },
+    {
+      "name": "Electronic Devices",
+      "id": "f1a9"
+    }
+  ],
+  "products": [
+    {
+      "id": "2",
+      "name": "Laptop",
+      "description": "15-inch laptop with 16GB RAM and 512GB SSD",
+      "descriptionLong": "15-inch laptop with 16GB RAM and 512GB SSD, built to handle intensive tasks like video editing, graphic design, and gaming. With a stunning Full HD display and a high-end graphics card, this laptop delivers rich visuals and smooth performance. It features an ergonomic keyboard and a responsive touchpad, providing comfort for long work hours. The slim and lightweight design makes it easy to carry.",
+      "price": "1023",
+      "categoryIds": [
+        "1",
+        "f1a9"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=2",
+      "imageUrls": [
+        "https://picsum.photos/800?random=1",
+        "https://picsum.photos/800?random=2",
+        "https://picsum.photos/800?random=3"
+      ]
+    },
+    {
+      "id": "4",
+      "name": "Smartwatch",
+      "description": "Smartwatch with heart rate monitor and fitness tracking",
+      "descriptionLong": "Smartwatch with heart rate monitor, fitness tracking, and GPS, making it an essential accessory for fitness enthusiasts. It monitors various activities such as walking, running, and cycling, while also tracking sleep patterns. The watch is water-resistant and has a long battery life, ensuring it stays powered through all your activities. It’s compatible with multiple apps for customization.",
+      "price": 199.99,
+      "categoryIds": [
+        "2",
+        "3"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=4",
+      "imageUrls": [
+        "https://picsum.photos/800?random=1",
+        "https://picsum.photos/800?random=2",
+        "https://picsum.photos/800?random=3"
+      ],
+      "ratings": 4.3
+    },
+    {
+      "id": "5",
+      "name": "Bluetooth Headphones",
+      "description": "Noise-cancelling Bluetooth headphones with 20 hours of playtime",
+      "descriptionLong": "Noise-cancelling Bluetooth headphones with 20 hours of playtime, ideal for enjoying music or calls in noisy environments. The cushioned ear pads provide comfort for extended use, while the adjustable headband ensures a snug fit. It features easy touch controls for adjusting volume, changing tracks, and answering calls, along with a built-in mic for hands-free communication.",
+      "price": 89.99,
+      "categoryIds": [
+        "1",
+        "2",
+        "f1a9"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=5",
+      "imageUrls": [
+        "https://picsum.photos/800?random=1",
+        "https://picsum.photos/800?random=2",
+        "https://picsum.photos/800?random=3"
+      ],
+      "ratings": 4.6
+    },
+    {
+      "id": "6",
+      "name": "Gaming Console",
+      "description": "Next-gen gaming console with 4K support and 1TB storage",
+      "descriptionLong": "Next-gen gaming console with 4K support and 1TB storage, bringing games to life with stunning graphics and high frame rates. It includes a wireless controller with haptic feedback and adaptive triggers, adding a new layer of immersion. The console supports a library of exclusive games and offers backward compatibility with previous generations. Ideal for both casual and hardcore gamers.",
+      "price": 499.99,
+      "categoryIds": [
+        "f1a9"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=6",
+      "imageUrls": [
+        "https://picsum.photos/800?random=1",
+        "https://picsum.photos/800?random=2",
+        "https://picsum.photos/800?random=3"
+      ],
+      "ratings": 4.8
+    },
+    {
+      "id": "7",
+      "name": "Blender",
+      "description": "High-powered blender with multiple speed settings and 1.5L jar",
+      "descriptionLong": "High-powered blender with multiple speed settings and a 1.5L jar, designed to handle anything from smoothies to soups. The sharp stainless-steel blades ensure efficient blending, even with tough ingredients like ice or nuts. The blender has a robust motor and a pulse function, giving you precise control over consistency. Easy to clean and ideal for daily use in any kitchen.",
+      "price": 49.99,
+      "categoryIds": [
+        "3",
+        "f1a9"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=7",
+      "imageUrls": [
+        "https://picsum.photos/800?random=1",
+        "https://picsum.photos/800?random=2",
+        "https://picsum.photos/800?random=3"
+      ],
+      "ratings": 4.2
+    },
+    {
+      "id": "8",
+      "name": "Coffee Maker",
+      "description": "Automatic coffee maker with a built-in grinder and milk frother",
+      "descriptionLong": "Automatic coffee maker with a built-in grinder and milk frother, perfect for coffee enthusiasts. It grinds beans to your preferred coarseness and brews fresh coffee with a rich aroma. The frother allows for cappuccinos and lattes, making it versatile for various coffee styles. The machine has an intuitive control panel and a timer function for a customized brewing experience.",
+      "price": 129.99,
+      "categoryIds": [
+        "3"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=8",
+      "imageUrls": [
+        "https://picsum.photos/800?random=1",
+        "https://picsum.photos/800?random=2",
+        "https://picsum.photos/800?random=3"
+      ],
+      "ratings": 4.4
+    },
+    {
+      "id": "9",
+      "name": "Vacuum Cleaner",
+      "description": "Cordless vacuum cleaner with a powerful suction system and multiple attachments",
+      "descriptionLong": "Cordless vacuum cleaner with a powerful suction system and multiple attachments, suitable for cleaning carpets, hardwood floors, and upholstery. It offers up to 40 minutes of runtime and has a compact design for easy storage. The detachable dust bin allows for quick disposal, and its lightweight build makes it convenient for quick cleanups around the house.",
+      "price": 229.99,
+      "categoryIds": [
+        "3"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=9",
+      "imageUrls": [
+        "https://picsum.photos/800?random=1",
+        "https://picsum.photos/800?random=2",
+        "https://picsum.photos/800?random=3"
+      ],
+      "ratings": 4.3
+    },
+    {
+      "id": "10",
+      "name": "Air Fryer",
+      "description": "Healthy air fryer with rapid air circulation and adjustable temperature control",
+      "descriptionLong": "Healthy air fryer with rapid air circulation and adjustable temperature control, designed to make crispy, delicious meals with less oil. With a large capacity basket, it can cook for the whole family. The digital control panel offers easy adjustments, and its non-stick coating makes cleaning effortless. Enjoy fried food with up to 80% less fat than traditional frying.",
+      "price": 99.99,
+      "categoryIds": [
+        "3"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=10",
+      "imageUrls": [
+        "https://picsum.photos/800?random=11",
+        "https://picsum.photos/800?random=12",
+        "https://picsum.photos/800?random=13"
+      ],
+      "ratings": 4.6
+    },
+    {
+      "id": "11",
+      "name": "Electric Kettle",
+      "description": "Fast-boiling electric kettle with temperature control and automatic shut-off",
+      "descriptionLong": "Fast-boiling electric kettle with temperature control and automatic shut-off, ideal for tea, coffee, or instant meals. The stainless-steel design is durable and stylish, while the clear water level indicator ensures accurate filling. It has a 1.7L capacity, perfect for multiple cups. The stay-cool handle provides a secure grip, and the kettle is cordless for convenience.",
+      "price": 39.99,
+      "categoryIds": [
+        "3"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=11",
+      "imageUrls": [
+        "https://picsum.photos/800?random=11",
+        "https://picsum.photos/800?random=12",
+        "https://picsum.photos/800?random=13"
+      ],
+      "ratings": 4.5
+    },
+    {
+      "id": "12",
+      "name": "Running Shoes",
+      "description": "Comfortable and durable running shoes with memory foam insoles",
+      "descriptionLong": "Comfortable and durable running shoes with memory foam insoles, providing excellent support and cushioning for long runs or everyday use. Made with breathable mesh fabric, they keep your feet cool and dry. The outsole is made of rubber, offering great traction and stability. These shoes are designed to enhance performance while minimizing impact on your joints.",
+      "price": 79.99,
+      "categoryIds": [
+        "2"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=12",
+      "imageUrls": [
+        "https://picsum.photos/800?random=11",
+        "https://picsum.photos/800?random=12",
+        "https://picsum.photos/800?random=13"
+      ],
+      "ratings": 4.6
+    },
+    {
+      "id": "13",
+      "name": "Jeans",
+      "description": "Slim-fit jeans with stretch material and a classic design",
+      "descriptionLong": "Slim-fit jeans with stretch material and a classic design, offering a comfortable fit without compromising on style. These jeans are made from durable fabric that withstands wear and tear, making them suitable for both casual and semi-formal occasions. They feature multiple pockets and come in various washes to suit your preference.",
+      "price": 39.99,
+      "categoryIds": [
+        "2"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=13",
+      "imageUrls": [
+        "https://picsum.photos/800?random=11",
+        "https://picsum.photos/800?random=12",
+        "https://picsum.photos/800?random=13"
+      ],
+      "ratings": 4.4
+    },
+    {
+      "id": "14",
+      "name": "Jacket",
+      "description": "Water-resistant jacket with adjustable cuffs and a hood",
+      "descriptionLong": "Water-resistant jacket with adjustable cuffs and a hood, ideal for rainy or windy days. The lightweight yet durable material keeps you dry while allowing freedom of movement. It has multiple pockets for storage and a modern design, making it both functional and fashionable. Perfect for outdoor activities or layering over everyday outfits.",
+      "price": 89.99,
+      "categoryIds": [
+        "2"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=14",
+      "imageUrls": [
+        "https://picsum.photos/800?random=11",
+        "https://picsum.photos/800?random=12",
+        "https://picsum.photos/800?random=13"
+      ],
+      "ratings": 4.5
+    },
+    {
+      "id": "15",
+      "name": "Backpack",
+      "description": "Durable and spacious backpack with multiple compartments and padded straps",
+      "descriptionLong": "Durable and spacious backpack with multiple compartments and padded straps, perfect for travel or school. It has a laptop compartment, an organizer panel, and mesh pockets for water bottles. The backpack is designed to distribute weight evenly, providing comfort even on long journeys. Made from water-resistant material, it keeps your belongings safe.",
+      "price": 59.99,
+      "categoryIds": [
+        "2"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=15",
+      "imageUrls": [
+        "https://picsum.photos/800?random=11",
+        "https://picsum.photos/800?random=12",
+        "https://picsum.photos/800?random=13"
+      ],
+      "ratings": 4.3
+    },
+    {
+      "id": "16",
+      "name": "Sweater",
+      "description": "Cozy knitted sweater with a stylish design and soft material",
+      "descriptionLong": "Cozy knitted sweater with a stylish design and soft material, offering warmth and comfort for cooler weather. Its timeless look pairs well with jeans, skirts, or trousers. The sweater features ribbed cuffs and hem, ensuring a snug fit that retains shape over time. Available in a variety of colors to match any wardrobe.",
+      "price": 49.99,
+      "categoryIds": [
+        "2"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=16",
+      "imageUrls": [
+        "https://picsum.photos/800?random=11",
+        "https://picsum.photos/800?random=12",
+        "https://picsum.photos/800?random=13"
+      ],
+      "ratings": 4.7
+    },
+    {
+      "id": "17",
+      "name": "Tablet",
+      "description": "10-inch tablet with high resolution display and 64GB storage",
+      "descriptionLong": "10-inch tablet with high resolution display and 64GB storage, perfect for streaming, reading, or light gaming. With a powerful processor and long battery life, this tablet is ideal for entertainment and productivity on the go. It has a slim and lightweight design, making it easy to carry. Supports both Wi-Fi and Bluetooth for seamless connectivity.",
+      "price": 399.99,
+      "categoryIds": [
+        "1",
+        "f1a9"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=17",
+      "imageUrls": [
+        "https://picsum.photos/800?random=11",
+        "https://picsum.photos/800?random=12",
+        "https://picsum.photos/800?random=13"
+      ],
+      "ratings": 4.4
+    },
+    {
+      "id": "18",
+      "name": "Portable Speaker",
+      "description": "Wireless portable speaker with deep bass and 12 hours of playtime",
+      "descriptionLong": "Wireless portable speaker with deep bass and 12 hours of playtime, great for outdoor gatherings or home use. It has a durable, splash-proof design and connects easily to devices via Bluetooth. The speaker provides rich, clear sound and is compact enough to carry anywhere. Perfect for music lovers who want high-quality sound on the go.",
+      "price": 59.99,
+      "categoryIds": [
+        "1",
+        "f1a9"
+      ],
+      "imageUrl": "https://picsum.photos/300?random=18",
+      "imageUrls": [
+        "https://picsum.photos/800?random=11",
+        "https://picsum.photos/800?random=12",
+        "https://picsum.photos/800?random=13"
+      ],
+      "ratings": 4.5
+    },
+    {
+      "id": "9435",
+      "name": "Test",
+      "price": "12",
+      "description": "description",
+      "descriptionLong": "description",
+      "categoryIds": [
+        "3",
+        "2"
+      ],
+      "imageUrl": "https://picsum.photos/300",
+      "imageUrls": [
+        "https://picsum.photos/800?random=1",
+        "https://picsum.photos/800?random=2",
+        "https://picsum.photos/800?random=3"
+      ]
+    }
+  ]
+}
