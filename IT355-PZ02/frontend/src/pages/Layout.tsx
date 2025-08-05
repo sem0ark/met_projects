@@ -160,7 +160,7 @@ const Footer = () => {
   return (
     <footer className="font-body container mx-auto flex h-10 w-full items-center justify-between gap-1 px-2">
       <div className="text-body flex items-center gap-1 font-bold">
-        True Colors <CopyRight /> 2024
+        True Colors <CopyRight /> 2025
       </div>
       <div className="text-body">Arkadii Semenov</div>
     </footer>

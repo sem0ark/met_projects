@@ -24,20 +24,20 @@ services:
       start_period: 30s
     restart: on-failure
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:80" # Maps port 3000 on host
-    environment:
-      REACT_APP_API_URL: http://backend:8080
-    depends_on:
-      backend:
-        condition: service_healthy # Ensure backend is ready before frontend tries to connect
-    networks:
-      - app-network
-    restart: on-failure # Or 'always' depending on preference
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "3000:80" # Maps port 3000 on host
+  #   environment:
+  #     VITE_API_URL: http://backend:8080
+  #   depends_on:
+  #     backend:
+  #       condition: service_healthy # Ensure backend is ready before frontend tries to connect
+  #   networks:
+  #     - app-network
+  #   restart: on-failure # Or 'always' depending on preference
 
   mysql-db:
     image: mysql:8.0
