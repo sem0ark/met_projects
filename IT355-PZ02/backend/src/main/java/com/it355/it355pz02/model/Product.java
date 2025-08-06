@@ -2,7 +2,9 @@ package com.it355.it355pz02.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
@@ -16,6 +18,8 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(exclude = {"categories", "images"})
+@ToString(exclude = {"categories", "images"})
 public class Product {
 
     @Id
@@ -37,7 +41,7 @@ public class Product {
     @Column(nullable = false)
     private Integer quantity;
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "product_category",
         joinColumns = @JoinColumn(name = "product_id"),
@@ -45,8 +49,9 @@ public class Product {
     )
     private Set<Category> categories = new HashSet<>();
 
-    // in IT355-PZ01 CascadeType.ALL was removing images on product for some reason
-    @OneToMany(mappedBy = "product", cascade = CascadeType.REMOVE, orphanRemoval = true, fetch = FetchType.LAZY)
+    // Note: IT355-PZ01 CascadeType.ALL & orphanRemoval = true was removing images on product for some reason
+    // when unreated product data was updated...
+    @OneToMany(mappedBy = "product", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     private List<ProductImage> images = new ArrayList<>();
 
     // Helper methods to manage bidirectional relationship with ProductImage
