@@ -1,39 +1,47 @@
 import { z } from "zod";
 
-export type RoleType = "user" | "admin";
+const RoleSchema = z.union([z.literal("ADMIN"), z.literal("USER")]);
+export type RoleType = z.infer<typeof RoleSchema>;
 
 export const LoginResponseSchema = z.object({
-  token: z.string(),
-  user: z.object({
-    id: z.number(),
-    login: z.string(),
-    role: z.enum(["user", "admin"]),
-  }),
+  accessToken: z.string(),
+  tokenType: z.literal("Bearer"), // Expects only "Bearer"
+  username: z.string(),
+  role: RoleSchema,
 });
 
 export type LoginResponse = z.infer<typeof LoginResponseSchema>;
 
-export const UserSchema = z.object({
-  id: z.number(),
-  login: z.string(),
-  role: z.enum(["user", "admin"]),
+export const LoginRequestSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(4, "Password must be at least 4 characters long"),
 });
+export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 
-export type User = z.infer<typeof UserSchema>;
-
-export const CurrentUserSchema = z.object({
-  id: z.number(),
-  login: z.string(),
-  role: z.enum(["user", "admin"]),
-  token: z.string(),
+export const RegisterRequestSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters long"),
+  password: z.string().min(4, "Password must be at least 4 characters long"),
 });
+export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
 
-export type CurrentUser = z.infer<typeof CurrentUserSchema>;
+export interface CurrentUser {
+  token: string;
+  username: string;
+  role: "ADMIN" | "USER";
+}
 
 export interface UserPost {
   login: string;
   password: string;
 }
+
+export const UserSchema = z.object({
+  id: z.number(),
+  username: z.string(),
+  role: RoleSchema,
+});
+
+export type User = z.infer<typeof UserSchema>;
 
 export const ProductSchema = z.object({
   id: z.number(),

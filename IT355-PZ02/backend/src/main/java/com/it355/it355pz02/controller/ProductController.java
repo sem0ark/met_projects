@@ -19,7 +19,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/app/products")
+@RequestMapping("/api/products")
 public class ProductController {
 
     private final ProductRepository productRepository;

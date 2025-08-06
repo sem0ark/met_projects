@@ -21,7 +21,7 @@ export function SignUp() {
 
   const onSubmit: SubmitHandler<IFormInput> = (data) =>
     signUp({
-      login: data.username,
+      username: data.username,
       password: data.password,
     });
 
@@ -37,7 +37,7 @@ export function SignUp() {
         onSubmit={handleSubmit(onSubmit)}
       >
         {isError && (
-          <ErrorText message={`Failed to login, ${error.message}.`} />
+          <ErrorText message={`Failed to sign up, ${error.message}.`} />
         )}
 
         <div className="flex w-full flex-col items-start gap-1">

@@ -10,7 +10,7 @@ interface IFormInput {
 }
 
 export function Login() {
-  const { mutate: login, isError } = useLogin();
+  const { mutate: login, isError, error } = useLogin();
   const {
     register,
     handleSubmit,
@@ -19,7 +19,7 @@ export function Login() {
 
   const onSubmit: SubmitHandler<IFormInput> = (data) =>
     login({
-      login: data.username,
+      username: data.username,
       password: data.password,
     });
 
@@ -32,9 +32,7 @@ export function Login() {
         onSubmit={handleSubmit(onSubmit)}
       >
         {isError && (
-          <ErrorText
-            message={"Failed to login, please check your credentials."}
-          />
+          <ErrorText message={`Failed to login, ${error.message}.`} />
         )}
 
         <div className="flex w-full flex-col items-start gap-2">

@@ -22,7 +22,7 @@ const UserForm = ({
   cancelEditing,
   isPending,
 }: {
-  user: { login: string };
+  user: { username: string };
   onSubmit: SubmitHandler<IFormDataUser>;
   cancelEditing: () => void;
   isPending: boolean;
@@ -117,7 +117,7 @@ const UserCreateForm = ({ cancelEditing }: { cancelEditing: () => void }) => {
       <UserForm
         isPending={isPending}
         user={{
-          login: "",
+          username: "",
         }}
         onSubmit={onSubmit}
         cancelEditing={cancelEditing}
@@ -164,7 +164,9 @@ const UserInfo = ({
 
   return (
     <div className="flex w-full flex-row gap-2">
-      <p className="max-w-lg overflow-hidden text-xl text-wrap">{user.login}</p>
+      <p className="max-w-lg overflow-hidden text-xl text-wrap">
+        {user.username}
+      </p>
 
       <div className="flex-1"></div>
 
@@ -229,7 +231,7 @@ export const AdminUsers = () => {
       )}
 
       {data
-        ?.filter((user) => user.id !== currentUser?.id)
+        ?.filter((user) => user.username !== currentUser?.username)
         ?.map((user) => <UserCard User={user} key={user.id} />) ||
         "No Users..."}
     </div>

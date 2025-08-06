@@ -16,7 +16,7 @@ import {
 } from "./types";
 import axios from "axios";
 import { z } from "zod";
-import { useUser } from "./auth";
+import { useUserHeaders } from "./auth";
 
 export const fullUrl = (str: string) =>
   `${import.meta.env.VITE_API_URL}/api${str}`;
@@ -27,7 +27,7 @@ export function useGet<T extends z.ZodTypeAny>(
   url: string,
   enabled = true,
 ) {
-  const user = useUser();
+  const userHeaders = useUserHeaders();
 
   return useQuery({
     queryKey: keys,
@@ -35,7 +35,7 @@ export function useGet<T extends z.ZodTypeAny>(
       axios
         .get(fullUrl(url), {
           headers: {
-            Authorization: `Bearer ${user?.token}`,
+            ...userHeaders,
           },
         })
         .then((r) => schema.parse(r.data)) as Promise<z.infer<T>>,
@@ -49,13 +49,13 @@ export function usePost<T, R = unknown>(
   onSuccess?: (data: R) => void,
 ) {
   const client = useQueryClient();
-  const user = useUser();
+  const userHeaders = useUserHeaders();
 
   return useMutation({
     mutationFn: (value: T) =>
       axios.post(fullUrl(url), value, {
         headers: {
-          Auth: user?.token,
+          ...userHeaders,
         },
       }) as Promise<R>,
     onSuccess: (data) => {
@@ -77,14 +77,14 @@ export function usePostSchema<T, R extends z.ZodTypeAny>(
   onSuccess?: (data: z.infer<R>, variables: T) => void,
 ) {
   const client = useQueryClient();
-  const user = useUser();
+  const userHeaders = useUserHeaders();
 
   return useMutation({
     mutationFn: (value: T) =>
       axios
         .post(fullUrl(url), value, {
           headers: {
-            Auth: user?.token,
+            ...userHeaders,
           },
         })
         .then((r) => {
@@ -109,13 +109,13 @@ export function usePut<T, R = unknown>(
   onSuccess?: (data: R) => void,
 ) {
   const client = useQueryClient();
-  const user = useUser();
+  const userHeaders = useUserHeaders();
 
   return useMutation({
     mutationFn: (value: T) =>
       axios.put(fullUrl(url), value, {
         headers: {
-          Auth: user?.token,
+          ...userHeaders,
         },
       }) as Promise<R>,
     onSuccess: (data) => {
@@ -136,13 +136,13 @@ export function useDelete(
   onSuccess?: () => void,
 ) {
   const client = useQueryClient();
-  const user = useUser();
+  const userHeaders = useUserHeaders();
 
   return useMutation({
     mutationFn: () =>
       axios.delete(fullUrl(url), {
         headers: {
-          Auth: user?.token,
+          ...userHeaders,
         },
       }),
     onSuccess: () => {
@@ -158,34 +158,34 @@ export function useDelete(
 }
 
 export const useQuery_FetchCategories = () =>
-  useGet(z.array(CategorySchema), ["categories"], "/app/categories");
+  useGet(z.array(CategorySchema), ["categories"], "/categories");
 
 export const useQuery_FetchCategory = (id: number) =>
-  useGet(CategorySchema, ["categories", id], `/app/categories/${id}`);
+  useGet(CategorySchema, ["categories", id], `/categories/${id}`);
 
 export const useQuery_AddCategory = () =>
-  usePost<CategoryPost>([["categories"]], `/app/categories`);
+  usePost<CategoryPost>([["categories"]], `/categories`);
 
 export const useQuery_PutCategory = (id: number) =>
-  usePut<CategoryPost>([["categories"]], `/app/categories/${id}`);
+  usePut<CategoryPost>([["categories"]], `/categories/${id}`);
 
 export const useQuery_DeleteCategory = (id: number) =>
-  useDelete([["categories"]], `/app/categories/${id}`);
+  useDelete([["categories"]], `/categories/${id}`);
 
 export const useQuery_FetchProducts = () =>
-  useGet(z.array(ProductSchema), ["products"], `/app/products`);
+  useGet(z.array(ProductSchema), ["products"], `/products`);
 
 export const useQuery_FetchProductsFiltered = (ids: number[]) => {
-  const user = useUser();
+  const userHeaders = useUserHeaders();
 
   return useQueries({
     queries: ids.map((id) => ({
       queryKey: ["products", id],
       queryFn: () =>
         axios
-          .get(fullUrl(`/app/products/${id}`), {
+          .get(fullUrl(`/products/${id}`), {
             headers: {
-              Auth: user?.token,
+              ...userHeaders,
             },
           })
           .then((r) => ProductSchema.parse(r.data)) as Promise<Product>,
@@ -194,16 +194,16 @@ export const useQuery_FetchProductsFiltered = (ids: number[]) => {
 };
 
 export const useQuery_FetchProduct = (id: number) =>
-  useGet(ProductSchema, ["products", id], `/app/products/${id}`);
+  useGet(ProductSchema, ["products", id], `/products/${id}`);
 
 export const useQuery_AddProduct = () =>
-  usePost<ProductPost>([["products"]], `/app/products`);
+  usePost<ProductPost>([["products"]], `/products`);
 
 export const useQuery_PutProduct = (id: number) =>
-  usePut<ProductPost>([["products"]], `/app/products/${id}`);
+  usePut<ProductPost>([["products"]], `/products/${id}`);
 
 export const useQuery_DeleteProduct = (id: number) =>
-  useDelete([["products"]], `/app/products/${id}`);
+  useDelete([["products"]], `/products/${id}`);
 
 export const useQuery_FetchUsers = () =>
   useGet(z.array(UserSchema), ["users"], `/users`);

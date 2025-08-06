@@ -76,8 +76,8 @@ const Checkout = () => {
               </DialogTitle>
 
               <p className="mt-2 text-sm/6 text-black/50">
-                Your payment has been successfully submitted. We've sent you an
-                email with all of the details of your order.
+                Your payment has been successfully submitted. Order will arrive
+                when it will become an actual application.
               </p>
               <div className="mt-4">
                 <Button

@@ -74,7 +74,7 @@ export const router = createHashRouter([
         ],
       },
       {
-        element: <RequireAuth role="user" />,
+        element: <RequireAuth role="USER" />,
         children: [
           {
             path: "/cart",
@@ -84,7 +84,7 @@ export const router = createHashRouter([
         ],
       },
       {
-        element: <RequireAuth role="admin" />,
+        element: <RequireAuth role="ADMIN" />,
         children: [
           {
             path: "/admin/products",

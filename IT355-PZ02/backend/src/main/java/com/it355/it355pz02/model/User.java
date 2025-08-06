@@ -3,6 +3,7 @@ package com.it355.it355pz02.model;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.AllArgsConstructor;
 
 @Entity
@@ -10,6 +11,7 @@ import lombok.AllArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"passwordHash"})
 public class User {
 
     @Id
@@ -21,9 +23,6 @@ public class User {
 
     @Column(nullable = false)
     private String passwordHash; // Stores the hashed password
-
-    @Column(nullable = false)
-    private String email;
 
     @Enumerated(EnumType.STRING) // Store enum as String in DB
     @Column(nullable = false)

@@ -6,7 +6,7 @@ export function UserInfo() {
 
   return (
     <div className="flex flex-col items-center justify-center gap-5">
-      <h1 className="text-3xl font-bold">Welcome, {user?.login}!</h1>
+      <h1 className="text-3xl font-bold">Welcome, {user?.username}!</h1>
       <p className="text-lg italic">You can find anything there!</p>
 
       <div className="flex gap-3">
