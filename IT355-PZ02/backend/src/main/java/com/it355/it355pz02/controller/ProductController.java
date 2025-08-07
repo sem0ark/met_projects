@@ -7,6 +7,8 @@ import com.it355.it355pz02.model.Product;
 import com.it355.it355pz02.model.ProductImage;
 import com.it355.it355pz02.model.CategoryRepository;
 import com.it355.it355pz02.model.ProductRepository;
+import com.it355.it355pz02.utils.APIException;
+
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,8 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.HashSet; // Import HashSet
 
 @RestController
 @RequestMapping("/api/products")
@@ -42,9 +44,9 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id) {
-        Optional<Product> product = productRepository.findById(id);
-        return product.map(p -> ResponseEntity.ok(ProductDTO.fromEntity(p)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new APIException(HttpStatus.NOT_FOUND, "Product not found with ID: " + id));
+        return ResponseEntity.ok(ProductDTO.fromEntity(product));
     }
 
     @PostMapping
@@ -59,17 +61,21 @@ public class ProductController {
         if (productPostDTO.getCategoryIds() != null && !productPostDTO.getCategoryIds().isEmpty()) {
             List<Category> categories = categoryRepository.findAllById(productPostDTO.getCategoryIds());
             if (categories.size() != productPostDTO.getCategoryIds().size()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+                // Some provided category IDs were not found in the database
+                throw new APIException(HttpStatus.BAD_REQUEST, "One or more provided category IDs are invalid.");
             }
-            product.setCategories(new java.util.HashSet<>(categories));
+            product.setCategories(new HashSet<>(categories));
+        } else {
+            product.setCategories(new HashSet<>());
         }
+
 
         if (productPostDTO.getImageUrls() != null && !productPostDTO.getImageUrls().isEmpty()) {
             productPostDTO.getImageUrls().stream()
                 .forEach(url -> {
                     ProductImage img = new ProductImage();
                     img.setImageUrl(url);
-                    product.addImage(img);
+                    product.addImage(img); // This relies on CascadeType.PERSIST on Product.images
                 });
         }
 
@@ -80,13 +86,9 @@ public class ProductController {
     @PutMapping("/{id}")
     @Transactional
     public ResponseEntity<ProductDTO> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductPostDTO productPostDTO) {
-        Optional<Product> existingProductOptional = productRepository.findById(id);
+        Product existingProduct = productRepository.findById(id)
+                .orElseThrow(() -> new APIException(HttpStatus.NOT_FOUND, "Product not found with ID: " + id));
 
-        if (existingProductOptional.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Product existingProduct = existingProductOptional.get();
         existingProduct.setName(productPostDTO.getName());
         existingProduct.setDescription(productPostDTO.getDescription());
         existingProduct.setDescriptionLong(productPostDTO.getDescriptionLong());
@@ -95,13 +97,15 @@ public class ProductController {
         if (productPostDTO.getCategoryIds() != null && !productPostDTO.getCategoryIds().isEmpty()) {
             List<Category> categories = categoryRepository.findAllById(productPostDTO.getCategoryIds());
             if (categories.size() != productPostDTO.getCategoryIds().size()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build(); // Some category IDs were not found
+                // Some provided category IDs were not found in the database
+                throw new APIException(HttpStatus.BAD_REQUEST, "One or more provided category IDs are invalid for update.");
             }
-            existingProduct.setCategories(new java.util.HashSet<>(categories));
+            existingProduct.setCategories(new HashSet<>(categories));
         } else {
-            existingProduct.setCategories(new java.util.HashSet<>()); // Clear categories if none provided
+            existingProduct.setCategories(new HashSet<>());
         }
 
+        // Clear existing images and add new ones
         existingProduct.getImages().clear();
         if (productPostDTO.getImageUrls() != null && !productPostDTO.getImageUrls().isEmpty()) {
             productPostDTO.getImageUrls().forEach(url -> {
@@ -118,7 +122,7 @@ public class ProductController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         if (!productRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
+            throw new APIException(HttpStatus.NOT_FOUND, "Product not found with ID: " + id);
         }
         productRepository.deleteById(id);
         return ResponseEntity.noContent().build(); // 204 No Content

@@ -60,10 +60,7 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         User user = userRepository.findById(id)
-            .orElseThrow(() -> {
-                logger.warn("User with ID: {} not found.", id);
-                return new APIException(HttpStatus.NOT_FOUND, "User not found with id: " + id);
-            });
+            .orElseThrow(() -> new APIException(HttpStatus.NOT_FOUND, "User not found with id: " + id));
         return ResponseEntity.ok(convertToDto(user));
     }
 
@@ -93,10 +90,7 @@ public class UserController {
         logger.info("Admin user '{}' is attempting to update user with ID: {}", getCurrentAuthenticatedUsername(), id);
 
         User existingUser = userRepository.findById(id)
-                .orElseThrow(() -> {
-                    logger.warn("User update failed: User with ID: {} not found.", id);
-                    return new APIException(HttpStatus.NOT_FOUND, "User not found with id: " + id);
-                });
+                .orElseThrow(() -> new APIException(HttpStatus.NOT_FOUND, "User not found with id: " + id));
 
         if (existingUser.getRole() == User.Role.ADMIN) {
             logger.warn("Admin '{}' attempted to modify admin user '{}' (ID: {}). Operation denied.", getCurrentAuthenticatedUsername(), existingUser.getUsername(), existingUser.getId());
@@ -105,7 +99,6 @@ public class UserController {
 
         if (!existingUser.getUsername().equals(userUpdateDto.getUsername())) {
             if (userRepository.existsByUsername(userUpdateDto.getUsername())) {
-                logger.warn("User update failed: New username '{}' is already taken.", userUpdateDto.getUsername());
                 throw new APIException(HttpStatus.BAD_REQUEST, "Username '" + userUpdateDto.getUsername() + "' is already taken.");
             }
             existingUser.setUsername(userUpdateDto.getUsername());
@@ -127,10 +120,7 @@ public class UserController {
         logger.info("Admin user '{}' is attempting to delete user with ID: {}", getCurrentAuthenticatedUsername(), id);
 
         User userToDelete = userRepository.findById(id)
-                .orElseThrow(() -> {
-                    logger.warn("User deletion failed: User with ID: {} not found.", id);
-                    return new APIException(HttpStatus.NOT_FOUND, "User not found with id: " + id);
-                });
+                .orElseThrow(() -> new APIException(HttpStatus.NOT_FOUND, "User not found with id: " + id));
 
         if (userToDelete.getRole() == User.Role.ADMIN && !Objects.equals(userToDelete.getUsername(), getCurrentAuthenticatedUsername())) {
             logger.warn("Admin '{}' attempted to delete another admin user '{}' (ID: {}). Operation denied.", getCurrentAuthenticatedUsername(), userToDelete.getUsername(), userToDelete.getId());

@@ -6,6 +6,7 @@ import com.it355.it355pz02.model.UserPostDTO;
 import com.it355.it355pz02.model.User;
 import com.it355.it355pz02.model.UserRepository;
 import com.it355.it355pz02.security.AuthService;
+import com.it355.it355pz02.utils.APIException;
 
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -14,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,7 +37,7 @@ public class AuthController {
         String token = authService.login(loginDto);
 
         User user = userRepository.findByUsername(loginDto.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + loginDto.getUsername()));
+                .orElseThrow(() -> new APIException(HttpStatus.NOT_FOUND, "User not found with username: " + loginDto.getUsername()));
 
         JWTAuthResponseDTO jwtAuthResponse = new JWTAuthResponseDTO();
         jwtAuthResponse.setAccessToken(token);
@@ -52,7 +52,7 @@ public class AuthController {
         String token = authService.register(registerDto);
 
         User user = userRepository.findByUsername(registerDto.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + registerDto.getUsername()));
+                .orElseThrow(() -> new APIException(HttpStatus.BAD_REQUEST, "Username '" + registerDto.getUsername() + "' is already taken."));
 
         JWTAuthResponseDTO jwtAuthResponse = new JWTAuthResponseDTO();
         jwtAuthResponse.setAccessToken(token);

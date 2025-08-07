@@ -42,14 +42,15 @@ public class SpringSecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Use stateless sessions for JWT
             .authorizeHttpRequests((authorize) -> {
-                // Allow public access to auth endpoints and H2 console (if used)
                 authorize.requestMatchers("/api/auth/**").permitAll();
 
-                // Allow GET requests to products and categories without authentication
                 authorize.requestMatchers(HttpMethod.GET, "/api/products/**").permitAll();
                 authorize.requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll();
 
-                // For all other requests, require authentication
+                authorize.requestMatchers(HttpMethod.GET, "/v3/api-docs/**").permitAll();
+                authorize.requestMatchers(HttpMethod.GET, "/swagger-ui/**").permitAll();
+                authorize.requestMatchers(HttpMethod.GET, "/swagger-ui.html").permitAll();
+
                 authorize.anyRequest().authenticated();
             });
 
