@@ -184,7 +184,6 @@ const ProductCreateForm = ({
       description: data.description,
       descriptionLong: data.descriptionLong,
       categoryIds: data.categoryIds,
-      imageUrl: "https://picsum.photos/300",
       imageUrls: [
         "https://picsum.photos/800?random=1",
         "https://picsum.photos/800?random=2",

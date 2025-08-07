@@ -10,7 +10,7 @@ interface IFormInput {
 }
 
 export function Login() {
-  const { mutate: login, isError, error } = useLogin();
+  const { mutate: login, isError } = useLogin();
   const {
     register,
     handleSubmit,
@@ -26,13 +26,18 @@ export function Login() {
   return (
     <div className="flex w-full flex-col items-center justify-center gap-5">
       <h1 className="text-3xl font-bold">Login</h1>
+      <p className="text-sm text-slate-500">
+        For testing use: user (pass: user) and admin (pass: admin)
+      </p>
 
       <form
         className="flex w-80 flex-col items-center gap-5 rounded-lg bg-white p-5 drop-shadow-lg"
         onSubmit={handleSubmit(onSubmit)}
       >
         {isError && (
-          <ErrorText message={`Failed to login, ${error.message}.`} />
+          <ErrorText
+            message={`Failed to login, check your username and password.`}
+          />
         )}
 
         <div className="flex w-full flex-col items-start gap-2">

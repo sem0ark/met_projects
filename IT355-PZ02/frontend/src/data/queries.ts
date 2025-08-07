@@ -88,7 +88,6 @@ export function usePostSchema<T, R extends z.ZodTypeAny>(
           },
         })
         .then((r) => {
-          console.log("Success POST", r.data);
           return schema.parse(r.data);
         }) as Promise<z.infer<R>>,
     onSuccess: (data, variables) => {

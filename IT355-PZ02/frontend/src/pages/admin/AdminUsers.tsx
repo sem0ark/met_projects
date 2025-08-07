@@ -12,7 +12,7 @@ import { ErrorText } from "../../components/forms";
 import { useUser } from "../../data/auth";
 
 interface IFormDataUser {
-  login: string;
+  username: string;
   password: string;
 }
 
@@ -43,10 +43,10 @@ const UserForm = ({
       <div className="h-full max-w-lg flex-1 flex-col gap-2 overflow-hidden text-xl text-wrap">
         <input
           placeholder="Enter a name"
-          {...register("login", {
+          {...register("username", {
             required: {
               value: true,
-              message: "Please, enter login.",
+              message: "Please, enter username.",
             },
             pattern: {
               value: /[^\s]/,
@@ -60,7 +60,7 @@ const UserForm = ({
           type="text"
           className="w-full"
         />
-        {<ErrorText message={errors?.login?.message} />}
+        {<ErrorText message={errors?.username?.message} />}
       </div>
 
       <div className="h-full max-w-lg flex-1 flex-col gap-2 overflow-hidden text-xl text-wrap">
@@ -102,27 +102,26 @@ const UserForm = ({
 };
 
 const UserCreateForm = ({ cancelEditing }: { cancelEditing: () => void }) => {
-  const { mutate: createUser, isPending, error } = useQuery_AddUser();
+  const { mutate: createUser, isPending } = useQuery_AddUser();
 
   const onSubmit: SubmitHandler<IFormDataUser> = (data) => {
     createUser({
-      login: data.login.trim(),
+      username: data.username.trim(),
       password: data.password.trim(),
     });
     cancelEditing();
   };
 
-  if (error)
-    return (
-      <UserForm
-        isPending={isPending}
-        user={{
-          username: "",
-        }}
-        onSubmit={onSubmit}
-        cancelEditing={cancelEditing}
-      />
-    );
+  return (
+    <UserForm
+      isPending={isPending}
+      user={{
+        username: "",
+      }}
+      onSubmit={onSubmit}
+      cancelEditing={cancelEditing}
+    />
+  );
 };
 
 const UserEditForm = ({
@@ -137,7 +136,7 @@ const UserEditForm = ({
   const onSubmit: SubmitHandler<IFormDataUser> = (data) => {
     updateUser({
       ...user,
-      login: data.login.trim(),
+      username: data.username.trim(),
       password: data.password.trim(),
     });
     cancelEditing();
@@ -223,11 +222,15 @@ export const AdminUsers = () => {
         <button
           className="rounded-md bg-orange-500 px-5 py-2 text-base font-bold text-white hover:brightness-125"
           onClick={() => setIsAddingUser(true)}
+          key={"crearting user"}
         >
           Add New User
         </button>
       ) : (
-        <UserCreateForm cancelEditing={() => setIsAddingUser(false)} />
+        <UserCreateForm
+          key={"crearting user form"}
+          cancelEditing={() => setIsAddingUser(false)}
+        />
       )}
 
       {data

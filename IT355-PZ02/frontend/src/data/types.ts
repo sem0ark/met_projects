@@ -31,7 +31,7 @@ export interface CurrentUser {
 }
 
 export interface UserPost {
-  login: string;
+  username: string;
   password: string;
 }
 
@@ -64,7 +64,6 @@ export interface ProductPost {
   descriptionLong: string;
   price: number;
   categoryIds: number[];
-  imageUrl: string;
   imageUrls: string[];
 }
 

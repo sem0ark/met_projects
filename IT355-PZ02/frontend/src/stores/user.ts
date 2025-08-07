@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { type Product, type CurrentUser } from "../data/types";
 import { immer } from "zustand/middleware/immer";
-import { persist } from "zustand/middleware";
 import { useQuery_FetchProductsFiltered } from "../data/queries";
 
 interface CartItem {
@@ -42,52 +41,44 @@ export const useTotalPrice = () => {
 };
 
 export const useUserStore = create<UserState>()(
-  persist(
-    immer((set) => ({
-      items: [],
-      user: null,
+  immer((set) => ({
+    items: [],
+    user: null,
 
-      addItem: (product: Product, quantity: number) =>
-        set((state) => {
-          const item = state.items.filter(
-            (it) => it.productId === product.id,
-          )[0];
+    addItem: (product: Product, quantity: number) =>
+      set((state) => {
+        const item = state.items.filter((it) => it.productId === product.id)[0];
 
-          if (item) {
-            item.quantity += quantity;
-          } else {
-            state.items.push({
-              productId: product.id,
-              quantity: quantity,
-            });
-          }
-        }),
+        if (item) {
+          item.quantity += quantity;
+        } else {
+          state.items.push({
+            productId: product.id,
+            quantity: quantity,
+          });
+        }
+      }),
 
-      login: (newUser: CurrentUser) =>
-        set((state) => {
-          if (state.user !== null) state.clearCart();
-          state.user = newUser;
-        }),
+    login: (newUser: CurrentUser) =>
+      set((state) => {
+        if (state.user !== null) state.clearCart();
+        state.user = newUser;
+      }),
 
-      logout: () =>
-        set((state) => {
-          state.user = null;
-          state.items = [];
-        }),
+    logout: () =>
+      set((state) => {
+        state.user = null;
+        state.items = [];
+      }),
 
-      clearCart: () =>
-        set((state) => {
-          state.items = [];
-        }),
+    clearCart: () =>
+      set((state) => {
+        state.items = [];
+      }),
 
-      removeProduct: (productId: number) =>
-        set((state) => {
-          state.items = state.items.filter((it) => it.productId !== productId);
-        }),
-    })),
-    {
-      name: "user-storage",
-      partialize: (state) => ({ user: state.user, items: state.items }),
-    },
-  ),
+    removeProduct: (productId: number) =>
+      set((state) => {
+        state.items = state.items.filter((it) => it.productId !== productId);
+      }),
+  })),
 );

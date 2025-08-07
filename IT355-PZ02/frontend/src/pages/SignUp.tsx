@@ -10,7 +10,7 @@ interface IFormInput {
 }
 
 export function SignUp() {
-  const { mutate: signUp, isError, error } = useSignUp();
+  const { mutate: signUp, isError } = useSignUp();
 
   const {
     register,
@@ -37,7 +37,9 @@ export function SignUp() {
         onSubmit={handleSubmit(onSubmit)}
       >
         {isError && (
-          <ErrorText message={`Failed to sign up, ${error.message}.`} />
+          <ErrorText
+            message={`Failed to sign up, make sure that your username is unique.`}
+          />
         )}
 
         <div className="flex w-full flex-col items-start gap-1">
