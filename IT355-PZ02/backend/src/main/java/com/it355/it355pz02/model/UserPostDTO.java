@@ -11,7 +11,7 @@ import lombok.Setter;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class RegisterDTO {
+public class UserPostDTO {
     @NotEmpty(message = "Username cannot be empty")
     @Size(min = 3, message = "Username must be at least 3 characters long")
     private String username;

@@ -28,10 +28,6 @@ public class ProductDTO {
             return null;
         }
 
-
-        if (product.getCategories() != null && !product.getCategories().isEmpty()) {
-            Hibernate.initialize(product.getCategories());
-        }
         List<Long> categoryIds = product.getCategories().stream()
                                     .map(category -> category.getId())
                                     .collect(Collectors.toList());
@@ -44,7 +40,6 @@ public class ProductDTO {
                                     .collect(Collectors.toList());
 
         String primaryImageUrl = imageUrls.isEmpty() ? null : imageUrls.get(0);
-
 
         return new ProductDTO(
             product.getId(),

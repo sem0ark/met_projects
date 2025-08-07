@@ -2,7 +2,7 @@ package com.it355.it355pz02.controller;
 
 import com.it355.it355pz02.model.JWTAuthResponseDTO;
 import com.it355.it355pz02.model.LoginDTO;
-import com.it355.it355pz02.model.RegisterDTO;
+import com.it355.it355pz02.model.UserPostDTO;
 import com.it355.it355pz02.model.User;
 import com.it355.it355pz02.model.UserRepository;
 import com.it355.it355pz02.security.AuthService;
@@ -10,6 +10,8 @@ import com.it355.it355pz02.security.AuthService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -23,6 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    // https://www.geeksforgeeks.org/springboot/spring-boot-logging/
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     private AuthService authService;
     private UserRepository userRepository;
@@ -43,7 +48,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<JWTAuthResponseDTO> register(@Valid @RequestBody RegisterDTO registerDto) {
+    public ResponseEntity<JWTAuthResponseDTO> register(@Valid @RequestBody UserPostDTO registerDto) {
         String token = authService.register(registerDto);
 
         User user = userRepository.findByUsername(registerDto.getUsername())
@@ -53,6 +58,9 @@ public class AuthController {
         jwtAuthResponse.setAccessToken(token);
         jwtAuthResponse.setUsername(user.getUsername());
         jwtAuthResponse.setRole(user.getRole());
+        logger.warn("Got a new user!");
+
+        logger.warn("Got a new user: " + user.toString() + "  pass hash  " + user.getPasswordHash());
 
         return new ResponseEntity<>(jwtAuthResponse, HttpStatus.CREATED);
     }

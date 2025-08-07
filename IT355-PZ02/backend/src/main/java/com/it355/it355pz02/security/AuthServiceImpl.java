@@ -1,7 +1,7 @@
 package com.it355.it355pz02.security;
 
 import com.it355.it355pz02.model.LoginDTO;
-import com.it355.it355pz02.model.RegisterDTO;
+import com.it355.it355pz02.model.UserPostDTO;
 import com.it355.it355pz02.model.User;
 import com.it355.it355pz02.model.UserRepository;
 import com.it355.it355pz02.utils.APIException;
@@ -42,7 +42,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public String register(RegisterDTO registerDto) {
+    public String register(UserPostDTO registerDto) {
         if (userRepository.existsByUsername(registerDto.getUsername())) {
             throw new APIException(HttpStatus.BAD_REQUEST, "Username is already taken!");
         }

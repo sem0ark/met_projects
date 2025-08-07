@@ -38,9 +38,6 @@ public class Product {
     @Column(nullable = false)
     private BigDecimal price;
 
-    @Column(nullable = false)
-    private Integer quantity;
-
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "product_category",
@@ -51,7 +48,7 @@ public class Product {
 
     // Note: IT355-PZ01 CascadeType.ALL & orphanRemoval = true was removing images on product for some reason
     // when unreated product data was updated...
-    @OneToMany(mappedBy = "product", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ProductImage> images = new ArrayList<>();
 
     // Helper methods to manage bidirectional relationship with ProductImage

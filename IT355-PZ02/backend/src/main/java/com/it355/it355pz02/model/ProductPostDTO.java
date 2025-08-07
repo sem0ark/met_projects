@@ -26,14 +26,7 @@ public class ProductPostDTO {
     @Positive(message = "Product price must be positive")
     private BigDecimal price;
 
-    @NotNull(message = "Product quantity is required")
-    @Positive(message = "Product quantity must be positive")
-    private Integer quantity; // Assuming quantity is part of creation/update
-
     private List<Long> categoryIds;
 
-    @NotBlank(message = "Product primary image URL is required")
-    private String imageUrl; // This will be the first image in imageUrls
-
-    private List<String> imageUrls; // All image URLs, including the primary
+    private List<String> imageUrls;
 }
