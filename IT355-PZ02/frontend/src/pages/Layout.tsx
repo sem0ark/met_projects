@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet } from "react-router-dom";
 import clsx from "clsx";
 
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
-import { BrandIcon, CartIcon } from "../components/icons";
+import { BrandIcon, CartIcon, OpenAPI } from "../components/icons";
 import { getTotalProducts, useUserStore } from "../stores/user";
 import { useIsLoggedIn, useIsLoggedInAsUser } from "../data/auth";
 import { AdminPanelButton } from "./admin/AdminPanel";
@@ -162,6 +162,13 @@ const Footer = () => {
       <div className="text-body flex items-center gap-1 font-bold">
         True Colors <CopyRight /> 2025
       </div>
+      <a
+        target="_blank"
+        href="http://localhost:8080/swagger-ui/index.html"
+        className="rounded-full border-2 border-orange-700 bg-orange-50 px-5 transition-colors duration-200 ease-in-out hover:bg-orange-200 hover:shadow-md"
+      >
+        <OpenAPI className="-my-8 size-24" />
+      </a>
       <div className="text-body">Arkadii Semenov</div>
     </footer>
   );
