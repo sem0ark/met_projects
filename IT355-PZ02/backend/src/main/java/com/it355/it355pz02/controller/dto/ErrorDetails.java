@@ -1,4 +1,4 @@
-package com.it355.it355pz02.controller;
+package com.it355.it355pz02.controller.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
+import com.it355.it355pz02.controller.dto.ErrorDetails;
 import com.it355.it355pz02.utils.APIException;
 
 @RestControllerAdvice

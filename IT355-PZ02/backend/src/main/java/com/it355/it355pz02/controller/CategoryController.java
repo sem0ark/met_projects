@@ -4,6 +4,8 @@ import com.it355.it355pz02.controller.dto.CategoryDTO;
 import com.it355.it355pz02.controller.dto.CategoryPostDTO;
 import com.it355.it355pz02.model.Category;
 import com.it355.it355pz02.model.CategoryRepository;
+import com.it355.it355pz02.utils.APIException;
+
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -38,13 +40,13 @@ public class CategoryController {
     public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long id) {
         Optional<Category> category = categoryRepository.findById(id);
         return category.map(c -> ResponseEntity.ok(CategoryDTO.fromEntity(c)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseThrow(() -> new APIException(HttpStatus.NOT_FOUND, "Category not found with ID: " + id));
     }
 
     @PostMapping
     public ResponseEntity<CategoryDTO> createCategory(@Valid @RequestBody CategoryPostDTO categoryPostDTO) {
         if (categoryRepository.findByName(categoryPostDTO.getName()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            throw new APIException(HttpStatus.CONFLICT, "Category with name '" + categoryPostDTO.getName() + "' already exists.");
         }
 
         Category category = new Category();
@@ -61,7 +63,7 @@ public class CategoryController {
         Optional<Category> existingCategoryOptional = categoryRepository.findById(id);
 
         if (existingCategoryOptional.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            throw new APIException(HttpStatus.NOT_FOUND, "Category not found with ID: " + id);
         }
 
         Category existingCategory = existingCategoryOptional.get();
@@ -70,7 +72,7 @@ public class CategoryController {
         if (categoryRepository.findByName(categoryPostDTO.getName())
                 .filter(c -> !c.getId().equals(id))
                 .isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            throw new APIException(HttpStatus.CONFLICT, "Category with name '" + categoryPostDTO.getName() + "' already exists.");
         }
 
         existingCategory.setName(categoryPostDTO.getName());
@@ -82,7 +84,7 @@ public class CategoryController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
         if (!categoryRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
+            throw new APIException(HttpStatus.NOT_FOUND, "Category not found with ID: " + id);
         }
         categoryRepository.deleteById(id);
         return ResponseEntity.noContent().build();

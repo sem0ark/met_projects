@@ -52,15 +52,12 @@ public class AuthController {
         String token = authService.register(registerDto);
 
         User user = userRepository.findByUsername(registerDto.getUsername())
-                .orElseThrow(() -> new APIException(HttpStatus.BAD_REQUEST, "Username '" + registerDto.getUsername() + "' is already taken."));
+                .orElseThrow(() -> new APIException(HttpStatus.CONFLICT, "Username '" + registerDto.getUsername() + "' is already taken."));
 
         JWTAuthResponseDTO jwtAuthResponse = new JWTAuthResponseDTO();
         jwtAuthResponse.setAccessToken(token);
         jwtAuthResponse.setUsername(user.getUsername());
         jwtAuthResponse.setRole(user.getRole());
-        logger.warn("Got a new user!");
-
-        logger.warn("Got a new user: " + user.toString() + "  pass hash  " + user.getPasswordHash());
 
         return new ResponseEntity<>(jwtAuthResponse, HttpStatus.CREATED);
     }
