@@ -5,6 +5,8 @@ import com.it355.it355pz02.controller.dto.CategoryDTO;
 import com.it355.it355pz02.controller.dto.CategoryPostDTO;
 import com.it355.it355pz02.model.Category;
 import com.it355.it355pz02.model.CategoryRepository;
+import com.it355.it355pz02.utils.APIException;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +22,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -81,9 +84,11 @@ public class CategoryControllerUnitTest {
     void testGetCategoryById_NotFound() {
         when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
 
-        ResponseEntity<CategoryDTO> response = categoryController.getCategoryById(99L);
+        APIException exception = assertThrows(APIException.class, () -> {
+            categoryController.getCategoryById(99L);
+        });
 
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
         verify(categoryRepository, times(1)).findById(99L);
     }
 
@@ -110,9 +115,11 @@ public class CategoryControllerUnitTest {
         CategoryPostDTO existingCategoryPostDTO = new CategoryPostDTO("Electronics");
         when(categoryRepository.findByName("Electronics")).thenReturn(Optional.of(category1));
 
-        ResponseEntity<CategoryDTO> response = categoryController.createCategory(existingCategoryPostDTO);
+        APIException exception = assertThrows(APIException.class, () -> {
+            categoryController.createCategory(existingCategoryPostDTO);
+        });
 
-        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
         verify(categoryRepository, times(1)).findByName("Electronics");
         verify(categoryRepository, never()).save(any(Category.class));
     }
@@ -142,9 +149,11 @@ public class CategoryControllerUnitTest {
         CategoryPostDTO updateDTO = new CategoryPostDTO("NonExistent");
         when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
 
-        ResponseEntity<CategoryDTO> response = categoryController.updateCategory(99L, updateDTO);
+        APIException exception = assertThrows(APIException.class, () -> {
+            categoryController.updateCategory(99L, updateDTO);
+        });
 
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
         verify(categoryRepository, times(1)).findById(99L);
         verify(categoryRepository, never()).findByName(anyString());
         verify(categoryRepository, never()).save(any(Category.class));
@@ -158,9 +167,9 @@ public class CategoryControllerUnitTest {
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category1));
         when(categoryRepository.findByName("Clothes")).thenReturn(Optional.of(categoryWithConflictingName));
 
-        ResponseEntity<CategoryDTO> response = categoryController.updateCategory(1L, updateDTO);
+        APIException exception = assertThrows(APIException.class, () -> categoryController.updateCategory(1L, updateDTO));
 
-        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
         verify(categoryRepository, times(1)).findById(1L);
         verify(categoryRepository, times(1)).findByName("Clothes");
         verify(categoryRepository, never()).save(any(Category.class));
@@ -182,9 +191,11 @@ public class CategoryControllerUnitTest {
     void testDeleteCategory_NotFound() {
         when(categoryRepository.existsById(99L)).thenReturn(false);
 
-        ResponseEntity<Void> response = categoryController.deleteCategory(99L);
+        APIException exception = assertThrows(APIException.class, () -> {
+            categoryController.deleteCategory(99L);
+        });
 
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
         verify(categoryRepository, times(1)).existsById(99L);
         verify(categoryRepository, never()).deleteById(anyLong());
     }
