@@ -25,8 +25,6 @@ public class CategoryController {
         this.categoryRepository = categoryRepository;
     }
 
-    // GET all categories
-    // Corresponding frontend: useQuery_FetchCategories
     @GetMapping
     public ResponseEntity<List<CategoryDTO>> getAllCategories() {
         List<Category> categories = categoryRepository.findAll();
@@ -36,8 +34,6 @@ public class CategoryController {
         return ResponseEntity.ok(categoryDTOs);
     }
 
-    // GET category by ID
-    // Corresponding frontend: useQuery_FetchCategory(id)
     @GetMapping("/{id}")
     public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long id) {
         Optional<Category> category = categoryRepository.findById(id);
@@ -45,14 +41,10 @@ public class CategoryController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // POST new category
-    // Corresponding frontend: useQuery_AddCategory
     @PostMapping
     public ResponseEntity<CategoryDTO> createCategory(@Valid @RequestBody CategoryPostDTO categoryPostDTO) {
-        // Check if a category with the same name already exists
         if (categoryRepository.findByName(categoryPostDTO.getName()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .build(); // Or return a more specific error DTO
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
 
         Category category = new Category();
@@ -64,8 +56,6 @@ public class CategoryController {
         return ResponseEntity.status(HttpStatus.CREATED).body(CategoryDTO.fromEntity(savedCategory));
     }
 
-    // PUT update category
-    // Corresponding frontend: useQuery_PutCategory(id)
     @PutMapping("/{id}")
     public ResponseEntity<CategoryDTO> updateCategory(@PathVariable Long id, @Valid @RequestBody CategoryPostDTO categoryPostDTO) {
         Optional<Category> existingCategoryOptional = categoryRepository.findById(id);
@@ -84,20 +74,17 @@ public class CategoryController {
         }
 
         existingCategory.setName(categoryPostDTO.getName());
-        // Update other fields if they are added to CategoryPostDTO and Category model
 
         Category updatedCategory = categoryRepository.save(existingCategory);
         return ResponseEntity.ok(CategoryDTO.fromEntity(updatedCategory));
     }
 
-    // DELETE category
-    // Corresponding frontend: useQuery_DeleteCategory(id)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
         if (!categoryRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
         categoryRepository.deleteById(id);
-        return ResponseEntity.noContent().build(); // 204 No Content
+        return ResponseEntity.noContent().build();
     }
 }

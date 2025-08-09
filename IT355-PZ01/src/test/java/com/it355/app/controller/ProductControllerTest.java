@@ -42,20 +42,16 @@ public class ProductControllerTest {
 
     @BeforeEach
     void setUp() {
-        // Initializes mocks before each test method
         MockitoAnnotations.openMocks(this);
     }
 
     @Test
     void listProducts_ShouldAddAllProductsToModelAndReturnViewName() {
-        // Arrange
         List<Product> products = Arrays.asList(new Product(), new Product());
         when(productRepository.findAll()).thenReturn(products);
 
-        // Act
         String viewName = productController.listProducts(model);
 
-        // Assert
         assertEquals("product_list", viewName);
         verify(model, times(1)).addAttribute("products", products);
         verify(productRepository, times(1)).findAll();
@@ -63,14 +59,11 @@ public class ProductControllerTest {
 
     @Test
     void newProductForm_ShouldAddNewProductAndAllCategoriesToModelAndReturnViewName() {
-        // Arrange
         List<Category> categories = Arrays.asList(new Category(), new Category());
         when(categoryRepository.findAll()).thenReturn(categories);
 
-        // Act
         String viewName = productController.newProductForm(model);
 
-        // Assert
         assertEquals("product_form", viewName);
         verify(model, times(1)).addAttribute(eq("product"), any(Product.class)); // Use eq and any to match the arguments
         verify(model, times(1)).addAttribute("categories", categories);
@@ -79,7 +72,6 @@ public class ProductControllerTest {
 
     @Test
     void saveProduct_ShouldSaveNewProductAndImagesSuccessfully() {
-        // Arrange
         Category category = new Category();
         category.setId(1);
         Product product = new Product();
@@ -94,20 +86,16 @@ public class ProductControllerTest {
         when(productRepository.save(any(Product.class))).thenReturn(savedProduct);
         when(productImageRepository.findByProductId(anyInt())).thenReturn(new ArrayList<>()); // No existing images
 
-        // Act
         String viewName = productController.saveProduct(product, imageUrls);
 
-        // Assert
         assertEquals("redirect:/products/", viewName);
         verify(categoryRepository, times(1)).findById(1);
         verify(productRepository, times(1)).save(product); // Verifies that the initial product object was saved
         verify(productImageRepository, times(1)).deleteAll(anyList()); // No existing images, so deleteAll with empty list
-        // verify(productImageRepository, times(1)).saveAll(argThat(images -> images.size() == 2)); // Verify 2 images saved
     }
 
     @Test
     void saveProduct_ShouldUpdateExistingProductAndReplaceImagesSuccessfully() {
-        // Arrange
         Category category = new Category();
         category.setId(1);
         Product product = new Product();
@@ -125,20 +113,16 @@ public class ProductControllerTest {
         when(productRepository.save(any(Product.class))).thenReturn(product); // Returns the same product as it's being updated
         when(productImageRepository.findByProductId(100)).thenReturn(existingImages);
 
-        // Act
         String viewName = productController.saveProduct(product, imageUrls);
 
-        // Assert
         assertEquals("redirect:/products/", viewName);
         verify(categoryRepository, times(1)).findById(1);
         verify(productRepository, times(1)).save(product);
         verify(productImageRepository, times(1)).deleteAll(existingImages); // Verify existing images are deleted
-        // verify(productImageRepository, times(1)).saveAll(argThat(images -> images.size() == 1 && images.get(0).getImageUrl().equals("http://newimg.com"))); // Verify new image saved
     }
 
     @Test
     void saveProduct_ShouldHandleNoImageUrlsProvided() {
-        // Arrange
         Category category = new Category();
         category.setId(1);
         Product product = new Product();
@@ -151,10 +135,8 @@ public class ProductControllerTest {
         when(categoryRepository.findById(1)).thenReturn(Optional.of(category));
         when(productRepository.save(any(Product.class))).thenReturn(savedProduct);
 
-        // Act
         String viewName = productController.saveProduct(product, imageUrls);
 
-        // Assert
         assertEquals("redirect:/products/", viewName);
         verify(productRepository, times(1)).save(product);
         verifyNoInteractions(productImageRepository); // Ensure no image operations were attempted
@@ -162,7 +144,6 @@ public class ProductControllerTest {
 
     @Test
     void saveProduct_ShouldHandleEmptyImageUrlsProvided() {
-        // Arrange
         Category category = new Category();
         category.setId(1);
         Product product = new Product();
@@ -175,19 +156,15 @@ public class ProductControllerTest {
         when(categoryRepository.findById(1)).thenReturn(Optional.of(category));
         when(productRepository.save(any(Product.class))).thenReturn(savedProduct);
 
-        // Act
         String viewName = productController.saveProduct(product, imageUrls);
 
-        // Assert
         assertEquals("redirect:/products/", viewName);
         verify(productRepository, times(1)).save(product);
-        // verify(productImageRepository, times(1)).saveAll(argThat(images -> images.isEmpty())); // saveAll called with empty list
     }
 
 
     @Test
     void editProductForm_ShouldLoadProductAndCategoriesAndReturnViewName() {
-        // Arrange
         Integer productId = 1;
         Product product = new Product();
         product.setId(productId);
@@ -196,10 +173,8 @@ public class ProductControllerTest {
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         when(categoryRepository.findAll()).thenReturn(categories);
 
-        // Act
         String viewName = productController.editProductForm(productId, model);
 
-        // Assert
         assertEquals("product_form", viewName);
         verify(model, times(1)).addAttribute("product", product);
         verify(model, times(1)).addAttribute("categories", categories);
@@ -209,15 +184,12 @@ public class ProductControllerTest {
 
     @Test
     void editProductForm_ShouldReturnNullProductIfNotFound() {
-        // Arrange
         Integer productId = 1;
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
         when(categoryRepository.findAll()).thenReturn(new ArrayList<>());
 
-        // Act
         String viewName = productController.editProductForm(productId, model);
 
-        // Assert
         assertEquals("product_form", viewName);
         verify(model, times(1)).addAttribute("product", null);
         verify(productRepository, times(1)).findById(productId);
@@ -225,20 +197,16 @@ public class ProductControllerTest {
 
     @Test
     void deleteProduct_ShouldDeleteProductAndRedirect() {
-        // Arrange
         Integer productId = 1;
 
-        // Act
         String viewName = productController.deleteProduct(productId);
 
-        // Assert
         assertEquals("redirect:/products/", viewName);
         verify(productRepository, times(1)).deleteById(productId);
     }
 
     @Test
     void viewProductDetails_ShouldAddProductReviewsImagesToModelAndReturnViewName() {
-        // Arrange
         Integer productId = 1;
         Product product = new Product();
         product.setId(productId);
@@ -249,10 +217,8 @@ public class ProductControllerTest {
         when(reviewRepository.findByProductId(productId)).thenReturn(reviews);
         when(productImageRepository.findByProductId(productId)).thenReturn(images);
 
-        // Act
         String viewName = productController.viewProductDetails(productId, model);
 
-        // Assert
         assertEquals("product_details", viewName);
         verify(model, times(1)).addAttribute("product", product);
         verify(model, times(1)).addAttribute("reviews", reviews);
@@ -264,11 +230,9 @@ public class ProductControllerTest {
 
     @Test
     void viewProductDetails_ShouldThrowExceptionIfProductNotFound() {
-        // Arrange
         Integer productId = 1;
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
-        // Act & Assert
         IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> {
             productController.viewProductDetails(productId, model);
         });
