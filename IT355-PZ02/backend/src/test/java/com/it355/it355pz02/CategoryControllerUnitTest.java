@@ -1,9 +1,9 @@
 package com.it355.it355pz02;
 
 import com.it355.it355pz02.controller.CategoryController;
+import com.it355.it355pz02.controller.dto.CategoryDTO;
+import com.it355.it355pz02.controller.dto.CategoryPostDTO;
 import com.it355.it355pz02.model.Category;
-import com.it355.it355pz02.model.CategoryDTO;
-import com.it355.it355pz02.model.CategoryPostDTO;
 import com.it355.it355pz02.model.CategoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

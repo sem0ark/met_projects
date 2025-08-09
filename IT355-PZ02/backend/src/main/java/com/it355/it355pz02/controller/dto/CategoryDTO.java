@@ -1,7 +1,10 @@
-package com.it355.it355pz02.model;
+package com.it355.it355pz02.controller.dto;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import com.it355.it355pz02.model.Category;
+
 import lombok.AllArgsConstructor;
 
 @Data

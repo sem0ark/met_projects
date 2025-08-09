@@ -1,4 +1,4 @@
-package com.it355.it355pz02.model;
+package com.it355.it355pz02.controller.dto;
 
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
@@ -11,7 +11,7 @@ import lombok.Setter;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserPostDTO {
+public class LoginDTO {
     @NotEmpty(message = "Username cannot be empty")
     @Size(min = 3, message = "Username must be at least 3 characters long")
     private String username;

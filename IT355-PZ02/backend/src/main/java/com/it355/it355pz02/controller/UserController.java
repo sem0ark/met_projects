@@ -1,11 +1,11 @@
 package com.it355.it355pz02.controller;
 
 import com.it355.it355pz02.utils.APIException;
-import com.it355.it355pz02.model.UserPostDTO;
+import com.it355.it355pz02.controller.dto.UserDTO;
+import com.it355.it355pz02.controller.dto.UserPostDTO;
+import com.it355.it355pz02.controller.dto.UserUpdateDTO;
 import com.it355.it355pz02.model.User;
-import com.it355.it355pz02.model.UserDTO;
 import com.it355.it355pz02.model.UserRepository;
-import com.it355.it355pz02.model.UserUpdateDTO;
 
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;

@@ -1,7 +1,7 @@
 package com.it355.it355pz02.controller;
 
-import com.it355.it355pz02.model.ProductDTO;
-import com.it355.it355pz02.model.ProductPostDTO;
+import com.it355.it355pz02.controller.dto.ProductDTO;
+import com.it355.it355pz02.controller.dto.ProductPostDTO;
 import com.it355.it355pz02.model.Category;
 import com.it355.it355pz02.model.Product;
 import com.it355.it355pz02.model.ProductImage;

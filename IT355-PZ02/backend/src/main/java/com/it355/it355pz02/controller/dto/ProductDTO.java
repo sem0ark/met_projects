@@ -1,4 +1,4 @@
-package com.it355.it355pz02.model;
+package com.it355.it355pz02.controller.dto;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.hibernate.Hibernate;
+
+import com.it355.it355pz02.model.Product;
 
 @Data
 @NoArgsConstructor

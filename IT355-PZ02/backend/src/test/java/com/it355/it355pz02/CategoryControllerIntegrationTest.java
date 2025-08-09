@@ -1,9 +1,10 @@
 package com.it355.it355pz02;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.it355.it355pz02.controller.dto.CategoryPostDTO;
 import com.it355.it355pz02.model.Category;
 import com.it355.it355pz02.model.CategoryRepository;
-import com.it355.it355pz02.model.CategoryPostDTO;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

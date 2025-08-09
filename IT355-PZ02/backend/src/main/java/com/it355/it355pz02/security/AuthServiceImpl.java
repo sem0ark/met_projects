@@ -1,7 +1,7 @@
 package com.it355.it355pz02.security;
 
-import com.it355.it355pz02.model.LoginDTO;
-import com.it355.it355pz02.model.UserPostDTO;
+import com.it355.it355pz02.controller.dto.LoginDTO;
+import com.it355.it355pz02.controller.dto.UserPostDTO;
 import com.it355.it355pz02.model.User;
 import com.it355.it355pz02.model.UserRepository;
 import com.it355.it355pz02.utils.APIException;

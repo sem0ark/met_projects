@@ -1,4 +1,6 @@
-package com.it355.it355pz02.model;
+package com.it355.it355pz02.controller.dto;
+
+import com.it355.it355pz02.model.User;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

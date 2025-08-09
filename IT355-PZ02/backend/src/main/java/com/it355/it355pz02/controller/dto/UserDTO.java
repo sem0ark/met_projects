@@ -1,4 +1,6 @@
-package com.it355.it355pz02.model;
+package com.it355.it355pz02.controller.dto;
+
+import com.it355.it355pz02.model.User;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,7 +11,10 @@ import lombok.Setter;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserUpdateDTO {
+public class UserDTO {
+    private Long id;
+
     private String username;
-    private String password;
+
+    private User.Role role;
 }
