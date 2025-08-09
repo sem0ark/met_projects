@@ -158,14 +158,14 @@ const Navigation = () => {
 
 const Footer = () => {
   return (
-    <footer className="font-body container mx-auto flex h-10 w-full items-center justify-between gap-1 px-2">
+    <footer className="font-body container mx-auto flex h-10 w-full items-center justify-between gap-1 overflow-hidden px-2">
       <div className="text-body flex items-center gap-1 font-bold">
         True Colors <CopyRight /> 2025
       </div>
       <a
         target="_blank"
         href="http://localhost:8080/swagger-ui/index.html"
-        className="rounded-full border-2 border-orange-700 bg-orange-50 px-5 transition-colors duration-200 ease-in-out hover:bg-orange-200 hover:shadow-md"
+        className="rounded-full border-2 border-orange-700 bg-orange-50 px-5 pt-1 transition-colors duration-200 ease-in-out hover:bg-orange-200 hover:shadow-md"
       >
         <OpenAPI className="-my-8 size-24" />
       </a>
