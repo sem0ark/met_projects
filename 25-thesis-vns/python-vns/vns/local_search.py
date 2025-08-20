@@ -4,82 +4,41 @@ from vns.abstract import (
     Problem,
     NeighborhoodOperator,
     Solution,
-    LocalSearchStrategy,
+    VNSConfig,
 )
 
 
-class NoopLocalSearch(LocalSearchStrategy):
-    """
-    A local search strategy that does nothing, used for RVNS.
-    """
-
-    def __init__(
-        self,
-        problem: Problem,
-        neighborhood_operator: NeighborhoodOperator,
-    ) -> None:
-        super().__init__(problem, neighborhood_operator)
-        self.logger = logging.getLogger(self.__class__.__name__)
-
-    def search(self, initial_solution: Solution) -> Solution:
-        current: Solution = initial_solution.copy()
-        self.objective_func.evaluate_and_set(current)
-        return current
+def noop_local_search(solution: Solution, _operator: NeighborhoodOperator, _config: VNSConfig):
+    return solution
 
 
-class BestImprovementLocalSearch(LocalSearchStrategy):
-    def __init__(
-        self,
-        problem: Problem,
-        neighborhood_operator: NeighborhoodOperator,
-    ) -> None:
-        super().__init__(problem, neighborhood_operator)
-        self.logger = logging.getLogger(self.__class__.__name__)
+def best_improvement_local_search(initial: Solution, operator: NeighborhoodOperator, config: VNSConfig):
+    current = initial
+    is_better = config.acceptance_criterion.dominates
 
-    def search(self, initial_solution: Solution) -> Solution:
-        current: Solution = initial_solution.copy()
-        self.objective_func.evaluate_and_set(current)
+    while True:
+        improved_in_iteration = False
+        best_found_in_neighborhood = current
 
-        visited_solutions = {current}
+        for neighbor in operator(current):
 
-        while True:
-            improved_in_iteration = False
-            best_found_in_neighborhood = current
+            if is_better(neighbor, best_found_in_neighborhood):
+                best_found_in_neighborhood = neighbor
+                improved_in_iteration = True
 
-            # Generating all neighbors is necessary for Best Improvement
-            for neighbor in self.neighborhood_operator.generate_all_neighbors(current):
-                self.objective_func.evaluate_and_set(neighbor)
+        if not improved_in_iteration:
+            break
 
-                if self.objective_func.is_better(neighbor, best_found_in_neighborhood):
-                    best_found_in_neighborhood = neighbor
-                    improved_in_iteration = True
+        if not is_better(best_found_in_neighborhood, current):
+            break
 
-            if improved_in_iteration:  # If we found any neighbor better than 'current'
-                if self.objective_func.is_better(best_found_in_neighborhood, current):
-                    if best_found_in_neighborhood not in visited_solutions:
-                        current = best_found_in_neighborhood
-                        visited_solutions.add(current)
-                        self.logger.debug(
-                            "Best Improvement: Moved to new solution with obj %s",
-                            current.get_objectives(),
-                        )
-                    else:
-                        self.logger.debug(
-                            "Best Improvement: Hit previously visited solution, stopping."
-                        )
-                        break  # Avoid cycling on plateaus
-                else:
-                    self.logger.debug(
-                        "Best Improvement: No strictly better overall neighbor found, stopping."
-                    )
-                    break  # No strict improvement over the initial "current" of this iteration
-            else:
-                self.logger.debug(
-                    "Best Improvement: No improvement found in the neighborhood, stopping."
-                )
-                break  # No improvement at all
+        current = best_found_in_neighborhood
 
-        return current
+    return current
+
+
+def first_improvement_local_search(initial: Solution, operator: NeighborhoodOperator, config: VNSConfig):
+    pass
 
 
 class FirstImprovementLocalSearch(LocalSearchStrategy):
@@ -93,25 +52,25 @@ class FirstImprovementLocalSearch(LocalSearchStrategy):
 
     def search(self, initial_solution: Solution) -> Solution:
         current: Solution = initial_solution
-        self.objective_func.evaluate_and_set(current)
+        evaluate_and_set(current)
 
         visited_solutions = {current}
 
         while True:
-            self.objective_func.evaluate_and_set(current)
+            evaluate_and_set(current)
 
             found_improving_neighbor = False
             for neighbor in self.neighborhood_operator.generate_all_neighbors(current):
-                self.objective_func.evaluate_and_set(neighbor)
+                evaluate_and_set(neighbor)
 
-                if self.objective_func.is_better(neighbor, current):
+                if is_better(neighbor, current):
                     if neighbor not in visited_solutions:
                         current = neighbor  # Move to the first improving neighbor
                         visited_solutions.add(current)
                         found_improving_neighbor = True
                         self.logger.debug(
                             "First Improvement: Moved to new solution with obj %s",
-                            current.get_objectives(),
+                            current.objectives,
                         )
                         break
                     else:
@@ -164,10 +123,10 @@ class CompositeLocalSearch(LocalSearchStrategy):
         sequence of local search strategies.
         """
         current_solution: Solution = initial_solution.copy()
-        self.objective_func.evaluate_and_set(current_solution)
+        evaluate_and_set(current_solution)
         self.logger.debug(
             "CompositeLocalSearch (VND) started with initial solution obj: %s",
-            current_solution.get_objectives(),
+            current_solution.objectives,
         )
 
         vnd_level = 0
@@ -180,17 +139,17 @@ class CompositeLocalSearch(LocalSearchStrategy):
                 current_strategy.neighborhood_operator.name
                 if current_strategy.neighborhood_operator
                 else "N/A",
-                current_solution.get_objectives(),
+                current_solution.objectives,
             )
 
             new_solution_from_ls = current_strategy.search(current_solution)
-            self.objective_func.evaluate_and_set(new_solution_from_ls)
+            evaluate_and_set(new_solution_from_ls)
 
-            if self.objective_func.is_better(new_solution_from_ls, current_solution):
+            if is_better(new_solution_from_ls, current_solution):
                 self.logger.debug(
                     "  VND: Improvement found by strategy N_%d. New obj: %s",
                     vnd_level + 1,
-                    new_solution_from_ls.get_objectives(),
+                    new_solution_from_ls.objectives,
                 )
                 vnd_level = 0
                 current_solution = new_solution_from_ls

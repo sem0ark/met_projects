@@ -1,118 +1,112 @@
 from collections import deque
 import logging
 import random
-from typing import Callable, Set
-from vns.abstract import AcceptanceCriterion, ObjectiveFunction, Solution
+from typing import Callable
+from vns.abstract import AcceptanceCriterion, Solution
 
 
-class TakeBestAcceptance(AcceptanceCriterion):
+def dominates_minimize(
+    new_objective: tuple[float, ...],
+    current_objective: tuple[float, ...],
+    buffer_value: float
+) -> bool:
     """
-    General-purpose Acceptance Criterion.
+    Checks if objective vector new_objective dominates objective vector current_objective.
+    Assumes minimization for all objectives.
+    """
+    if len(new_objective) != len(current_objective):
+        raise ValueError("Objective vectors must have the same number of objectives.")
+
+    at_least_one_strictly_better = False
+    for i in range(len(new_objective)):
+        if abs(new_objective[i] - current_objective[i]) < 1e-6:
+            continue
+
+        if new_objective[i] > current_objective[i]:
+            buffer_value -= new_objective[i] - current_objective[i]
+            if buffer_value > 0:
+                continue
+            return False
+        elif new_objective[i] < current_objective[i]:
+            at_least_one_strictly_better = True
+
+    return at_least_one_strictly_better
+
+
+def dominates_maximize(
+    new_objective: tuple[float, ...],
+    current_objective: tuple[float, ...],
+    buffer_value: float,
+) -> bool:
+    """
+    Checks if objective vector new_objective dominates objective vector current_objective.
+    Assumes maximization for all objectives.
+    """
+    if len(new_objective) != len(current_objective):
+        raise ValueError("Objective vectors must have the same number of objectives.")
+
+    at_least_one_strictly_better = False
+    for i in range(len(new_objective)):
+        if abs(new_objective[i] - current_objective[i]) < 1e-6:
+            continue
+
+        if new_objective[i] < current_objective[i]:
+            buffer_value -= current_objective[i] - new_objective[i]
+            if buffer_value > 0:
+                continue
+            return False
+        elif new_objective[i] > current_objective[i]:
+            at_least_one_strictly_better = True
+
+    return at_least_one_strictly_better
+
+
+class TakeSmaller(AcceptanceCriterion):
+    """
+    General-purpose Acceptance Criterion (minimization).
 
     For multi-objective problems, it maintains an archive of non-dominated solutions (Pareto front).
-
-    Provides methods to get the full archive or a single solution for shaking.
     """
 
-    def __init__(self, objective_func: ObjectiveFunction):
-        super().__init__(objective_func)
+    def __init__(self, buffer_size: int = 0):
+        super().__init__()
+
         self.archive: list[Solution] = []
+        self.buffer: deque[Solution] = deque(maxlen=buffer_size)
+
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def accept(self, candidate_solution: Solution) -> bool:
+    def accept(self, candidate: Solution) -> bool:
         """
-        Decides whether to accept candidate_solution and update the archive.
+        Decides whether to accept candidate and update the archive.
         Updates the non-dominated archive based on Pareto dominance.
 
         Returns True if the archive changes (solution added/removed).
         """
-        self.objective_func.evaluate_and_set(candidate_solution)
-
         if not self.archive:
-            self.archive.append(candidate_solution.copy())
+            self.archive.append(candidate)
             return True
 
-        dominating = [
-            solution
-            for solution in self.archive
-            if not self.objective_func.is_better(candidate_solution, solution)
-        ]
+        dominating = []
+        for solution in self.archive:
+            if not self.dominates(candidate, solution):
+                dominating.append(solution)
+            else:
+                self.buffer.append(solution)
+
         archive_changed = len(dominating) != len(self.archive)
         if archive_changed:
             # Means that candidate dominates some of the existing solutions
-            dominating.append(candidate_solution.copy())
+            dominating.append(candidate)
 
         self.archive = dominating
         return archive_changed
 
-
-class SkewedAcceptance(AcceptanceCriterion):
-    """
-    Skewed Acceptance Criterion for SINGLE-OBJECTIVE VNS (minimization).
-
-    It accepts solutions based on standard improvement, AND also accepts solutions
-    that are 'skewed acceptable' even if not strictly better, allowing the search
-    to escape local optima or explore plateaus.
-    """
-
-    def __init__(
-        self,
-        objective_func: ObjectiveFunction,
-        alpha: float,
-        distance_metric: Callable[[Solution, Solution], float],
-    ):
-        super().__init__(objective_func)
-        self.alpha = alpha
-        self.distance_metric = distance_metric
-
-        self.archive: list[Solution] = []
-        self.logger = logging.getLogger(self.__class__.__name__)
-
-        if self.objective_func.n_dimensions > 1:
-            raise ValueError("SkewedAcceptance is for single-objective problems only.")
-
-        self.logger.info(
-            "Initialized SkewedAcceptance for single-objective with alpha=%.2f",
-            alpha,
-        )
-
-    def accept(self, candidate_solution: Solution) -> bool:
-        self.objective_func.evaluate_and_set(
-            candidate_solution
-        )  # Ensure objectives are set
-
-        # Extract scalar objective values
-        candidate_value = candidate_solution.get_objectives()[
-            0
-        ]  # Only the first objective
-
-        if not self.archive:  # Initial solution or empty archive
-            self.archive.append(candidate_solution.copy())  # Store a copy
-            return True
-
-        current_best_in_archive = self.archive[0]
-        current_best_value = current_best_in_archive.get_objectives()[
-            0
-        ]  # Only the first objective
-
-        distance = self.distance_metric(current_best_in_archive, candidate_solution)
-        skewed_candidate_value = candidate_value - self.alpha * distance
-
-        if skewed_candidate_value < current_best_value:
-            self.archive = [candidate_solution.copy()]  # Replace the old best
-            return True
-
-        return False
-
-
-class BufferedAcceptanceCriterion(AcceptanceCriterion):
-    def __init__(self, objective_func: ObjectiveFunction, buffer_size: int):
-        super().__init__(objective_func)
-        # Use deque for efficient FIFO behavior (append and popleft)
-        self.buffer: deque[Solution] = deque(maxlen=buffer_size)
-
     def get_one_current_solution(self) -> Solution:
         """Returns a single solution from either the main archive or buffer."""
+        # Check if prioritizing better solutions will help
+        # https://numpy.org/doc/stable/reference/random/generated/numpy.random.triangular.html
+        
         size = len(self.archive) + len(self.buffer)
         if size == 0:
             raise ValueError("No solutions")
@@ -124,43 +118,13 @@ class BufferedAcceptanceCriterion(AcceptanceCriterion):
         index -= len(self.archive)
         return self.buffer[index]
 
-
-class BeamSearchAcceptance(BufferedAcceptanceCriterion):
-    """General-purpose Acceptance Criterion with a beam search buffer."""
-
-    def __init__(self, objective_func: ObjectiveFunction, buffer_size: int):
-        super().__init__(objective_func, buffer_size)
-
-    def accept(self, candidate_solution: Solution) -> bool:
-        """
-        Decides whether to accept candidate_solution and update the archive/buffer.
-        Returns True if the archive changes, False otherwise.
-        """
-        self.objective_func.evaluate_and_set(candidate_solution)
-
-        if not self.archive:  # First solution always goes into archive
-            self.archive.append(candidate_solution.copy())
-            return True
-
-        dominating = []
-        for solution in self.archive:
-            if self.objective_func.is_better(candidate_solution, solution):
-                self.buffer.append(solution)
-            else:
-                dominating.append(solution)
-
-        archive_changed = len(dominating) != len(self.archive)
-        if archive_changed:
-            # Means that candidate dominates some of the existing solutions
-            dominating.append(candidate_solution.copy())
-
-        self.archive = dominating
-        return archive_changed
+    def dominates(self, new_solution: Solution, current_solution: Solution) -> bool:
+        return dominates_minimize(new_solution.objectives, current_solution.objectives, 0.0)
 
 
-class BeamSeachSkewedAcceptance(BufferedAcceptanceCriterion):
+class TakeSmallerSkewed(TakeSmaller):
     """
-    Skewed Acceptance Criterion for SINGLE-OBJECTIVE VNS (minimization).
+    Skewed Acceptance Criterion for SVNS (minimization).
 
     It accepts solutions based on standard improvement, AND also accepts solutions
     that are 'skewed acceptable' even if not strictly better, allowing the search
@@ -169,117 +133,65 @@ class BeamSeachSkewedAcceptance(BufferedAcceptanceCriterion):
 
     def __init__(
         self,
-        objective_func: ObjectiveFunction,
         alpha: float,
-        buffer_size: int,
         distance_metric: Callable[[Solution, Solution], float],
+        buffer_size: int = 0,
     ):
-        super().__init__(objective_func, buffer_size)
+        super().__init__()
+
         self.alpha = alpha
         self.distance_metric = distance_metric
 
         self.archive: list[Solution] = []
+        self.buffer: deque[Solution] = deque(maxlen=buffer_size)
+
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        if self.objective_func.n_dimensions > 1:
-            raise ValueError("SkewedAcceptance is for single-objective problems only.")
-
-        self.logger.info(
-            "Initialized SkewedAcceptance for single-objective with alpha=%.2f and buffer_size=%d",
-            alpha,
-            buffer_size,
-        )
-
-    def accept(self, candidate_solution: Solution) -> bool:
-        self.objective_func.evaluate_and_set(candidate_solution)
-        candidate_value = candidate_solution.get_objectives()[0]
-
+    def accept(self, candidate: Solution) -> bool:
         if not self.archive:
-            self.archive.append(candidate_solution.copy())
+            self.archive.append(candidate)
             return True
 
-        current_best_in_archive = self.archive[0]
-        current_best_value = current_best_in_archive.get_objectives()[0]
+        dominating = []
+        for solution in self.archive:
+            if not self.dominates_buffered(candidate, solution, 0.0):
+                dominating.append(solution)
+            else:
+                self.buffer.append(solution)
 
-        distance = self.distance_metric(current_best_in_archive, candidate_solution)
-        skewed_candidate_value = candidate_value - self.alpha * distance
+        archive_changed = len(dominating) != len(self.archive)
+        if archive_changed:
+            dominating.append(candidate)
 
-        if candidate_value < current_best_value:
-            self.archive = [candidate_solution.copy()]
-            return True
-
-        if skewed_candidate_value < current_best_value:
-            self.buffer.append(candidate_solution)
-
-        return False
-
-
-class ParetoFrontAcceptance(AcceptanceCriterion):
-    """
-    Acceptance Criterion for Multi-Objective VNS.
-    It maintains an archive of non-dominated solutions (Pareto front)
-    by considering a single candidate solution.
-
-    This class refines the logic of the original TakeBestAcceptance
-    to more correctly update a Pareto front.
-    """
-
-    def __init__(self, objective_func: ObjectiveFunction):
-        super().__init__(objective_func)
-        self.logger = logging.getLogger(self.__class__.__name__)
-
-        if self.objective_func.n_dimensions <= 1:
-            self.logger.warning(
-                "ParetoFrontAcceptance is designed for multi-objective problems. "
-                "Consider using TakeBestAcceptance or SkewedAcceptance for single-objective."
-            )
-
-    def accept(self, candidate_solution: Solution) -> bool:
-        """
-        Decides whether to accept candidate_solution and update the archive.
-        Updates the non-dominated archive based on Pareto dominance.
-
-        Returns True if the archive changes (solution added/removed).
-        """
-        self.objective_func.evaluate_and_set(candidate_solution)
-
-        new_archive: Set[Solution] = set()
-        archive_changed = False
-
-        # Check if candidate_solution is dominated by any existing solution in archive.
-        is_candidate_dominated = False
-        for existing_sol in self.archive:
-            if self.objective_func.is_better(existing_sol, candidate_solution):
-                is_candidate_dominated = True
-                break
-
-        # If candidate is dominated, it doesn't get added.
-        # Current archive remains.
-        if is_candidate_dominated:
-            new_archive.update(self.archive)
-        else:
-            # If candidate is not dominated, it's a potential new non-dominated solution. Add it.
-            new_archive.add(candidate_solution.copy())
-            archive_changed = (
-                True  # Candidate is new, so archive changes (at least by adding this).
-            )
-
-            # Remove solutions from the *old* archive that are now dominated by the candidate.
-            for existing_sol in self.archive:
-                if not self.objective_func.is_better(candidate_solution, existing_sol):
-                    # If candidate does NOT dominate existing_sol, keep existing_sol.
-                    new_archive.add(existing_sol.copy())
-                else:
-                    # If candidate DOMINATES existing_sol, existing_sol is removed, so archive changes.
-                    archive_changed = True
-
-        # Convert set back to list for the archive attribute, ensuring consistency
-        # Sort for stable representation, though not strictly required for functionality
-        sorted_new_archive = sorted(list(new_archive), key=lambda s: s.get_objectives())
-
-        if self.archive != sorted_new_archive:
-            self.archive = sorted_new_archive
-            archive_changed = True
-            # Ensure this is true if the set of solutions changes
+        self.archive = dominating
+        if all(self.dominates_buffered(candidate, solution, self.alpha * self.distance_metric(candidate, solution)) for solution in self.archive):
+            self.buffer.append(candidate)
 
         return archive_changed
+
+    def dominates_buffered(self, new_solution: Solution, current_solution: Solution, buffer_value: float) -> bool:
+        return dominates_minimize(new_solution.objectives, current_solution.objectives, buffer_value)
+
+
+class TakeBigger(TakeSmaller):
+    """
+    General-purpose Acceptance Criterion (maximization).
+
+    For multi-objective problems, it maintains an archive of non-dominated solutions (Pareto front).
+    """
+
+    def dominates(self, new_solution: Solution, current_solution: Solution) -> bool:
+        return dominates_maximize(new_solution.objectives, current_solution.objectives, 0.0)
+
+
+class TakeBiggerSkewed(TakeSmallerSkewed):
+    """
+    Skewed Acceptance Criterion for SVNS (maximization).
+
+    It accepts solutions based on standard improvement, AND also accepts solutions
+    that are 'skewed acceptable' even if not strictly better, allowing the search
+    to escape local optima or explore plateaus.
+    """
+
+    def dominates_buffered(self, new_solution: Solution, current_solution: Solution, buffer_value: float) -> bool:
+        return dominates_maximize(new_solution.objectives, current_solution.objectives, buffer_value)
