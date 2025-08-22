@@ -19,7 +19,11 @@ from distance_functions import get_distance_function
 from vns.vns_base import VNSOptimizer
 from vns.abstract import Problem, Solution, VNSConfig
 from vns.acceptance import TakeSmaller, TakeSmallerSkewed
-from vns.local_search import best_improvement_local_search, first_improvement_local_search, noop_local_search
+from vns.local_search import (
+    best_improvement_local_search,
+    first_improvement_local_search,
+    noop_local_search,
+)
 
 from utils import setup_logging, parse_time_string
 
@@ -38,7 +42,6 @@ class TSPSolution(Solution):
 
 
 class TSPProblem:
-
     def __init__(self, cities: dict, distance_function: Callable[[Any, Any], float]):
         self.cities = cities
         self.num_cities = len(cities)
@@ -54,7 +57,9 @@ class TSPProblem:
                 if i == j:
                     matrix[i, j] = 0.0
                 else:
-                    matrix[i, j] = self.distance_function(self.cities[i], self.cities[j])
+                    matrix[i, j] = self.distance_function(
+                        self.cities[i], self.cities[j]
+                    )
         return matrix
 
     def get_distance(self, city1_idx: int, city2_idx: int) -> float:
@@ -65,7 +70,9 @@ class TSPProblem:
         np.random.shuffle(initial_tour)
         return TSPSolution(initial_tour, self)
 
-    def calculate_tour_difference_distance(self, sol1: Solution, sol2: Solution) -> float:
+    def calculate_tour_difference_distance(
+        self, sol1: Solution, sol2: Solution
+    ) -> float:
         """
         Calculates a simple distance between two TSP tours (solutions).
         Counts the number of city positions that differ using NumPy.
@@ -73,7 +80,9 @@ class TSPProblem:
         tour1 = sol1.data
         tour2 = sol2.data
         if len(tour1) != len(tour2):
-            raise ValueError("Tours must have the same length for distance calculation.")
+            raise ValueError(
+                "Tours must have the same length for distance calculation."
+            )
 
         diff_count = np.sum(tour1 != tour2)
         return float(diff_count)
@@ -86,7 +95,7 @@ class TSPProblem:
         shifted_tour = np.roll(tour, -1)
         total_length = np.sum(self.distance_matrix[tour, shifted_tour])
         return (total_length,)
-    
+
     def to_problem(self) -> Problem:
         return Problem(self.evaluate, self.generate_initial_solution)
 
@@ -116,7 +125,9 @@ def shake_swap_tour_cities(solution: Solution, k: int, _config: VNSConfig) -> So
     return solution.new(tour)
 
 
-def shake_shuffle_tour_region(solution: Solution, k: int, _config: VNSConfig) -> Solution:
+def shake_shuffle_tour_region(
+    solution: Solution, k: int, _config: VNSConfig
+) -> Solution:
     tour = np.array(solution.data)
     n = len(tour)
     k = max(1, k)
@@ -127,10 +138,10 @@ def shake_shuffle_tour_region(solution: Solution, k: int, _config: VNSConfig) ->
     region_elements = tour[region_indices].copy()
     np.random.shuffle(region_elements)
     new_tour = tour.copy()
-    
+
     for i in range(k):
         new_tour[region_indices[i]] = region_elements[i]
-        
+
     return solution.new(new_tour)
 
 
@@ -140,9 +151,7 @@ def flip_op(solution: Solution, _config: VNSConfig) -> Iterable[Solution]:
     n = len(tour)
     for i in range(n - 1):
         for j in range(i + 1, n):
-            new_tour = np.concatenate(
-                (tour[:i], tour[i : j + 1][::-1], tour[j + 1 :])
-            )
+            new_tour = np.concatenate((tour[:i], tour[i : j + 1][::-1], tour[j + 1 :]))
             yield solution.new(new_tour)
 
 
@@ -277,47 +286,99 @@ def prepare_optimizers(tsp_problem: TSPProblem) -> dict[str, VNSOptimizer]:
         problem=tsp_problem.to_problem(),
         search_functions=[best_improvement_local_search(flip_op)],
         acceptance_criterion=TakeSmaller(),
-        shake_function=shake_flip_tour_region
+        shake_function=shake_flip_tour_region,
     )
     rvns = VNSConfig(
         problem=tsp_problem.to_problem(),
         search_functions=[noop_local_search()],
         acceptance_criterion=TakeSmaller(),
-        shake_function=shake_flip_tour_region
+        shake_function=shake_flip_tour_region,
     )
     gvns = VNSConfig(
         problem=tsp_problem.to_problem(),
-        search_functions=[best_improvement_local_search(flip_op), first_improvement_local_search(swap_op)],
+        search_functions=[
+            best_improvement_local_search(flip_op),
+            first_improvement_local_search(swap_op),
+        ],
         acceptance_criterion=TakeSmaller(),
-        shake_function=shake_flip_tour_region
+        shake_function=shake_flip_tour_region,
     )
     svns = VNSConfig(
         problem=tsp_problem.to_problem(),
         search_functions=[best_improvement_local_search(flip_op)],
-        acceptance_criterion=TakeSmallerSkewed(0.1, tsp_problem.calculate_tour_difference_distance),
-        shake_function=shake_flip_tour_region
+        acceptance_criterion=TakeSmallerSkewed(
+            0.1, tsp_problem.calculate_tour_difference_distance
+        ),
+        shake_function=shake_flip_tour_region,
     )
 
     return {
-        "BVNS_BI":        VNSOptimizer(replace(bvns, acceptance_criterion=TakeSmaller())),
-        "BVNS_BI_Beam10": VNSOptimizer(replace(bvns, acceptance_criterion=TakeSmaller(10))),
-        "BVNS_BI_Beam20": VNSOptimizer(replace(bvns, acceptance_criterion=TakeSmaller(20))),
-
-        "BVNS_FI":        VNSOptimizer(replace(bvns, search_functions=[first_improvement_local_search(flip_op)], acceptance_criterion=TakeSmaller())),
-        "BVNS_FI_Beam10": VNSOptimizer(replace(bvns, search_functions=[first_improvement_local_search(flip_op)], acceptance_criterion=TakeSmaller(10))),
-        "BVNS_FI_Beam20": VNSOptimizer(replace(bvns, search_functions=[first_improvement_local_search(flip_op)], acceptance_criterion=TakeSmaller(20))),
-
-        "RVNS":           VNSOptimizer(replace(rvns, acceptance_criterion=TakeSmaller())),
-        "RVNS_Beam10":    VNSOptimizer(replace(rvns, acceptance_criterion=TakeSmaller(10))),
-        "RVNS_Beam20":    VNSOptimizer(replace(rvns, acceptance_criterion=TakeSmaller(20))),
-
-        "GVNS":           VNSOptimizer(replace(gvns, acceptance_criterion=TakeSmaller())),
-        "GVNS_Beam10":    VNSOptimizer(replace(gvns, acceptance_criterion=TakeSmaller(10))),
-        "GVNS_Beam20":    VNSOptimizer(replace(gvns, acceptance_criterion=TakeSmaller(20))),
-
-        "SVNS_BI":           VNSOptimizer(replace(svns, acceptance_criterion=TakeSmallerSkewed(0.1, tsp_problem.calculate_tour_difference_distance))),
-        "SVNS_BI_Beam10":    VNSOptimizer(replace(svns, acceptance_criterion=TakeSmallerSkewed(0.1, tsp_problem.calculate_tour_difference_distance, 10))),
-        "SVNS_BI_Beam20":    VNSOptimizer(replace(svns, acceptance_criterion=TakeSmallerSkewed(0.1, tsp_problem.calculate_tour_difference_distance, 20))),
+        "BVNS_BI": VNSOptimizer(replace(bvns, acceptance_criterion=TakeSmaller())),
+        "BVNS_BI_Beam10": VNSOptimizer(
+            replace(bvns, acceptance_criterion=TakeSmaller(10))
+        ),
+        "BVNS_BI_Beam20": VNSOptimizer(
+            replace(bvns, acceptance_criterion=TakeSmaller(20))
+        ),
+        "BVNS_FI": VNSOptimizer(
+            replace(
+                bvns,
+                search_functions=[first_improvement_local_search(flip_op)],
+                acceptance_criterion=TakeSmaller(),
+            )
+        ),
+        "BVNS_FI_Beam10": VNSOptimizer(
+            replace(
+                bvns,
+                search_functions=[first_improvement_local_search(flip_op)],
+                acceptance_criterion=TakeSmaller(10),
+            )
+        ),
+        "BVNS_FI_Beam20": VNSOptimizer(
+            replace(
+                bvns,
+                search_functions=[first_improvement_local_search(flip_op)],
+                acceptance_criterion=TakeSmaller(20),
+            )
+        ),
+        "RVNS": VNSOptimizer(replace(rvns, acceptance_criterion=TakeSmaller())),
+        "RVNS_Beam10": VNSOptimizer(
+            replace(rvns, acceptance_criterion=TakeSmaller(10))
+        ),
+        "RVNS_Beam20": VNSOptimizer(
+            replace(rvns, acceptance_criterion=TakeSmaller(20))
+        ),
+        "GVNS": VNSOptimizer(replace(gvns, acceptance_criterion=TakeSmaller())),
+        "GVNS_Beam10": VNSOptimizer(
+            replace(gvns, acceptance_criterion=TakeSmaller(10))
+        ),
+        "GVNS_Beam20": VNSOptimizer(
+            replace(gvns, acceptance_criterion=TakeSmaller(20))
+        ),
+        "SVNS_BI": VNSOptimizer(
+            replace(
+                svns,
+                acceptance_criterion=TakeSmallerSkewed(
+                    0.1, tsp_problem.calculate_tour_difference_distance
+                ),
+            )
+        ),
+        "SVNS_BI_Beam10": VNSOptimizer(
+            replace(
+                svns,
+                acceptance_criterion=TakeSmallerSkewed(
+                    0.1, tsp_problem.calculate_tour_difference_distance, 10
+                ),
+            )
+        ),
+        "SVNS_BI_Beam20": VNSOptimizer(
+            replace(
+                svns,
+                acceptance_criterion=TakeSmallerSkewed(
+                    0.1, tsp_problem.calculate_tour_difference_distance, 20
+                ),
+            )
+        ),
     }
 
 
@@ -331,7 +392,9 @@ def run_vns_example_from_tsplib(
     setup_logging(level=logging.INFO)
     max_run_time_seconds = parse_time_string(run_time)
 
-    logger.info(f"\n--- Running {optimizer_type} Example with TSPLIB file: {filename} ---")
+    logger.info(
+        f"\n--- Running {optimizer_type} Example with TSPLIB file: {filename} ---"
+    )
     logger.info(f"Max run time: {run_time} ({max_run_time_seconds:.2f} seconds)")
     logger.info(f"Max iterations without improvement: {max_iterations_no_improvement}")
     if optimal_value is not None:
@@ -347,7 +410,6 @@ def run_vns_example_from_tsplib(
         logger.error(f"Unknown optimizer type: {optimizer_type}")
         return
 
-
     best_objectives_data = []
     elapsed_times_data = []
 
@@ -355,10 +417,15 @@ def run_vns_example_from_tsplib(
     last_improved = 1
 
     for iteration, improved in enumerate(vns_optimizer.optimize(), 1):
-        obj_value = vns_optimizer.config.acceptance_criterion.get_all_solutions()[0].objectives[0]
+        obj_value = vns_optimizer.config.acceptance_criterion.get_all_solutions()[
+            0
+        ].objectives[0]
         elapsed_time = time.time() - start_time
 
-        if len(best_objectives_data) > 2 and best_objectives_data[-2] == best_objectives_data[-1] == obj_value:
+        if (
+            len(best_objectives_data) > 2
+            and best_objectives_data[-2] == best_objectives_data[-1] == obj_value
+        ):
             best_objectives_data.pop()
             elapsed_times_data.pop()
 
@@ -375,7 +442,9 @@ def run_vns_example_from_tsplib(
         if improved:
             last_improved = iteration
         elif iteration - last_improved > max_iterations_no_improvement:
-            logger.info(f"No improvements for {max_iterations_no_improvement} iterations. Best Objective = {obj_value}")
+            logger.info(
+                f"No improvements for {max_iterations_no_improvement} iterations. Best Objective = {obj_value}"
+            )
             break
 
     logger.info(f"\n--- {optimizer_type} Optimization Complete ---")
@@ -437,20 +506,25 @@ def compare_vns_optimizers(
     optimizers = prepare_optimizers(tsp_problem)
 
     for optimizer_type, vns_optimizer in optimizers.items():
-        logger.info(f"Starting {optimizer_type} for TSP with {tsp_problem.num_cities} cities.")
+        logger.info(
+            f"Starting {optimizer_type} for TSP with {tsp_problem.num_cities} cities."
+        )
         best_objectives_data = []
         elapsed_times_data = []
 
         start_time = time.time()
         last_improved = 1
 
-        for iteration, improved in enumerate(
-            vns_optimizer.optimize(), start=1
-        ):
-            obj_value = vns_optimizer.config.acceptance_criterion.get_all_solutions()[0].objectives[0]
+        for iteration, improved in enumerate(vns_optimizer.optimize(), start=1):
+            obj_value = vns_optimizer.config.acceptance_criterion.get_all_solutions()[
+                0
+            ].objectives[0]
             elapsed_time = time.time() - start_time
 
-            if len(best_objectives_data) > 2 and best_objectives_data[-2] == best_objectives_data[-1] == obj_value:
+            if (
+                len(best_objectives_data) > 2
+                and best_objectives_data[-2] == best_objectives_data[-1] == obj_value
+            ):
                 best_objectives_data.pop()
                 elapsed_times_data.pop()
 

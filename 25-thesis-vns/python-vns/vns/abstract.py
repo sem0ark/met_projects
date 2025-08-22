@@ -19,7 +19,9 @@ class Problem:
     get_initial_solution: Callable[[], "Solution"]
     """Get a random solution to start with."""
 
+
 T = TypeVar("T")
+
 
 @dataclass
 class Solution(Generic[T]):
@@ -67,6 +69,9 @@ class AcceptanceCriterion:
         """Returns a single solution from the archive."""
         raise NotImplementedError
 
+    def clear(self):
+        self.archive = []
+
 
 NeighborhoodOperator = Callable[["Solution", "VNSConfig"], Iterable["Solution"]]
 
@@ -89,4 +94,6 @@ class VNSConfig:
 
     def __post_init__(self):
         if not self.search_functions:
-            raise ValueError("At least one neighborhood operator must be provided or defined by the problem.")
+            raise ValueError(
+                "At least one neighborhood operator must be provided or defined by the problem."
+            )

@@ -1,0 +1,13 @@
+{
+    "metadata": {
+        "objectives": 2,
+        "weights": 1,
+        "capacity": 10
+    },
+    "weights": [10, 10, 10],
+    "objectives": [
+        [11, 10, 8],
+        [8,  10, 11]
+    ]
+}
+

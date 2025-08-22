@@ -6,14 +6,14 @@ from vns.abstract import (
 )
 
 
-def noop_local_search():
+def noop():
     def search(initial: Solution, _config: VNSConfig) -> Solution:
         return initial
 
     return search
 
 
-def best_improvement_local_search(operator: NeighborhoodOperator):
+def best_improvement(operator: NeighborhoodOperator):
     def search(initial: Solution, config: VNSConfig) -> Solution:
         current = initial
         is_better = config.acceptance_criterion.dominates
@@ -35,29 +35,43 @@ def best_improvement_local_search(operator: NeighborhoodOperator):
     return search
 
 
-def first_improvement_local_search(operator: NeighborhoodOperator):
+def first_improvement(operator: NeighborhoodOperator):
     def search(initial: Solution, config: VNSConfig) -> Solution:
         current = initial
         is_better = config.acceptance_criterion.dominates
 
         while True:
             improvement_found = False
-            
+
             for neighbor in operator(current, config):
                 if is_better(neighbor, current):
                     current = neighbor
                     improvement_found = True
                     break
-            
+
             if not improvement_found:
                 break
-        
+
         return current
 
     return search
 
 
-def composite_local_search(search_functions: list[SearchFunction]):
+def first_improvement_quick(operator: NeighborhoodOperator):
+    def search(initial: Solution, config: VNSConfig) -> Solution:
+        current = initial
+        is_better = config.acceptance_criterion.dominates
+
+        for neighbor in operator(current, config):
+            if is_better(neighbor, current):
+                return neighbor
+
+        return current
+
+    return search
+
+
+def composite(search_functions: list[SearchFunction]):
     def search(initial: Solution, config: VNSConfig) -> Solution:
         current = initial
         is_better = config.acceptance_criterion.dominates

@@ -16,8 +16,13 @@ sys.path.insert(1, str(Path(__file__).parent.parent.absolute()))
 
 from vns.vns_base import VNSOptimizer
 from vns.abstract import Problem, Solution, VNSConfig
-from vns.acceptance import TakeBigger
-from vns.local_search import best_improvement_local_search, first_improvement_local_search, noop_local_search
+from vns.acceptance import TakeBigger, TakeBiggerSkewed
+from vns.local_search import (
+    best_improvement,
+    first_improvement,
+    first_improvement_quick,
+    noop,
+)
 
 from utils import setup_logging, parse_time_string
 
@@ -37,11 +42,13 @@ class MOKPSolution(Solution[np.ndarray]):
 
 
 class MOKPProblem(Problem):
-    def __init__(self, weights: list[int], profits: list[list[int]], capacities: list[int]):
+    def __init__(
+        self, weights: list[int], profits: list[list[int]], capacities: list[int]
+    ):
         super().__init__(self.evaluate, self.generate_initial_solution)
 
-        self.weights    = np.array(weights)
-        self.profits    = np.array(profits)
+        self.weights = np.array(weights)
+        self.profits = np.array(profits)
         self.capacities = np.array(capacities)
 
         self.num_items = len(weights)
@@ -60,10 +67,11 @@ class MOKPProblem(Problem):
         solution_data = solution.data
         mult = 1 if self.is_feasible(solution.data) else -1
 
-        return tuple(
+        result = tuple(
             mult * np.sum(solution_data * self.profits[i])
             for i in range(self.num_objectives)
         )
+        return result
 
     def calculate_solution_distance(self, sol1: Solution, sol2: Solution) -> float:
         """Calculates a distance between two MOKP solutions (binary vectors)."""
@@ -78,7 +86,7 @@ def shake_add_remove(solution: Solution, k: int, config: VNSConfig) -> Solution:
 
     for _ in range(k):
         is_add_operation = random.random() > 0.5
-        
+
         if is_add_operation:
             unselected_items = np.where(solution_data == 0)[0]
             if unselected_items.size > 0:
@@ -98,7 +106,7 @@ def shake_swap(solution: Solution, k: int, config: VNSConfig) -> Solution:
     Randomly swaps a selected item with an unselected item 'k' times.
     """
     solution_data = solution.data.copy()
-    
+
     for _ in range(k):
         selected_items = np.where(solution_data == 1)[0]
         unselected_items = np.where(solution_data == 0)[0]
@@ -126,7 +134,7 @@ def add_remove_op(solution: Solution, config: VNSConfig) -> Iterable[Solution]:
 def swap_op(solution: Solution, config: VNSConfig) -> Iterable[Solution]:
     """Generates neighbors by swapping one selected item with one unselected item."""
     solution_data = solution.data
-    
+
     selected_items = np.where(solution_data == 1)[0]
     unselected_items = np.where(solution_data == 0)[0]
 
@@ -165,42 +173,55 @@ def prepare_mokp_optimizers(mokp_problem: MOKPProblem) -> dict[str, VNSOptimizer
     """
     bvns = VNSConfig(
         problem=mokp_problem,
-        search_functions=[best_improvement_local_search(add_remove_op)],
+        search_functions=[noop()],
         acceptance_criterion=TakeBigger(),
-        shake_function=shake_swap
+        shake_function=shake_add_remove,
     )
     rvns = VNSConfig(
         problem=mokp_problem,
-        search_functions=[noop_local_search()] * 10,
+        search_functions=[noop()] * 10,
         acceptance_criterion=TakeBigger(),
-        shake_function=shake_swap
+        shake_function=shake_add_remove,
+    )
+    svns = VNSConfig(
+        problem=mokp_problem,
+        search_functions=[noop()],
+        acceptance_criterion=TakeBiggerSkewed(
+            0.1, mokp_problem.calculate_solution_distance, 20
+        ),
+        shake_function=shake_add_remove,
     )
 
     return {
-        "BVNS_BI":        VNSOptimizer(replace(bvns, acceptance_criterion=TakeBigger())),
-        "BVNS_BI_Beam10": VNSOptimizer(replace(bvns, acceptance_criterion=TakeBigger(10))),
-        "BVNS_BI_Beam20": VNSOptimizer(replace(bvns, acceptance_criterion=TakeBigger(20))),
-
-        "BVNS_FI":        VNSOptimizer(replace(bvns, search_functions=[first_improvement_local_search(add_remove_op)], acceptance_criterion=TakeBigger())),
-        "BVNS_FI_Beam10": VNSOptimizer(replace(bvns, search_functions=[first_improvement_local_search(add_remove_op)], acceptance_criterion=TakeBigger(10))),
-        "BVNS_FI_Beam20": VNSOptimizer(replace(bvns, search_functions=[first_improvement_local_search(add_remove_op)], acceptance_criterion=TakeBigger(20))),
-
-        "RVNS":           VNSOptimizer(replace(rvns, acceptance_criterion=TakeBigger())),
-        "RVNS_Beam10":    VNSOptimizer(replace(rvns, acceptance_criterion=TakeBigger(10))),
-        "RVNS_Beam20":    VNSOptimizer(replace(rvns, acceptance_criterion=TakeBigger(20))),
-
-        
-        # "GVNS_MOKP": VNSOptimizer(
-        #     replace(
-        #         mokp_vns_config, 
-        #         search_functions=[
-        #             best_improvement_local_search(add_remove_op), 
-        #             first_improvement_local_search(swap_op)
-        #         ], 
-        #         shake_function=shake_add_remove
-        #     )
-        # )
+        "RVNS": VNSOptimizer(replace(rvns, search_functions=[noop()] * 5)),
+        "BVNS_BI": VNSOptimizer(
+            replace(bvns, search_functions=[best_improvement(add_remove_op)] * 5)
+        ),
+        "BVNS_FI": VNSOptimizer(
+            replace(bvns, search_functions=[first_improvement(add_remove_op)] * 5)
+        ),
+        "BVNS_QFI": VNSOptimizer(
+            replace(bvns, search_functions=[first_improvement_quick(add_remove_op)] * 5)
+        ),
+        "SVNS_BI": VNSOptimizer(
+            replace(svns, search_functions=[best_improvement(add_remove_op)] * 5)
+        ),
+        "SVNS_FI": VNSOptimizer(
+            replace(svns, search_functions=[first_improvement(add_remove_op)] * 5)
+        ),
+        "SVNS_QFI": VNSOptimizer(
+            replace(svns, search_functions=[first_improvement_quick(add_remove_op)] * 5)
+        ),
+        # "BVNS_BI_Beam10": VNSOptimizer(replace(bvns, acceptance_criterion=TakeBigger(10))),
+        # "BVNS_BI_Beam20": VNSOptimizer(replace(bvns, acceptance_criterion=TakeBigger(20))),
+        # "BVNS_FI_Beam10": VNSOptimizer(replace(bvns, search_functions=[first_improvement_quick(add_remove_op)] * 5, acceptance_criterion=TakeBigger(10))),
+        # "BVNS_FI_Beam20": VNSOptimizer(replace(bvns, search_functions=[first_improvement_quick(add_remove_op)] * 5, acceptance_criterion=TakeBigger(20))),
+        # "BVNS_QFI_Beam10": VNSOptimizer(replace(bvns, search_functions=[first_improvement_quick(add_remove_op)] * 5, acceptance_criterion=TakeBigger(10))),
+        # "BVNS_QFI_Beam20": VNSOptimizer(replace(bvns, search_functions=[first_improvement_quick(add_remove_op)] * 5, acceptance_criterion=TakeBigger(20))),
+        # "RVNS_Beam10":    VNSOptimizer(replace(rvns, acceptance_criterion=TakeBigger(10))),
+        # "RVNS_Beam20":    VNSOptimizer(replace(rvns, acceptance_criterion=TakeBigger(20))),
     }
+
 
 def run_mokp_example(
     filename: str,
@@ -211,54 +232,145 @@ def run_mokp_example(
     setup_logging(level=logging.INFO)
     max_run_time_seconds = parse_time_string(run_time)
 
-    logger.info(f"\n--- Running {optimizer_type} Example with TSPLIB file: {filename} ---")
+    logger.info(f"--- Running {optimizer_type} with {filename} ---")
     logger.info(f"Max run time: {run_time} ({max_run_time_seconds:.2f} seconds)")
     logger.info(f"Max iterations without improvement: {max_iterations_no_improvement}")
 
     mokp_problem = load_mokp_problem(filename)
     optimizers = prepare_mokp_optimizers(mokp_problem)
 
-    vns_optimizer = optimizers.get(optimizer_type)
-    if not vns_optimizer:
+    optimizer = optimizers.get(optimizer_type)
+    if not optimizer:
         logger.error(f"Unknown optimizer type: {optimizer_type}")
         return
-    
+
     start_time = time.time()
-    
-    for iteration, improved in enumerate(vns_optimizer.optimize(), 1):
+    improved_objectives_data = set()
+
+    optimizer.config.acceptance_criterion.clear()
+
+    for iteration, improved in enumerate(optimizer.optimize(), 1):
         elapsed_time = time.time() - start_time
 
         if improved:
-            logger.info("Iteration %d: # solutions = %d", iteration, len(vns_optimizer.config.acceptance_criterion.get_all_solutions()))
+            logger.info(
+                "Iteration %d: # solutions = %d",
+                iteration,
+                len(optimizer.config.acceptance_criterion.get_all_solutions()),
+            )
+
+            for solution in optimizer.config.acceptance_criterion.get_all_solutions():
+                improved_objectives_data.add(solution.objectives)
 
         if elapsed_time > max_run_time_seconds:
             logger.info("Timeout.")
             break
 
-    logger.info(f"\n--- {optimizer_type} Optimization Complete ---")
+    logger.info(f"--- {optimizer_type} Optimization Complete ---")
 
     pareto_front_objectives = []
-    for solution in vns_optimizer.config.acceptance_criterion.get_all_solutions():
+    for solution in optimizer.config.acceptance_criterion.get_all_solutions():
         pareto_front_objectives.append(solution.objectives)
 
     logger.info(f"Overall Best Pareto Front Size: {len(pareto_front_objectives)}")
+
     # Plotting the Pareto front
-    plt.figure(figsize=(10, 6))
-    
-    # Extract objectives for plotting
-    obj1 = [o[0] for o in pareto_front_objectives]
-    obj2 = [o[1] for o in pareto_front_objectives]
-    
-    plt.plot(
-        obj1,
-        obj2,
-        marker="o",
-        linestyle="",
-        label=optimizer_type,
-    )
-    plt.title(f"{optimizer_type} Pareto Front Approximation for MOKP")
-    plt.xlabel("Objective 1 Value (Total Profit 1)")
-    plt.ylabel("Objective 2 Value (Total Profit 2)")
+
+    if improved_objectives_data:
+        improved_objectives_data = list(improved_objectives_data)
+        obj1_imp = [o[0] for o in improved_objectives_data]
+        obj2_imp = [o[1] for o in improved_objectives_data]
+        plt.scatter(
+            obj1_imp,
+            obj2_imp,
+            marker="x",
+            linestyle="",
+            color="red",
+            label="Improved Solutions",
+            alpha=0.5,
+        )
+
+    # Plot the final Pareto front
+    if pareto_front_objectives:
+        obj1_pf = [o[0] for o in pareto_front_objectives]
+        obj2_pf = [o[1] for o in pareto_front_objectives]
+        plt.scatter(
+            obj1_pf,
+            obj2_pf,
+            marker="o",
+            linestyle="",
+            color="blue",
+            label="Final Pareto Front",
+        )
+
+    plt.title(f"{optimizer_type} for MOKP {filename.split('.json')[0]}")
+    plt.xlabel("Z1")
+    plt.ylabel("Z2")
+    plt.gca().set_aspect("equal", adjustable="box")
+
+    plt.grid(True, linestyle="--", alpha=0.7)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def compare_mokp(filename: str, run_time: str, max_iterations_no_improvement: int):
+    setup_logging(level=logging.INFO)
+    max_run_time_seconds = parse_time_string(run_time)
+
+    mokp_problem = load_mokp_problem(filename)
+    optimizers = prepare_mokp_optimizers(mokp_problem)
+
+    for optimizer_type, optimizer in optimizers.items():
+        logger.info(
+            f"--- Running {optimizer_type} Example with TSPLIB file: {filename} ---"
+        )
+        logger.info(f"Max run time: {run_time} ({max_run_time_seconds:.2f} seconds)")
+        logger.info(
+            f"Max iterations without improvement: {max_iterations_no_improvement}"
+        )
+
+        start_time = time.time()
+
+        optimizer.config.acceptance_criterion.clear()
+
+        for iteration, improved in enumerate(optimizer.optimize(), 1):
+            elapsed_time = time.time() - start_time
+
+            if improved:
+                logger.info(
+                    "Iteration %d: # solutions = %d",
+                    iteration,
+                    len(optimizer.config.acceptance_criterion.get_all_solutions()),
+                )
+
+            if elapsed_time > max_run_time_seconds:
+                logger.info("Timeout.")
+                break
+
+        logger.info(f"--- {optimizer_type} Optimization Complete ---")
+
+        pareto_front_objectives = []
+        for solution in optimizer.config.acceptance_criterion.get_all_solutions():
+            pareto_front_objectives.append(solution.objectives)
+
+        pareto_front_objectives.sort()
+        obj1_pf = [o[0] for o in pareto_front_objectives]
+        obj2_pf = [o[1] for o in pareto_front_objectives]
+
+        plt.plot(
+            obj1_pf,
+            obj2_pf,
+            marker="o",
+            linestyle="-",
+            label=optimizer_type,
+        )
+
+    plt.title(filename.split(".json")[0])
+    plt.xlabel("Z1")
+    plt.ylabel("Z2")
+    plt.gca().set_aspect("equal", adjustable="box")
+
     plt.grid(True, linestyle="--", alpha=0.7)
     plt.legend()
     plt.tight_layout()
@@ -304,9 +416,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    run_mokp_example(
-        args.filename,
-        args.optimizer_type,
-        args.run_time,
-        args.max_no_improvements,
-    )
+    if not args.compare:
+        run_mokp_example(
+            args.filename,
+            args.optimizer_type,
+            args.run_time,
+            args.max_no_improvements,
+        )
+    else:
+        compare_mokp(
+            args.filename,
+            args.run_time,
+            args.max_no_improvements,
+        )

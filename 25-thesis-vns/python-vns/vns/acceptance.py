@@ -73,6 +73,7 @@ class TakeSmaller(AcceptanceCriterion):
 
         self.archive: list[Solution] = []
         self.buffer: deque[Solution] = deque(maxlen=buffer_size)
+        self.buffer_size = buffer_size
 
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -83,24 +84,25 @@ class TakeSmaller(AcceptanceCriterion):
 
         Returns True if the archive changes (solution added/removed).
         """
-        if not self.archive:
-            self.archive.append(candidate)
-            return True
 
-        dominating = []
+        new_archive = []
+
         for solution in self.archive:
+            if self.dominates(solution, candidate) or all(
+                abs(o1 - o2) < 1e-6
+                for o1, o2 in zip(solution.objectives, candidate.objectives)
+            ):
+                return False
+
             if not self.dominates(candidate, solution):
-                dominating.append(solution)
+                new_archive.append(solution)
             else:
                 self.buffer.append(solution)
 
-        archive_changed = len(dominating) != len(self.archive)
-        if archive_changed:
-            # Means that candidate dominates some of the existing solutions
-            dominating.append(candidate)
+        new_archive.append(candidate)
+        self.archive = new_archive
 
-        self.archive = dominating
-        return archive_changed
+        return True
 
     def get_one_current_solution(self) -> Solution:
         """Returns a single solution from either the main archive or buffer."""
@@ -123,6 +125,10 @@ class TakeSmaller(AcceptanceCriterion):
             new_solution.objectives, current_solution.objectives, 0.0
         )
 
+    def clear(self):
+        super().clear()
+        self.buffer = deque(maxlen=self.buffer_size)
+
 
 class TakeSmallerSkewed(TakeSmaller):
     """
@@ -137,7 +143,7 @@ class TakeSmallerSkewed(TakeSmaller):
         self,
         alpha: float,
         distance_metric: Callable[[Solution, Solution], float],
-        buffer_size: int = 0,
+        buffer_size: int,
     ):
         super().__init__()
 
@@ -150,24 +156,12 @@ class TakeSmallerSkewed(TakeSmaller):
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def accept(self, candidate: Solution) -> bool:
-        if not self.archive:
-            self.archive.append(candidate)
+        if super().accept(candidate):
             return True
 
-        dominating = []
-        for solution in self.archive:
-            if not self.dominates_buffered(candidate, solution, 0.0):
-                dominating.append(solution)
-            else:
-                self.buffer.append(solution)
-
-        archive_changed = len(dominating) != len(self.archive)
-        if archive_changed:
-            dominating.append(candidate)
-
-        self.archive = dominating
         if all(
-            self.dominates_buffered(
+            solution is not candidate
+            and self.dominates_buffered(
                 candidate,
                 solution,
                 self.alpha * self.distance_metric(candidate, solution),
@@ -176,7 +170,7 @@ class TakeSmallerSkewed(TakeSmaller):
         ):
             self.buffer.append(candidate)
 
-        return archive_changed
+        return False
 
     def dominates_buffered(
         self, new_solution: Solution, current_solution: Solution, buffer_value: float
@@ -199,7 +193,7 @@ class TakeBigger(TakeSmaller):
         )
 
 
-class TakeBiggerSkewed(TakeSmallerSkewed):
+class TakeBiggerSkewed(TakeSmallerSkewed, TakeBigger):
     """
     Skewed Acceptance Criterion for SVNS (maximization).
 
