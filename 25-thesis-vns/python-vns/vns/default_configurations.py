@@ -4,6 +4,7 @@ from vns.abstract import (
     ShakeFunction,
     VNSConfig,
 )
+from vns.local_search import noop_local_search
 
 
 def get_RVNS_optimizer_config(
@@ -19,7 +20,7 @@ def get_RVNS_optimizer_config(
     """
     return VNSConfig(
         problem=problem,
-        neighborhood_operators=[(lambda sol: [], lambda solution, op, conf: solution)],
+        search_functions=[noop_local_search()],
         shake_function=shake_function,
         acceptance_criterion=acceptance_criterion,
     )

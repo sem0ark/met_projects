@@ -1,6 +1,7 @@
 import logging
 import re
 
+
 def setup_logging(level=logging.INFO):
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
@@ -17,7 +18,6 @@ def setup_logging(level=logging.INFO):
     console_handler.setFormatter(formatter)
 
     root_logger.addHandler(console_handler)
-
 
 
 def parse_time_string(time_str: str) -> float:
@@ -41,4 +41,3 @@ def parse_time_string(time_str: str) -> float:
     elif unit == "h":
         return float(value * 3600)
     return float("inf")
-

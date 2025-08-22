@@ -1,38 +1,39 @@
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Generic, Iterable, Self, TypeVar
 
 
-ObjectiveFunction = Callable[["Solution"], float]
+ObjectiveFunction = Callable[["Solution"], tuple[float, ...]]
 
 
-@dataclass(frozen=True)
+@dataclass
 class Problem:
     """
     Abstract interface for defining an optimization problem.
     Concrete problems (e.g., TSP, knapsack) will implement this.
     """
 
-    objective_functions: list[ObjectiveFunction]
-    """Objective functions for this problem."""
+    objective_function: ObjectiveFunction
+    """Objective function for this problem."""
 
     get_initial_solution: Callable[[], "Solution"]
     """Get a random solution to start with."""
-    
 
-@dataclass(frozen=True)
-class Solution:
+T = TypeVar("T")
+
+@dataclass
+class Solution(Generic[T]):
     """Abstract base class for a solution to a given problem."""
 
-    data: Any  # Problem-specific representation (list, array, etc.)
+    data: T  # Problem-specific representation (list, array, etc.)
     problem: Problem
 
     @cached_property
     def objectives(self) -> tuple[float, ...]:
-        return tuple(
-            obj(self)
-            for obj in self.problem.objective_functions
-        )
+        return self.problem.objective_function(self)
+
+    def new(self, data: Any) -> Self:
+        return self.__class__(data, self.problem)
 
 
 class AcceptanceCriterion:
@@ -67,11 +68,10 @@ class AcceptanceCriterion:
         raise NotImplementedError
 
 
+NeighborhoodOperator = Callable[["Solution", "VNSConfig"], Iterable["Solution"]]
 
-NeighborhoodOperator = Callable[["Solution"], Iterable["Solution"]]
-
-ShakeFunction = Callable[["Solution"], "Solution"]
-SearchFunction = Callable[["Solution", NeighborhoodOperator, "VNSConfig"], "Solution"]
+ShakeFunction = Callable[["Solution", int, "VNSConfig"], "Solution"]
+SearchFunction = Callable[["Solution", "VNSConfig"], "Solution"]
 
 
 @dataclass
@@ -80,9 +80,7 @@ class VNSConfig:
 
     problem: Problem
 
-    neighborhood_operators: list[
-        tuple[NeighborhoodOperator, SearchFunction]
-    ]
+    search_functions: list[SearchFunction]
     """Neighborhood operators for a given problem, ordered by increasing size/complexity."""
 
     shake_function: ShakeFunction
@@ -90,7 +88,5 @@ class VNSConfig:
     acceptance_criterion: AcceptanceCriterion
 
     def __post_init__(self):
-        if not self.neighborhood_operators:
-            raise ValueError(
-                "At least one neighborhood operator must be provided or defined by the problem."
-            )
+        if not self.search_functions:
+            raise ValueError("At least one neighborhood operator must be provided or defined by the problem.")

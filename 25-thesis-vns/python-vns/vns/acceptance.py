@@ -8,7 +8,7 @@ from vns.abstract import AcceptanceCriterion, Solution
 def dominates_minimize(
     new_objective: tuple[float, ...],
     current_objective: tuple[float, ...],
-    buffer_value: float
+    buffer_value: float,
 ) -> bool:
     """
     Checks if objective vector new_objective dominates objective vector current_objective.
@@ -106,7 +106,7 @@ class TakeSmaller(AcceptanceCriterion):
         """Returns a single solution from either the main archive or buffer."""
         # Check if prioritizing better solutions will help
         # https://numpy.org/doc/stable/reference/random/generated/numpy.random.triangular.html
-        
+
         size = len(self.archive) + len(self.buffer)
         if size == 0:
             raise ValueError("No solutions")
@@ -119,7 +119,9 @@ class TakeSmaller(AcceptanceCriterion):
         return self.buffer[index]
 
     def dominates(self, new_solution: Solution, current_solution: Solution) -> bool:
-        return dominates_minimize(new_solution.objectives, current_solution.objectives, 0.0)
+        return dominates_minimize(
+            new_solution.objectives, current_solution.objectives, 0.0
+        )
 
 
 class TakeSmallerSkewed(TakeSmaller):
@@ -164,13 +166,24 @@ class TakeSmallerSkewed(TakeSmaller):
             dominating.append(candidate)
 
         self.archive = dominating
-        if all(self.dominates_buffered(candidate, solution, self.alpha * self.distance_metric(candidate, solution)) for solution in self.archive):
+        if all(
+            self.dominates_buffered(
+                candidate,
+                solution,
+                self.alpha * self.distance_metric(candidate, solution),
+            )
+            for solution in self.archive
+        ):
             self.buffer.append(candidate)
 
         return archive_changed
 
-    def dominates_buffered(self, new_solution: Solution, current_solution: Solution, buffer_value: float) -> bool:
-        return dominates_minimize(new_solution.objectives, current_solution.objectives, buffer_value)
+    def dominates_buffered(
+        self, new_solution: Solution, current_solution: Solution, buffer_value: float
+    ) -> bool:
+        return dominates_minimize(
+            new_solution.objectives, current_solution.objectives, buffer_value
+        )
 
 
 class TakeBigger(TakeSmaller):
@@ -181,7 +194,9 @@ class TakeBigger(TakeSmaller):
     """
 
     def dominates(self, new_solution: Solution, current_solution: Solution) -> bool:
-        return dominates_maximize(new_solution.objectives, current_solution.objectives, 0.0)
+        return dominates_maximize(
+            new_solution.objectives, current_solution.objectives, 0.0
+        )
 
 
 class TakeBiggerSkewed(TakeSmallerSkewed):
@@ -193,5 +208,9 @@ class TakeBiggerSkewed(TakeSmallerSkewed):
     to escape local optima or explore plateaus.
     """
 
-    def dominates_buffered(self, new_solution: Solution, current_solution: Solution, buffer_value: float) -> bool:
-        return dominates_maximize(new_solution.objectives, current_solution.objectives, buffer_value)
+    def dominates_buffered(
+        self, new_solution: Solution, current_solution: Solution, buffer_value: float
+    ) -> bool:
+        return dominates_maximize(
+            new_solution.objectives, current_solution.objectives, buffer_value
+        )

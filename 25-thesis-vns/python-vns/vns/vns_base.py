@@ -30,16 +30,18 @@ class VNSOptimizer:
 
         while True:
             improved_in_this_vns_iteration = False
-            current_solution = self.config.acceptance_criterion.get_one_current_solution()
+            current_solution = (
+                self.config.acceptance_criterion.get_one_current_solution()
+            )
 
-            for neighborhood_operator, search_function in self.config.neighborhood_operators:
-                shaken_solution = self.config.shake_function(current_solution)
-                local_optimum = search_function(shaken_solution, neighborhood_operator)
+            for k, search_function in enumerate(self.config.search_functions, 1):
+                shaken_solution = self.config.shake_function(current_solution, k, self.config)
+                local_optimum = search_function(shaken_solution, self.config)
 
                 accepted = self.config.acceptance_criterion.accept(local_optimum)
 
                 if accepted:
-                    self.logger.debug("Improved! Archive updated. New best overall: %s", local_optimum.objectives)
+                    improved_in_this_vns_iteration = True
                     break
 
             yield improved_in_this_vns_iteration
