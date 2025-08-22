@@ -20,9 +20,9 @@ from vns.vns_base import VNSOptimizer
 from vns.abstract import Problem, Solution, VNSConfig
 from vns.acceptance import TakeSmaller, TakeSmallerSkewed
 from vns.local_search import (
-    best_improvement_local_search,
-    first_improvement_local_search,
-    noop_local_search,
+    best_improvement,
+    first_improvement,
+    noop,
 )
 
 from utils import setup_logging, parse_time_string
@@ -284,30 +284,30 @@ def load_tsp_problem(filename: str) -> TSPProblem:
 def prepare_optimizers(tsp_problem: TSPProblem) -> dict[str, VNSOptimizer]:
     bvns = VNSConfig(
         problem=tsp_problem.to_problem(),
-        search_functions=[best_improvement_local_search(flip_op)],
+        search_functions=[best_improvement(flip_op)],
         acceptance_criterion=TakeSmaller(),
         shake_function=shake_flip_tour_region,
     )
     rvns = VNSConfig(
         problem=tsp_problem.to_problem(),
-        search_functions=[noop_local_search()],
+        search_functions=[noop()],
         acceptance_criterion=TakeSmaller(),
         shake_function=shake_flip_tour_region,
     )
     gvns = VNSConfig(
         problem=tsp_problem.to_problem(),
         search_functions=[
-            best_improvement_local_search(flip_op),
-            first_improvement_local_search(swap_op),
+            best_improvement(flip_op),
+            first_improvement(swap_op),
         ],
         acceptance_criterion=TakeSmaller(),
         shake_function=shake_flip_tour_region,
     )
     svns = VNSConfig(
         problem=tsp_problem.to_problem(),
-        search_functions=[best_improvement_local_search(flip_op)],
+        search_functions=[best_improvement(flip_op)],
         acceptance_criterion=TakeSmallerSkewed(
-            0.1, tsp_problem.calculate_tour_difference_distance
+            0.1, tsp_problem.calculate_tour_difference_distance, 1
         ),
         shake_function=shake_flip_tour_region,
     )
@@ -323,21 +323,21 @@ def prepare_optimizers(tsp_problem: TSPProblem) -> dict[str, VNSOptimizer]:
         "BVNS_FI": VNSOptimizer(
             replace(
                 bvns,
-                search_functions=[first_improvement_local_search(flip_op)],
+                search_functions=[first_improvement(flip_op)],
                 acceptance_criterion=TakeSmaller(),
             )
         ),
         "BVNS_FI_Beam10": VNSOptimizer(
             replace(
                 bvns,
-                search_functions=[first_improvement_local_search(flip_op)],
+                search_functions=[first_improvement(flip_op)],
                 acceptance_criterion=TakeSmaller(10),
             )
         ),
         "BVNS_FI_Beam20": VNSOptimizer(
             replace(
                 bvns,
-                search_functions=[first_improvement_local_search(flip_op)],
+                search_functions=[first_improvement(flip_op)],
                 acceptance_criterion=TakeSmaller(20),
             )
         ),
@@ -359,7 +359,7 @@ def prepare_optimizers(tsp_problem: TSPProblem) -> dict[str, VNSOptimizer]:
             replace(
                 svns,
                 acceptance_criterion=TakeSmallerSkewed(
-                    0.1, tsp_problem.calculate_tour_difference_distance
+                    0.1, tsp_problem.calculate_tour_difference_distance, 1
                 ),
             )
         ),
