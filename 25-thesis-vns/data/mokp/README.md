@@ -19,10 +19,11 @@ There are 10 instances:
 ```
 Max sum{i=1,…,n} c1(i) x(i)
 Max sum{i=1,…,n} c2(i) x(i)
-s/t  sum{i=1,…,n} w(i) x(i) <= W
-                  x(i)=0 or 1        for i=1,...,n
+s/t sum{i=1,…,n} w(i)  x(i) <= W
+                 x(i)=0 or 1        for i=1,...,n
 ```
 
+File format:
 ```json
 {
     "metadata": {

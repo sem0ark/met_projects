@@ -35,9 +35,7 @@ class VNSOptimizer:
             )
 
             for k, search_function in enumerate(self.config.search_functions, 1):
-                shaken_solution = self.config.shake_function(
-                    current_solution, k**2, self.config
-                )
+                shaken_solution = self.config.shake_function(current_solution, k, self.config)
                 local_optimum = search_function(shaken_solution, self.config)
 
                 accepted = self.config.acceptance_criterion.accept(local_optimum)
