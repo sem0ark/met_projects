@@ -1,7 +1,7 @@
 import logging
-from typing import Iterable, Optional
+from typing import Iterable
 
-from vns.abstract import Solution, VNSConfig
+from vns.abstract import VNSConfig
 
 
 class VNSOptimizer:
@@ -20,13 +20,13 @@ class VNSOptimizer:
         else:
             self.logger.setLevel(logging.INFO)
 
-    def optimize(self, initial_solution: Optional[Solution] = None) -> Iterable[bool]:
+    def optimize(self) -> Iterable[bool]:
         """
         Runs the VNS optimization process.
         Returns the best solution found (for single-obj) or the Pareto front (for multi-obj).
         """
-        initial_solution = self.config.problem.get_initial_solution()
-        self.config.acceptance_criterion.accept(initial_solution)
+        for sol in self.config.problem.get_initial_solutions():
+            self.config.acceptance_criterion.accept(sol)
 
         while True:
             improved_in_this_vns_iteration = False
@@ -35,7 +35,9 @@ class VNSOptimizer:
             )
 
             for k, search_function in enumerate(self.config.search_functions, 1):
-                shaken_solution = self.config.shake_function(current_solution, k, self.config)
+                shaken_solution = self.config.shake_function(
+                    current_solution, k, self.config
+                )
                 local_optimum = search_function(shaken_solution, self.config)
 
                 accepted = self.config.acceptance_criterion.accept(local_optimum)

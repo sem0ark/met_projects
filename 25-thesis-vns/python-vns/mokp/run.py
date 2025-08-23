@@ -4,7 +4,7 @@ import random
 import sys
 import logging
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 from dataclasses import replace
 
 import matplotlib.pyplot as plt
@@ -42,25 +42,41 @@ class MOKPSolution(Solution[np.ndarray]):
 
 
 class MOKPProblem(Problem):
-    def __init__(
-        self, weights: list[int], profits: list[list[int]], capacities: list[int]
-    ):
-        super().__init__(self.evaluate, self.generate_initial_solution)
+    def __init__(self, weights: list[int], profits: list[list[int]], capacity: int):
+        super().__init__(self.evaluate, self.generate_initial_solutions)
 
         self.weights = np.array(weights)
         self.profits = np.array(profits)
-        self.capacities = np.array(capacities)
+        self.capacity = np.array(capacity)
 
         self.num_items = len(weights)
         self.num_objectives = self.profits.shape[0]
 
-    def generate_initial_solution(self) -> MOKPSolution:
-        return MOKPSolution(np.zeros(self.num_items, dtype=int), self)
+    def generate_initial_solutions(self, num_solutions: int = 50) -> Iterable[Solution]:
+        """
+        Generates a specified number of random feasible solutions for the MOKP.
+        Each solution is created by iterating through items in a random order
+        and adding them to the knapsack if they do not violate the capacity constraint.
+        """
+        item_indices = list(range(self.num_items))
+        for _ in range(num_solutions):
+            solution_data = np.zeros(self.num_items, dtype=int)
+            current_weight = 0
+
+            # Shuffle the items to ensure randomness in which ones are considered first
+            random.shuffle(item_indices)
+
+            for item_idx in item_indices:
+                if current_weight + self.weights[item_idx] <= self.capacity:
+                    solution_data[item_idx] = 1
+                    current_weight += self.weights[item_idx]
+
+            yield MOKPSolution(solution_data, self)
 
     def is_feasible(self, solution_data: np.ndarray) -> bool:
-        """Checks if a solution is feasible with respect to knapsack capacities."""
+        """Checks if a solution is feasible with respect to knapsack capacity."""
         total_weight = np.sum(solution_data * self.weights)
-        return total_weight <= self.capacities[0]
+        return total_weight <= self.capacity
 
     def evaluate(self, solution: Solution) -> tuple[float, ...]:
         """Calculates the profit for each objective."""
@@ -120,12 +136,18 @@ def shake_swap(solution: Solution, k: int, config: VNSConfig) -> Solution:
     return solution.new(solution_data)
 
 
+def shuffled(lst: Iterable) -> list[Any]:
+    lst = list(lst)
+    random.shuffle(lst)
+    return lst
+
+
 def add_remove_op(solution: Solution, config: VNSConfig) -> Iterable[Solution]:
     """Generates neighbors by adding or removing a single item."""
     solution_data = solution.data
     num_items = len(solution_data)
 
-    for i in range(num_items):
+    for i in shuffled(range(num_items)):
         new_data = solution_data.copy()
         new_data[i] = 1 - new_data[i]
         yield solution.new(new_data)
@@ -138,8 +160,8 @@ def swap_op(solution: Solution, config: VNSConfig) -> Iterable[Solution]:
     selected_items = np.where(solution_data == 1)[0]
     unselected_items = np.where(solution_data == 0)[0]
 
-    for i in selected_items:
-        for j in unselected_items:
+    for i in shuffled(selected_items):
+        for j in shuffled(unselected_items):
             new_data = solution_data.copy()
             new_data[i] = 0
             new_data[j] = 1
@@ -164,7 +186,7 @@ def load_mokp_problem(filename: str) -> MOKPProblem:
     profits = configuration["objectives"]
     capacity = configuration["metadata"]["capacity"]
 
-    return MOKPProblem(weights, profits, [capacity])
+    return MOKPProblem(weights, profits, capacity)
 
 
 def prepare_mokp_optimizers(mokp_problem: MOKPProblem) -> dict[str, VNSOptimizer]:
@@ -174,20 +196,20 @@ def prepare_mokp_optimizers(mokp_problem: MOKPProblem) -> dict[str, VNSOptimizer
     bvns = VNSConfig(
         problem=mokp_problem,
         search_functions=[noop()],
-        acceptance_criterion=TakeBigger(),
+        acceptance_criterion=TakeBigger(10),
         shake_function=shake_add_remove,
     )
     rvns = VNSConfig(
         problem=mokp_problem,
-        search_functions=[noop()] * 10,
-        acceptance_criterion=TakeBigger(),
+        search_functions=[noop()],
+        acceptance_criterion=TakeBigger(10),
         shake_function=shake_add_remove,
     )
     svns = VNSConfig(
         problem=mokp_problem,
         search_functions=[noop()],
         acceptance_criterion=TakeBiggerSkewed(
-            0.1, mokp_problem.calculate_solution_distance, 20
+            1, mokp_problem.calculate_solution_distance, 20
         ),
         shake_function=shake_add_remove,
     )
@@ -245,6 +267,7 @@ def run_mokp_example(
         return
 
     start_time = time.time()
+    last_improved = 1
     improved_objectives_data = set()
 
     optimizer.config.acceptance_criterion.clear()
@@ -259,11 +282,19 @@ def run_mokp_example(
                 len(optimizer.config.acceptance_criterion.get_all_solutions()),
             )
 
-            for solution in optimizer.config.acceptance_criterion.get_all_solutions():
-                improved_objectives_data.add(solution.objectives)
+            for sol in optimizer.config.acceptance_criterion.get_all_solutions():
+                improved_objectives_data.add(sol.objectives)
 
         if elapsed_time > max_run_time_seconds:
             logger.info("Timeout.")
+            break
+
+        if improved:
+            last_improved = iteration
+        elif iteration - last_improved > max_iterations_no_improvement:
+            logger.info(
+                "No improvements for %d iterations.", max_iterations_no_improvement
+            )
             break
 
     logger.info(f"--- {optimizer_type} Optimization Complete ---")
@@ -322,15 +353,14 @@ def compare_mokp(filename: str, run_time: str, max_iterations_no_improvement: in
     optimizers = prepare_mokp_optimizers(mokp_problem)
 
     for optimizer_type, optimizer in optimizers.items():
-        logger.info(
-            f"--- Running {optimizer_type} Example with TSPLIB file: {filename} ---"
-        )
+        logger.info(f"--- Running {optimizer_type} Example {filename} ---")
         logger.info(f"Max run time: {run_time} ({max_run_time_seconds:.2f} seconds)")
         logger.info(
             f"Max iterations without improvement: {max_iterations_no_improvement}"
         )
 
         start_time = time.time()
+        last_improved = 1
 
         optimizer.config.acceptance_criterion.clear()
 
@@ -346,6 +376,14 @@ def compare_mokp(filename: str, run_time: str, max_iterations_no_improvement: in
 
             if elapsed_time > max_run_time_seconds:
                 logger.info("Timeout.")
+                break
+
+            if improved:
+                last_improved = iteration
+            elif iteration - last_improved > max_iterations_no_improvement:
+                logger.info(
+                    "No improvements for %d iterations.", max_iterations_no_improvement
+                )
                 break
 
         logger.info(f"--- {optimizer_type} Optimization Complete ---")
@@ -379,7 +417,7 @@ def compare_mokp(filename: str, run_time: str, max_iterations_no_improvement: in
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Run VNS optimization for TSP using a TSPLIB file."
+        description="Run VNS optimization for MOKP using a problem file at data/mokp."
     )
     parser.add_argument(
         "filename",
@@ -389,13 +427,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--optimizer-type",
         type=str,
-        default="SkewedVNS",
+        default="RVNS",
         help="Type of VNS optimizer to run.",
     )
     parser.add_argument(
         "--run-time",
         type=str,
-        default="10s",
+        default="10h",
         help="Maximum duration for the script to run (e.g., '30s', '5m', '1h').",
     )
     parser.add_argument(

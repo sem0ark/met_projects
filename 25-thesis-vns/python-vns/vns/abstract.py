@@ -16,7 +16,7 @@ class Problem:
     objective_function: ObjectiveFunction
     """Objective function for this problem."""
 
-    get_initial_solution: Callable[[], "Solution"]
+    get_initial_solutions: Callable[[], Iterable["Solution"]]
     """Get a random solution to start with."""
 
 
@@ -45,7 +45,6 @@ class AcceptanceCriterion:
     """
 
     def __init__(self):
-        self.archive: list[Solution] = []
         """The archive is now managed internally by the acceptance criterion."""
 
     def dominates(self, new_solution: Solution, current_solution: Solution) -> bool:
@@ -63,14 +62,15 @@ class AcceptanceCriterion:
 
     def get_all_solutions(self) -> list[Solution]:
         """Returns the full archive of accepted solutions."""
-        return self.archive
+        raise NotImplementedError
 
     def get_one_current_solution(self) -> Solution:
         """Returns a single solution from the archive."""
         raise NotImplementedError
 
     def clear(self):
-        self.archive = []
+        """Clears the state of the criterion."""
+        raise NotImplementedError
 
 
 NeighborhoodOperator = Callable[["Solution", "VNSConfig"], Iterable["Solution"]]

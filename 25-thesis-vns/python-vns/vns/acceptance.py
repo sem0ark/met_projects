@@ -104,6 +104,10 @@ class TakeSmaller(AcceptanceCriterion):
 
         return True
 
+    def get_all_solutions(self) -> list[Solution]:
+        """Returns the full archive of accepted solutions."""
+        return self.archive
+
     def get_one_current_solution(self) -> Solution:
         """Returns a single solution from either the main archive or buffer."""
         # Check if prioritizing better solutions will help
@@ -126,7 +130,7 @@ class TakeSmaller(AcceptanceCriterion):
         )
 
     def clear(self):
-        super().clear()
+        self.archive = []
         self.buffer = deque(maxlen=self.buffer_size)
 
 
