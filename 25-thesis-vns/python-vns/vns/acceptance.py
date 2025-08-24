@@ -61,88 +61,82 @@ def dominates_maximize(
     return at_least_one_strictly_better
 
 
-class TakeSmaller(AcceptanceCriterion):
-    """
-    General-purpose Acceptance Criterion (minimization).
+class _Comparison:
+    def dominates(self, new_solution: Solution, current_solution: Solution) -> bool:
+        raise NotImplementedError
 
-    For multi-objective problems, it maintains an archive of non-dominated solutions (Pareto front).
-    """
+    def dominates_buffered(
+        self, new_solution: Solution, current_solution: Solution, buffer_value: float
+    ) -> bool:
+        raise NotImplementedError
 
-    def __init__(self, buffer_size: int = 0):
+
+class _Smaller(_Comparison):
+    def dominates(self, new_solution: Solution, current_solution: Solution) -> bool:
+        return dominates_minimize(
+            new_solution.objectives, current_solution.objectives, 0.0
+        )
+
+    def dominates_buffered(
+        self, new_solution: Solution, current_solution: Solution, buffer_value: float
+    ) -> bool:
+        return dominates_minimize(
+            new_solution.objectives, current_solution.objectives, buffer_value
+        )
+
+
+class _Bigger(_Comparison):
+    def dominates(self, new_solution: Solution, current_solution: Solution) -> bool:
+        return dominates_maximize(
+            new_solution.objectives, current_solution.objectives, 0.0
+        )
+
+    def dominates_buffered(
+        self, new_solution: Solution, current_solution: Solution, buffer_value: float
+    ) -> bool:
+        return dominates_maximize(
+            new_solution.objectives, current_solution.objectives, buffer_value
+        )
+
+
+class _AcceptBeam(_Comparison):
+    def __init__(self):
         super().__init__()
 
-        self.archive: list[Solution] = []
-        self.buffer: deque[Solution] = deque(maxlen=buffer_size)
-        self.buffer_size = buffer_size
-
+        self.front: list[Solution] = []
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def accept(self, candidate: Solution) -> bool:
         """
         Decides whether to accept candidate and update the archive.
         Updates the non-dominated archive based on Pareto dominance.
-
-        Returns True if the archive changes (solution added/removed).
         """
 
-        new_archive = []
+        new_front = []
 
-        for solution in self.archive:
-            if self.dominates(solution, candidate) or all(
-                abs(o1 - o2) < 1e-6
-                for o1, o2 in zip(solution.objectives, candidate.objectives)
-            ):
+        for solution in self.front:
+            if self.dominates(solution, candidate) or solution == candidate:
                 return False
 
             if not self.dominates(candidate, solution):
-                new_archive.append(solution)
-            else:
-                self.buffer.append(solution)
+                new_front.append(solution)
 
-        new_archive.append(candidate)
-        self.archive = new_archive
+        new_front.append(candidate)
+        self.front = new_front
 
         return True
 
     def get_all_solutions(self) -> list[Solution]:
-        """Returns the full archive of accepted solutions."""
-        return self.archive
+        return self.front
 
     def get_one_current_solution(self) -> Solution:
-        """Returns a single solution from either the main archive or buffer."""
-        # Check if prioritizing better solutions will help
-        # https://numpy.org/doc/stable/reference/random/generated/numpy.random.triangular.html
-
-        size = len(self.archive) + len(self.buffer)
-        if size == 0:
-            raise ValueError("No solutions")
-
-        index = random.randint(0, size - 1)
-        if index < len(self.archive):
-            return self.archive[index]
-
-        index -= len(self.archive)
-        return self.buffer[index]
-
-    def dominates(self, new_solution: Solution, current_solution: Solution) -> bool:
-        return dominates_minimize(
-            new_solution.objectives, current_solution.objectives, 0.0
-        )
+        return random.choice(self.front)
 
     def clear(self):
-        self.archive = []
-        self.buffer = deque(maxlen=self.buffer_size)
+        self.front = []
 
 
-class TakeSmallerSkewed(TakeSmaller):
-    """
-    Skewed Acceptance Criterion for SVNS (minimization).
-
-    It accepts solutions based on standard improvement, AND also accepts solutions
-    that are 'skewed acceptable' even if not strictly better, allowing the search
-    to escape local optima or explore plateaus.
-    """
-
+class _AcceptBeamSkewed(_AcceptBeam):
     def __init__(
         self,
         alpha: float,
@@ -150,12 +144,112 @@ class TakeSmallerSkewed(TakeSmaller):
         buffer_size: int,
     ):
         super().__init__()
+        self.logger = logging.getLogger(self.__class__.__name__)
 
         self.alpha = alpha
         self.distance_metric = distance_metric
 
-        self.archive: list[Solution] = []
         self.buffer: deque[Solution] = deque(maxlen=buffer_size)
+
+    def accept(self, candidate: Solution) -> bool:
+        if super().accept(candidate):
+            return True
+
+        if all(
+            solution is not candidate
+            and self.dominates_buffered(
+                candidate,
+                solution,
+                self.alpha * self.distance_metric(candidate, solution),
+            )
+            for solution in self.front
+        ):
+            self.buffer.append(candidate)
+
+        return False
+
+    def get_one_current_solution(self) -> Solution:
+        size = len(self.front) + len(self.buffer)
+        if size == 0:
+            raise ValueError("No solutions")
+
+        index = random.randint(0, size - 1)
+        if index < len(self.front):
+            return self.front[index]
+
+        index -= len(self.front)
+        return self.buffer[index]
+
+
+class _AcceptBatch(_Comparison):
+    def __init__(self):
+        super().__init__()
+
+        self.selection_counter = 0
+        self.front: list[Solution] = []
+        self.is_dominated: list[bool] = []
+
+        self.upcoming_front: list[Solution] = []
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+    def accept(self, candidate: Solution) -> bool:
+        """
+        Decides whether to accept candidate and update the archive.
+        Updates the non-dominated archive based on Pareto dominance.
+        """
+
+        for i, solution in enumerate(self.front):
+            if self.dominates(solution, candidate) or solution == candidate:
+                return False
+
+            if not self.is_dominated[i] and self.dominates(candidate, solution):
+                self.is_dominated[i] = True
+
+        self.upcoming_front.append(candidate)
+        return True
+
+    def get_all_solutions(self) -> list[Solution]:
+        return self.front
+
+    def get_one_current_solution(self) -> Solution:
+        if self.selection_counter >= len(self.front):
+            self._swap_fronts()
+            self.selection_counter = 0
+
+        current = self.front[self.selection_counter]
+        self.selection_counter += 1
+
+        return current
+
+    def clear(self):
+        self.front = []
+        self.new_front = []
+
+    def _swap_fronts(self):
+        for solution, dominated in zip(self.front, self.is_dominated):
+            if dominated:
+                continue
+
+            self.upcoming_front.append(solution)
+
+        self.front = self.upcoming_front
+        self.is_dominated = [False] * len(self.upcoming_front)
+        self.upcoming_front = []
+
+
+class _AcceptBatchSkewed(_AcceptBatch):
+    def __init__(
+        self,
+        alpha: float,
+        distance_metric: Callable[[Solution, Solution], float],
+    ):
+        super().__init__()
+
+        self.alpha = alpha
+        self.distance_metric = distance_metric
+
+        self.skewed_front: list[Solution] = []
+        self.upcoming_skewed_front: list[Solution] = []
 
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -170,45 +264,146 @@ class TakeSmallerSkewed(TakeSmaller):
                 solution,
                 self.alpha * self.distance_metric(candidate, solution),
             )
-            for solution in self.archive
+            for solution in self.front
         ):
-            self.buffer.append(candidate)
+            self.upcoming_skewed_front.append(candidate)
 
         return False
 
-    def dominates_buffered(
-        self, new_solution: Solution, current_solution: Solution, buffer_value: float
-    ) -> bool:
-        return dominates_minimize(
-            new_solution.objectives, current_solution.objectives, buffer_value
-        )
+    def get_one_current_solution(self) -> Solution:
+        total_solutions = len(self.front) + len(self.skewed_front)
+
+        if self.selection_counter >= total_solutions:
+            self._swap_fronts()
+            self.selection_counter = 0
+
+        if self.selection_counter < len(self.front):
+            current = self.front[self.selection_counter]
+        elif self.selection_counter - len(self.front) < len(self.skewed_front):
+            current = self.skewed_front[self.selection_counter - len(self.front)]
+        else:
+            raise RuntimeError("Unreachable")
+
+        self.selection_counter += 1
+        return current
+
+    def _swap_fronts(self):
+        super()._swap_fronts()
+
+        self.skewed_front = self.upcoming_skewed_front
+        self.upcoming_skewed_front = []
 
 
-class TakeBigger(TakeSmaller):
+class AcceptBatchSmaller(_Smaller, _AcceptBatch, AcceptanceCriterion):
     """
-    General-purpose Acceptance Criterion (maximization).
+    Minimization acceptance criterion.
+    Maintains an archive of non-dominated solutions (Pareto front).
 
-    For multi-objective problems, it maintains an archive of non-dominated solutions (Pareto front).
+    This acceptance criterion proposes iteration through the current front to be:
+    - Front acts as a single entity requiring a iteration before moving to the next front.
+    - Each time it is required to take the next solution to be processed, it take the next not processed solution from pareto front.
+    - In case it accepts a solution, it updates the upcoming front.
+    - In case it rejects a solution, solution is discarded.
+    - After iteration through the current front is done, it switches to the upcoming front being a union of accepted solutions and non-dominated solutions from the previous front.
     """
 
-    def dominates(self, new_solution: Solution, current_solution: Solution) -> bool:
-        return dominates_maximize(
-            new_solution.objectives, current_solution.objectives, 0.0
-        )
+
+class AcceptBatchBigger(_Bigger, _AcceptBatch, AcceptanceCriterion):
+    """
+    Maximization acceptance criterion.
+    Maintains an archive of non-dominated solutions (Pareto front).
+
+    This acceptance criterion proposes iteration through the current front to be:
+    - Front acts as a single entity requiring a iteration before moving to the next front.
+    - Each time it is required to take the next solution to be processed, it take the next not processed solution from pareto front.
+    - In case it accepts a solution, it updates the upcoming front.
+    - In case it rejects a solution, solution is discarded.
+    - After iteration through the current front is done, it switches to the upcoming front being a union of accepted solutions and non-dominated solutions from the previous front.
+    """
 
 
-class TakeBiggerSkewed(TakeSmallerSkewed, TakeBigger):
+class AcceptBatchSkewedSmaller(_Smaller, _AcceptBatchSkewed, AcceptanceCriterion):
+    """
+    Skewed Acceptance Criterion for SVNS (minimization).
+    Maintains an archive of non-dominated solutions (Pareto front).
+
+    This acceptance criterion proposes iteration through the current front to be:
+    - Front acts as a single entity requiring a iteration before moving to the next front.
+    - Each time it is required to take the next solution to be processed, it take the next not processed solution from pareto front and if exhausted take a skewed accepted solution.
+    - In case it accepts a solution, it updates the upcoming front.
+    - In case it rejects a solution, but it is quite different from solutions in the front, solution is added to the "skewed front", these solutions are not present in the front, but will be selected during iterations.
+    - In case it completely rejects a solution, solution is discarded.
+    - After iteration through the current front and skewed front is done, it switches to the upcoming front being a union of accepted solutions and non-dominated solutions from the previous front.
+    """
+
+
+class AcceptBatchSkewedBigger(_Bigger, _AcceptBatchSkewed, AcceptanceCriterion):
     """
     Skewed Acceptance Criterion for SVNS (maximization).
+    Maximization acceptance criterion with beam search like behavior implementing Skewed acceptance.
+    Maintains an archive of non-dominated solutions (Pareto front).
 
-    It accepts solutions based on standard improvement, AND also accepts solutions
-    that are 'skewed acceptable' even if not strictly better, allowing the search
-    to escape local optima or explore plateaus.
+    This acceptance criterion proposes iteration through the current front to be:
+    - Front acts as a single entity requiring a iteration before moving to the next front.
+    - Each time it is required to take the next solution to be processed, it take the next not processed solution from pareto front and if exhausted take a skewed accepted solution.
+    - In case it accepts a solution, it updates the upcoming front.
+    - In case it rejects a solution, but it is quite different from solutions in the front, solution is added to the "skewed front", these solutions are not present in the front, but will be selected during iterations.
+    - In case it completely rejects a solution, solution is discarded.
+    - After iteration through the current front and skewed front is done, it switches to the upcoming front being a union of accepted solutions and non-dominated solutions from the previous front.
     """
 
-    def dominates_buffered(
-        self, new_solution: Solution, current_solution: Solution, buffer_value: float
-    ) -> bool:
-        return dominates_maximize(
-            new_solution.objectives, current_solution.objectives, buffer_value
-        )
+
+class AcceptBeamSmaller(_Smaller, _AcceptBeam, AcceptanceCriterion):
+    """
+    Minimization acceptance criterion with beam search like behavior.
+    Maintains an archive of non-dominated solutions (Pareto front).
+
+    This acceptance criterion proposes iteration through the current front to be:
+    - Instead of treating front as a single entity requiring a single iteration, it treats it as a buffer of solutions.
+    - Each time it is required to take the next solution to be processed, it takes a random solution from pareto front.
+    - In case it accepts a solution, it updates the current front.
+    - In case it rejects a solution, solution is discarded.
+    """
+
+
+class AcceptBeamBigger(_Bigger, _AcceptBeam, AcceptanceCriterion):
+    """
+    Maximization acceptance criterion with beam search like behavior.
+    Maintains an archive of non-dominated solutions (Pareto front).
+
+    This acceptance criterion proposes iteration through the current front to be:
+    - Instead of treating front as a single entity requiring a single iteration, it treats it as a buffer of solutions.
+    - Each time it is required to take the next solution to be processed, it takes a random solution from pareto front.
+    - In case it accepts a solution, it updates the current front.
+    - In case it rejects a solution, solution is discarded.
+    """
+
+
+class AcceptBeamSkewedSmaller(_Smaller, _AcceptBeamSkewed, AcceptanceCriterion):
+    """
+    Skewed Acceptance Criterion for SVNS (minimization).
+    Minimization acceptance criterion with beam search like behavior implementing Skewed acceptance.
+    Maintains an archive of non-dominated solutions (Pareto front).
+
+    This acceptance criterion proposes iteration through the current front to be:
+    - Instead of treating front as a single entity requiring a single iteration, it treats it as a buffer of solutions.
+    - Each time it is required to take the next solution to be processed, it takes a random solution from pareto front or takes out a skewed-accepted solution from the buffer.
+    - In case it accepts a solution, it updates the current front.
+    - In case it rejects a solution, but it is quite different from solutions in the front, solution is added to the "buffer", these solutions are not present in the front, but will be selected during iterations.
+    - In case it completely rejects a solution, solution is discarded.
+    """
+
+
+class AcceptBeamSkewedBigger(_Bigger, _AcceptBeamSkewed, AcceptanceCriterion):
+    """
+    Skewed Acceptance Criterion for SVNS (maximization).
+    Maximization acceptance criterion with beam search like behavior implementing Skewed acceptance.
+    Maintains an archive of non-dominated solutions (Pareto front).
+
+    This acceptance criterion proposes iteration through the current front to be:
+    - Instead of treating front as a single entity requiring a single iteration, it treats it as a buffer of solutions.
+    - Each time it is required to take the next solution to be processed, it takes a random solution from pareto front or takes out a skewed-accepted solution from the buffer.
+    - In case it accepts a solution, it updates the current front.
+    - In case it rejects a solution, but it is quite different from solutions in the front, solution is added to the "buffer", these solutions are not present in the front, but will be selected during iterations.
+    - In case it completely rejects a solution, solution is discarded.
+    """

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock
 
-from vns.abstract import Solution
+from vns.abstract import MOKPSolution
 from vns.acceptance import (
     dominates_minimize,
     dominates_maximize,
@@ -234,7 +234,7 @@ class TestTakeSmallerSkewed:
     @pytest.fixture
     def setup_skewed_taker(self):
         # Dummy distance metric for testing
-        def dummy_distance(s1: Solution, s2: Solution) -> float:
+        def dummy_distance(s1: MOKPSolution, s2: MOKPSolution) -> float:
             # Simple Manhattan distance on objectives for test purposes
             return sum(abs(o1 - o2) for o1, o2 in zip(s1.objectives, s2.objectives))
 
@@ -453,7 +453,7 @@ class TestTakeBigger:
 class TestTakeBiggerSkewed:
     @pytest.fixture
     def setup_skewed_taker(self):
-        def dummy_distance(s1: Solution, s2: Solution) -> float:
+        def dummy_distance(s1: MOKPSolution, s2: MOKPSolution) -> float:
             return sum(abs(o1 - o2) for o1, o2 in zip(s1.objectives, s2.objectives))
 
         taker = TakeBiggerSkewed(

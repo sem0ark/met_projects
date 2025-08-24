@@ -15,86 +15,23 @@ import numpy as np
 sys.path.insert(1, str(Path(__file__).parent.parent.absolute()))
 
 from vns.vns_base import VNSOptimizer
-from vns.abstract import Problem, Solution, VNSConfig
-from vns.acceptance import TakeBigger, TakeBiggerSkewed
+from vns.abstract import VNSConfig
+from vns.acceptance import AcceptBatchBigger, AcceptBeamBigger
 from vns.local_search import (
-    best_improvement,
-    first_improvement,
     first_improvement_quick,
     noop,
 )
 
 from utils import setup_logging, parse_time_string
-
-
-BASE = Path(__file__).parent.parent.parent / "data" / "mokp"
+from mokp_problem import MOKPProblem, MOKPSolution, load_mokp_problem
 
 
 logger = logging.getLogger("mokp-solver")
 
 
-class MOKPSolution(Solution[np.ndarray]):
-    def __init__(self, data: np.ndarray, problem: "MOKPProblem"):
-        super().__init__(data, problem)
-
-    def __repr__(self):
-        return f"MOKPSolution(Items={self.data.tolist()}, Objectives={self.objectives})"
-
-
-class MOKPProblem(Problem):
-    def __init__(self, weights: list[int], profits: list[list[int]], capacity: int):
-        super().__init__(self.evaluate, self.generate_initial_solutions)
-
-        self.weights = np.array(weights)
-        self.profits = np.array(profits)
-        self.capacity = np.array(capacity)
-
-        self.num_items = len(weights)
-        self.num_objectives = self.profits.shape[0]
-
-    def generate_initial_solutions(self, num_solutions: int = 50) -> Iterable[Solution]:
-        """
-        Generates a specified number of random feasible solutions for the MOKP.
-        Each solution is created by iterating through items in a random order
-        and adding them to the knapsack if they do not violate the capacity constraint.
-        """
-        item_indices = list(range(self.num_items))
-        for _ in range(num_solutions):
-            solution_data = np.zeros(self.num_items, dtype=int)
-            current_weight = 0
-
-            # Shuffle the items to ensure randomness in which ones are considered first
-            random.shuffle(item_indices)
-
-            for item_idx in item_indices:
-                if current_weight + self.weights[item_idx] <= self.capacity:
-                    solution_data[item_idx] = 1
-                    current_weight += self.weights[item_idx]
-
-            yield MOKPSolution(solution_data, self)
-
-    def is_feasible(self, solution_data: np.ndarray) -> bool:
-        """Checks if a solution is feasible with respect to knapsack capacity."""
-        total_weight = np.sum(solution_data * self.weights)
-        return total_weight <= self.capacity
-
-    def evaluate(self, solution: Solution) -> tuple[float, ...]:
-        """Calculates the profit for each objective."""
-        solution_data = solution.data
-        mult = 1 if self.is_feasible(solution.data) else -1
-
-        result = tuple(
-            mult * np.sum(solution_data * self.profits[i])
-            for i in range(self.num_objectives)
-        )
-        return result
-
-    def calculate_solution_distance(self, sol1: Solution, sol2: Solution) -> float:
-        """Calculates a distance between two MOKP solutions (binary vectors)."""
-        return float(np.sum(sol1.data != sol2.data))
-
-
-def shake_add_remove(solution: Solution, k: int, config: VNSConfig) -> Solution:
+def shake_add_remove(
+    solution: MOKPSolution, k: int, _config: VNSConfig
+) -> MOKPSolution:
     """
     Randomly adds or removes 'k' items.
     """
@@ -117,7 +54,7 @@ def shake_add_remove(solution: Solution, k: int, config: VNSConfig) -> Solution:
     return solution.new(solution_data)
 
 
-def shake_swap(solution: Solution, k: int, config: VNSConfig) -> Solution:
+def shake_swap(solution: MOKPSolution, k: int, _config: VNSConfig) -> MOKPSolution:
     """
     Randomly swaps a selected item with an unselected item 'k' times.
     """
@@ -142,7 +79,7 @@ def shuffled(lst: Iterable) -> list[Any]:
     return lst
 
 
-def add_remove_op(solution: Solution, config: VNSConfig) -> Iterable[Solution]:
+def add_remove_op(solution: MOKPSolution, config: VNSConfig) -> Iterable[MOKPSolution]:
     """Generates neighbors by adding or removing a single item."""
     solution_data = solution.data
     num_items = len(solution_data)
@@ -153,7 +90,7 @@ def add_remove_op(solution: Solution, config: VNSConfig) -> Iterable[Solution]:
         yield solution.new(new_data)
 
 
-def swap_op(solution: Solution, config: VNSConfig) -> Iterable[Solution]:
+def swap_op(solution: MOKPSolution, config: VNSConfig) -> Iterable[MOKPSolution]:
     """Generates neighbors by swapping one selected item with one unselected item."""
     solution_data = solution.data
 
@@ -169,26 +106,6 @@ def swap_op(solution: Solution, config: VNSConfig) -> Iterable[Solution]:
             yield solution.new(new_data)
 
 
-def load_mokp_problem(filename: str) -> MOKPProblem:
-    """
-    Creates a mock MOKP problem for the example.
-    In a real scenario, this would load from a file like MOCOLib instances.
-    """
-    try:
-        with open(BASE / filename, "r") as f:
-            configuration = json.load(f)
-    except FileNotFoundError:
-        raise ValueError(f"Error: File not found at {BASE / filename}")
-    except Exception as e:
-        raise ValueError(f"Error reading file {filename}: {e}")
-
-    weights = configuration["weights"]
-    profits = configuration["objectives"]
-    capacity = configuration["metadata"]["capacity"]
-
-    return MOKPProblem(weights, profits, capacity)
-
-
 def prepare_mokp_optimizers(mokp_problem: MOKPProblem) -> dict[str, VNSOptimizer]:
     """
     Prepares a set of VNS optimizers for the MOKP problem.
@@ -196,52 +113,68 @@ def prepare_mokp_optimizers(mokp_problem: MOKPProblem) -> dict[str, VNSOptimizer
     bvns = VNSConfig(
         problem=mokp_problem,
         search_functions=[noop()],
-        acceptance_criterion=TakeBigger(10),
+        acceptance_criterion=AcceptBatchBigger(),
         shake_function=shake_add_remove,
     )
     rvns = VNSConfig(
         problem=mokp_problem,
         search_functions=[noop()],
-        acceptance_criterion=TakeBigger(10),
+        acceptance_criterion=AcceptBatchBigger(),
         shake_function=shake_add_remove,
     )
-    svns = VNSConfig(
-        problem=mokp_problem,
-        search_functions=[noop()],
-        acceptance_criterion=TakeBiggerSkewed(
-            1, mokp_problem.calculate_solution_distance, 20
-        ),
-        shake_function=shake_add_remove,
-    )
+    # svns = VNSConfig(
+    #     problem=mokp_problem,
+    #     search_functions=[noop()],
+    #     acceptance_criterion=AcceptBatchSkewedBigger(
+    #         1, mokp_problem.calculate_solution_distance, 20
+    #     ),
+    #     shake_function=shake_add_remove,
+    # )
 
     return {
-        "RVNS": VNSOptimizer(replace(rvns, search_functions=[noop()] * 5)),
-        "BVNS_BI": VNSOptimizer(
-            replace(bvns, search_functions=[best_improvement(add_remove_op)] * 5)
+        "RVNS_Beam": VNSOptimizer(
+            replace(
+                rvns,
+                search_functions=[noop()] * 5,
+                acceptance_criterion=AcceptBeamBigger(),
+            )
         ),
-        "BVNS_FI": VNSOptimizer(
-            replace(bvns, search_functions=[first_improvement(add_remove_op)] * 5)
+        "RVNS_Batch": VNSOptimizer(
+            replace(
+                rvns,
+                search_functions=[noop()] * 5,
+                acceptance_criterion=AcceptBatchBigger(),
+            )
         ),
-        "BVNS_QFI": VNSOptimizer(
-            replace(bvns, search_functions=[first_improvement_quick(add_remove_op)] * 5)
+        # "BVNS_BI": VNSOptimizer(
+        #     replace(bvns, search_functions=[best_improvement(add_remove_op)] * 5)
+        # ),
+        # "BVNS_FI": VNSOptimizer(
+        #     replace(bvns, search_functions=[first_improvement(add_remove_op)] * 5)
+        # ),
+        "BVNS_Beam_QFI": VNSOptimizer(
+            replace(
+                bvns,
+                search_functions=[first_improvement_quick(add_remove_op)] * 5,
+                acceptance_criterion=AcceptBeamBigger(),
+            )
         ),
-        "SVNS_BI": VNSOptimizer(
-            replace(svns, search_functions=[best_improvement(add_remove_op)] * 5)
+        "BVNS_Batch_QFI": VNSOptimizer(
+            replace(
+                bvns,
+                search_functions=[first_improvement_quick(add_remove_op)] * 5,
+                acceptance_criterion=AcceptBatchBigger(),
+            )
         ),
-        "SVNS_FI": VNSOptimizer(
-            replace(svns, search_functions=[first_improvement(add_remove_op)] * 5)
-        ),
-        "SVNS_QFI": VNSOptimizer(
-            replace(svns, search_functions=[first_improvement_quick(add_remove_op)] * 5)
-        ),
-        # "BVNS_BI_Beam10": VNSOptimizer(replace(bvns, acceptance_criterion=TakeBigger(10))),
-        # "BVNS_BI_Beam20": VNSOptimizer(replace(bvns, acceptance_criterion=TakeBigger(20))),
-        # "BVNS_FI_Beam10": VNSOptimizer(replace(bvns, search_functions=[first_improvement_quick(add_remove_op)] * 5, acceptance_criterion=TakeBigger(10))),
-        # "BVNS_FI_Beam20": VNSOptimizer(replace(bvns, search_functions=[first_improvement_quick(add_remove_op)] * 5, acceptance_criterion=TakeBigger(20))),
-        # "BVNS_QFI_Beam10": VNSOptimizer(replace(bvns, search_functions=[first_improvement_quick(add_remove_op)] * 5, acceptance_criterion=TakeBigger(10))),
-        # "BVNS_QFI_Beam20": VNSOptimizer(replace(bvns, search_functions=[first_improvement_quick(add_remove_op)] * 5, acceptance_criterion=TakeBigger(20))),
-        # "RVNS_Beam10":    VNSOptimizer(replace(rvns, acceptance_criterion=TakeBigger(10))),
-        # "RVNS_Beam20":    VNSOptimizer(replace(rvns, acceptance_criterion=TakeBigger(20))),
+        # "SVNS_BI": VNSOptimizer(
+        #     replace(svns, search_functions=[best_improvement(add_remove_op)] * 5)
+        # ),
+        # "SVNS_FI": VNSOptimizer(
+        #     replace(svns, search_functions=[first_improvement(add_remove_op)] * 5)
+        # ),
+        # "SVNS_QFI": VNSOptimizer(
+        #     replace(svns, search_functions=[first_improvement_quick(add_remove_op)] * 5)
+        # ),
     }
 
 
@@ -345,7 +278,7 @@ def run_mokp_example(
     plt.show()
 
 
-def compare_mokp(filename: str, run_time: str, max_iterations_no_improvement: int):
+def compare_mokp(filename: str, run_time: str, max_iterations_no_improvement: int, include_outer_algorithms: bool):
     setup_logging(level=logging.INFO)
     max_run_time_seconds = parse_time_string(run_time)
 

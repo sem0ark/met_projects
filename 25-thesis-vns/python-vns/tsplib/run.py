@@ -18,7 +18,7 @@ from distance_functions import get_distance_function
 
 from vns.vns_base import VNSOptimizer
 from vns.abstract import Problem, Solution, VNSConfig
-from vns.acceptance import TakeSmaller, TakeSmallerSkewed
+from vns.acceptance import AcceptBeamSmaller, AcceptBeamSkewedSmaller
 from vns.local_search import (
     best_improvement,
     first_improvement,
@@ -32,10 +32,11 @@ BASE = Path(__file__).parent.parent.parent / "data" / "tsplib"
 
 logger = logging.getLogger("tsp-solver")
 
+type TSPSolution = Solution[np.ndarray]
 
-class TSPSolution(Solution):
-    def __init__(self, tour: np.ndarray, problem: "TSPProblem"):
-        super().__init__(tour, problem.to_problem())
+class TSPSol(Solution[np.ndarray]):
+    def __init__(self, tour: np.ndarray, problem: "Problem"):
+        super().__init__(tour, problem)
 
     def __repr__(self):
         return f"TSPSolution(Tour={self.data}, Objectives={self.objectives})"  # Convert back to list for representation
@@ -65,10 +66,10 @@ class TSPProblem:
     def get_distance(self, city1_idx: int, city2_idx: int) -> float:
         return self.distance_matrix[city1_idx, city2_idx]
 
-    def generate_initial_solution(self) -> Solution:
+    def generate_initial_solutions(self) -> Iterable[TSPSolution]:
         initial_tour = np.arange(self.num_cities)
         np.random.shuffle(initial_tour)
-        return TSPSolution(initial_tour, self)
+        return [TSPSol(initial_tour, self.to_problem())]
 
     def calculate_tour_difference_distance(
         self, sol1: Solution, sol2: Solution
@@ -97,10 +98,12 @@ class TSPProblem:
         return (total_length,)
 
     def to_problem(self) -> Problem:
-        return Problem(self.evaluate, self.generate_initial_solution)
+        return Problem(self.evaluate, self.generate_initial_solutions)
 
 
-def shake_flip_tour_region(solution: Solution, k: int, _config: VNSConfig) -> Solution:
+def shake_flip_tour_region(
+    solution: Solution, k: int, _config: VNSConfig
+) -> Solution:
     tour = np.array(solution.data)
     n = len(tour)
 
@@ -114,7 +117,9 @@ def shake_flip_tour_region(solution: Solution, k: int, _config: VNSConfig) -> So
     return solution.new(tour)  # Convert back to list for Solution
 
 
-def shake_swap_tour_cities(solution: Solution, k: int, _config: VNSConfig) -> Solution:
+def shake_swap_tour_cities(
+    solution: Solution, k: int, _config: VNSConfig
+) -> Solution:
     tour = np.array(solution.data)
     n = len(tour)
 
@@ -285,13 +290,13 @@ def prepare_optimizers(tsp_problem: TSPProblem) -> dict[str, VNSOptimizer]:
     bvns = VNSConfig(
         problem=tsp_problem.to_problem(),
         search_functions=[best_improvement(flip_op)],
-        acceptance_criterion=TakeSmaller(),
+        acceptance_criterion=AcceptBeamSmaller(),
         shake_function=shake_flip_tour_region,
     )
     rvns = VNSConfig(
         problem=tsp_problem.to_problem(),
         search_functions=[noop()],
-        acceptance_criterion=TakeSmaller(),
+        acceptance_criterion=AcceptBeamSmaller(),
         shake_function=shake_flip_tour_region,
     )
     gvns = VNSConfig(
@@ -300,82 +305,34 @@ def prepare_optimizers(tsp_problem: TSPProblem) -> dict[str, VNSOptimizer]:
             best_improvement(flip_op),
             first_improvement(swap_op),
         ],
-        acceptance_criterion=TakeSmaller(),
+        acceptance_criterion=AcceptBeamSmaller(),
         shake_function=shake_flip_tour_region,
     )
     svns = VNSConfig(
         problem=tsp_problem.to_problem(),
         search_functions=[best_improvement(flip_op)],
-        acceptance_criterion=TakeSmallerSkewed(
+        acceptance_criterion=AcceptBeamSkewedSmaller(
             0.1, tsp_problem.calculate_tour_difference_distance, 1
         ),
         shake_function=shake_flip_tour_region,
     )
 
     return {
-        "BVNS_BI": VNSOptimizer(replace(bvns, acceptance_criterion=TakeSmaller())),
-        "BVNS_BI_Beam10": VNSOptimizer(
-            replace(bvns, acceptance_criterion=TakeSmaller(10))
-        ),
-        "BVNS_BI_Beam20": VNSOptimizer(
-            replace(bvns, acceptance_criterion=TakeSmaller(20))
-        ),
+        "BVNS_BI": VNSOptimizer(replace(bvns, acceptance_criterion=AcceptBeamSmaller())),
         "BVNS_FI": VNSOptimizer(
             replace(
                 bvns,
                 search_functions=[first_improvement(flip_op)],
-                acceptance_criterion=TakeSmaller(),
+                acceptance_criterion=AcceptBeamSmaller(),
             )
         ),
-        "BVNS_FI_Beam10": VNSOptimizer(
-            replace(
-                bvns,
-                search_functions=[first_improvement(flip_op)],
-                acceptance_criterion=TakeSmaller(10),
-            )
-        ),
-        "BVNS_FI_Beam20": VNSOptimizer(
-            replace(
-                bvns,
-                search_functions=[first_improvement(flip_op)],
-                acceptance_criterion=TakeSmaller(20),
-            )
-        ),
-        "RVNS": VNSOptimizer(replace(rvns, acceptance_criterion=TakeSmaller())),
-        "RVNS_Beam10": VNSOptimizer(
-            replace(rvns, acceptance_criterion=TakeSmaller(10))
-        ),
-        "RVNS_Beam20": VNSOptimizer(
-            replace(rvns, acceptance_criterion=TakeSmaller(20))
-        ),
-        "GVNS": VNSOptimizer(replace(gvns, acceptance_criterion=TakeSmaller())),
-        "GVNS_Beam10": VNSOptimizer(
-            replace(gvns, acceptance_criterion=TakeSmaller(10))
-        ),
-        "GVNS_Beam20": VNSOptimizer(
-            replace(gvns, acceptance_criterion=TakeSmaller(20))
-        ),
+        "RVNS": VNSOptimizer(replace(rvns, acceptance_criterion=AcceptBeamSmaller())),
+        "GVNS": VNSOptimizer(replace(gvns, acceptance_criterion=AcceptBeamSmaller())),
         "SVNS_BI": VNSOptimizer(
             replace(
                 svns,
-                acceptance_criterion=TakeSmallerSkewed(
+                acceptance_criterion=AcceptBeamSkewedSmaller(
                     0.1, tsp_problem.calculate_tour_difference_distance, 1
-                ),
-            )
-        ),
-        "SVNS_BI_Beam10": VNSOptimizer(
-            replace(
-                svns,
-                acceptance_criterion=TakeSmallerSkewed(
-                    0.1, tsp_problem.calculate_tour_difference_distance, 10
-                ),
-            )
-        ),
-        "SVNS_BI_Beam20": VNSOptimizer(
-            replace(
-                svns,
-                acceptance_criterion=TakeSmallerSkewed(
-                    0.1, tsp_problem.calculate_tour_difference_distance, 20
                 ),
             )
         ),
@@ -393,7 +350,7 @@ def run_vns_example_from_tsplib(
     max_run_time_seconds = parse_time_string(run_time)
 
     logger.info(
-        f"\n--- Running {optimizer_type} Example with TSPLIB file: {filename} ---"
+        f"--- Running {optimizer_type} Example with TSPLIB file: {filename} ---"
     )
     logger.info(f"Max run time: {run_time} ({max_run_time_seconds:.2f} seconds)")
     logger.info(f"Max iterations without improvement: {max_iterations_no_improvement}")
@@ -447,7 +404,7 @@ def run_vns_example_from_tsplib(
             )
             break
 
-    logger.info(f"\n--- {optimizer_type} Optimization Complete ---")
+    logger.info(f"--- {optimizer_type} Optimization Complete ---")
     if best_objectives_data:
         final_best_objective = min(
             best_objectives_data
@@ -474,7 +431,7 @@ def run_vns_example_from_tsplib(
             label=f"Optimal Value ({optimal_value:.2f})",
         )
         plt.title(
-            f"{optimizer_type} Optimization Progress for {Path(filename).name}\n (Optimal: {optimal_value:.2f})"
+            f"{optimizer_type} Optimization Progress for {Path(filename).name} (Optimal: {optimal_value:.2f})"
         )
     else:
         plt.title(f"{optimizer_type} Optimization Progress for {Path(filename).name}")
@@ -496,7 +453,7 @@ def compare_vns_optimizers(
     setup_logging(level=logging.INFO)
     max_run_time_seconds = parse_time_string(run_time)
 
-    logger.info(f"\n--- Running optimizers with TSPLIB file: {filename} ---")
+    logger.info(f"--- Running optimizers with TSPLIB file: {filename} ---")
     logger.info(f"Max run time: {run_time} ({max_run_time_seconds:.2f} seconds)")
     logger.info(f"Max iterations without improvement: {max_iterations_no_improvement}")
     if optimal_value is not None:
@@ -544,7 +501,7 @@ def compare_vns_optimizers(
                 )
                 break
 
-        logger.info(f"\n--- {optimizer_type} Optimization Complete ---")
+        logger.info(f"--- {optimizer_type} Optimization Complete ---")
         if best_objectives_data:
             final_best_objective = min(best_objectives_data)
             logger.info(f"Overall Best Tour Length found: {final_best_objective:.2f}")
@@ -568,7 +525,7 @@ def compare_vns_optimizers(
             label=f"Optimal Value ({optimal_value:.2f})",
         )
         plt.title(
-            f"Optimization Progress for {Path(filename).name}\n (Optimal: {optimal_value:.2f})"
+            f"Optimization Progress for {Path(filename).name} (Optimal: {optimal_value:.2f})"
         )
     else:
         plt.title(f"Optimization Progress for {Path(filename).name}")
