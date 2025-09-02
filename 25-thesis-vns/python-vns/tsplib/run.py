@@ -34,6 +34,7 @@ logger = logging.getLogger("tsp-solver")
 
 type TSPSolution = Solution[np.ndarray]
 
+
 class TSPSol(Solution[np.ndarray]):
     def __init__(self, tour: np.ndarray, problem: "Problem"):
         super().__init__(tour, problem)
@@ -101,9 +102,7 @@ class TSPProblem:
         return Problem(self.evaluate, self.generate_initial_solutions)
 
 
-def shake_flip_tour_region(
-    solution: Solution, k: int, _config: VNSConfig
-) -> Solution:
+def shake_flip_tour_region(solution: Solution, k: int, _config: VNSConfig) -> Solution:
     tour = np.array(solution.data)
     n = len(tour)
 
@@ -117,9 +116,7 @@ def shake_flip_tour_region(
     return solution.new(tour)  # Convert back to list for Solution
 
 
-def shake_swap_tour_cities(
-    solution: Solution, k: int, _config: VNSConfig
-) -> Solution:
+def shake_swap_tour_cities(solution: Solution, k: int, _config: VNSConfig) -> Solution:
     tour = np.array(solution.data)
     n = len(tour)
 
@@ -318,7 +315,9 @@ def prepare_optimizers(tsp_problem: TSPProblem) -> dict[str, VNSOptimizer]:
     )
 
     return {
-        "BVNS_BI": VNSOptimizer(replace(bvns, acceptance_criterion=AcceptBeamSmaller())),
+        "BVNS_BI": VNSOptimizer(
+            replace(bvns, acceptance_criterion=AcceptBeamSmaller())
+        ),
         "BVNS_FI": VNSOptimizer(
             replace(
                 bvns,

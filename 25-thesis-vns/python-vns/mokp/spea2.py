@@ -1,7 +1,7 @@
 from pathlib import Path
 import sys
 import numpy as np
-from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.algorithms.moo.spea2 import SPEA2
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.optimize import minimize
 from pymoo.termination.max_time import TimeBasedTermination
@@ -55,10 +55,10 @@ class MOKP(ElementwiseProblem):
         out["G"] = g1
 
 
-def solve_mokp_ngsa2(filename: str, run_seconds: float) -> np.ndarray:
+def solve_mokp_spea2(filename: str, run_seconds: float) -> np.ndarray:
     problem = MOKP(load_mokp_problem(filename))
 
-    algorithm = NSGA2(pop_size=200, eliminate_duplicates=True)
+    algorithm = SPEA2(pop_size=200, eliminate_duplicates=True)
 
     res = minimize(
         problem=problem,

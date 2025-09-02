@@ -83,7 +83,6 @@ class MOKPProblem(Problem[np.ndarray]):
         return float(np.sum(sol1.data != sol2.data))
 
 
-
 def load_mokp_problem(filename: str) -> MOKPProblem:
     """
     Creates a mock MOKP problem for the example.
