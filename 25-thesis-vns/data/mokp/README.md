@@ -1,3 +1,5 @@
+From https://github.com/vOptSolver/vOptLib/blob/master/UKP/uncorrelated.md
+
 The instances are denoted by `2KPn-1B.dat` where n is the size of the problem.
 - 1st objective cost and the weights are generated according to a uniform distribution in [1,...,100].
 - 2nd objective is obtained by taking the objective cost of the first one in reverse order.
@@ -35,6 +37,7 @@ File format:
     "objectives": [
         [],
         []
-    ]
+    ],
+    "reference_front": []
 }
 ```

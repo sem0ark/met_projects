@@ -1,6 +1,5 @@
 import json
 import sys
-import logging
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -44,21 +43,6 @@ class MOKPProblem(Problem[np.ndarray]):
         and adding them to the knapsack if they do not violate the capacity constraint.
         """
         return [_MOKPSolution(np.zeros(self.num_items, dtype=int), self)]
-
-        # item_indices = list(range(self.num_items))
-        # for _ in range(num_solutions):
-        #     solution_data = np.zeros(self.num_items, dtype=int)
-        #     current_weight = 0
-
-        #     # Shuffle the items to ensure randomness in which ones are considered first
-        #     random.shuffle(item_indices)
-
-        #     for item_idx in item_indices:
-        #         if current_weight + self.weights[item_idx] <= self.capacity:
-        #             solution_data[item_idx] = 1
-        #             current_weight += self.weights[item_idx]
-
-        #     yield Solution(solution_data, self)
 
     def is_feasible(self, solution_data: np.ndarray) -> bool:
         """Checks if a solution is feasible with respect to knapsack capacity."""
