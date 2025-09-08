@@ -24,15 +24,16 @@ class _MOKPSolution(Solution[np.ndarray]):
 
 
 class MOKPProblem(Problem[np.ndarray]):
-    def __init__(self, weights: list[int], profits: list[list[int]], capacity: int):
+    def __init__(self, weights: list[list[int]], profits: list[list[int]], capacity: int | list[int]):
         super().__init__(self.evaluate, self.generate_initial_solutions)
 
-        self.weights = np.array(weights)
-        self.profits = np.array(profits)
-        self.capacity = np.array(capacity)
+        self.weights = np.array(weights, dtype=int)
+        self.profits = np.array(profits, dtype=int)
+        self.capacity = np.array(capacity, dtype=int)
 
-        self.num_items = len(weights)
+        self.num_items = self.weights.shape[1]
         self.num_objectives = self.profits.shape[0]
+        self.num_limits = self.weights.shape[0]
 
     def generate_initial_solutions(
         self, num_solutions: int = 50
@@ -46,8 +47,8 @@ class MOKPProblem(Problem[np.ndarray]):
 
     def is_feasible(self, solution_data: np.ndarray) -> bool:
         """Checks if a solution is feasible with respect to knapsack capacity."""
-        total_weight = np.sum(solution_data * self.weights)
-        return total_weight <= self.capacity
+        total_weight = np.sum(solution_data * self.weights, axis=1)
+        return np.all(total_weight <= self.capacity, axis=0)
 
     def evaluate(self, solution: MOKPSolution) -> tuple[float, ...]:
         """Calculates the profit for each objective."""
@@ -66,22 +67,22 @@ class MOKPProblem(Problem[np.ndarray]):
         """Calculates a distance between two MOKP solutions (binary vectors)."""
         return float(np.sum(sol1.data != sol2.data))
 
+    @staticmethod
+    def load(filename: str) -> "MOKPProblem":
+        """
+        Creates a mock MOKP problem for the example.
+        In a real scenario, this would load from a file like MOCOLib instances.
+        """
+        try:
+            with open(BASE / filename, "r") as f:
+                configuration = json.load(f)
+        except FileNotFoundError:
+            raise ValueError(f"Error: File not found at {BASE / filename}")
+        except Exception as e:
+            raise ValueError(f"Error reading file {filename}: {e}")
 
-def load_mokp_problem(filename: str) -> MOKPProblem:
-    """
-    Creates a mock MOKP problem for the example.
-    In a real scenario, this would load from a file like MOCOLib instances.
-    """
-    try:
-        with open(BASE / filename, "r") as f:
-            configuration = json.load(f)
-    except FileNotFoundError:
-        raise ValueError(f"Error: File not found at {BASE / filename}")
-    except Exception as e:
-        raise ValueError(f"Error reading file {filename}: {e}")
+        weights = configuration["data"]["weights"]
+        profits = configuration["data"]["objectives"]
+        capacity = configuration["data"]["capacity"]
 
-    weights = configuration["weights"]
-    profits = configuration["objectives"]
-    capacity = configuration["metadata"]["capacity"]
-
-    return MOKPProblem(weights, profits, capacity)
+        return MOKPProblem(weights, profits, capacity)

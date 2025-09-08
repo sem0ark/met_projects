@@ -1,10 +1,11 @@
 [project]
-name = "25-thesis-vns"
+name = "python-vns"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "click>=8.2.1",
     "ipykernel>=6.30.1",
     "lark>=1.2.2",
     "matplotlib>=3.10.5",

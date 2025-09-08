@@ -106,9 +106,16 @@ class VNSConfig(Generic[T]):
     shake_function: ShakeFunction
 
     acceptance_criterion: AcceptanceCriterion[Solution[T]]
+    name: str | None = None
 
     def __post_init__(self):
         if not self.search_functions:
             raise ValueError(
                 "At least one neighborhood operator must be provided or defined by the problem."
             )
+
+    def get_name(self):
+        if not self.name:
+            return f"{self.problem} {self.acceptance_criterion} {self.shake_function.__name__}"
+
+        return self.name

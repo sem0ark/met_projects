@@ -16,7 +16,7 @@ sys.path.insert(1, str(Path(__file__).parent.parent.absolute()))
 from mokp.ngsa2 import solve_mokp_ngsa2
 from mokp.spea2 import solve_mokp_spea2
 
-from vns.vns_base import VNSOptimizer
+from vns.optimizer import VNSOptimizer
 from vns.abstract import VNSConfig
 from vns.acceptance import AcceptBatchBigger, AcceptBatchSkewedBigger
 from vns.local_search import (
@@ -25,8 +25,10 @@ from vns.local_search import (
     noop,
 )
 
-from utils import setup_logging, parse_time_string
-from mokp_problem import MOKPProblem, MOKPSolution, load_mokp_problem
+from utils.cli import setup_logging, parse_time_string
+from utils.run import run_vns_optimizer
+from mokp_problem import MOKPProblem, MOKPSolution
+from utils.serialize import save_run_data
 
 
 logger = logging.getLogger("mokp-solver")
@@ -241,7 +243,7 @@ def plot_optimizer(
     logger.info(f"Max run time: {max_run_time_seconds:.2f} seconds")
     logger.info(f"Max iterations without improvement: {max_iterations_no_improvement}")
 
-    mokp_problem = load_mokp_problem(filename)
+    mokp_problem = MOKPProblem.load(filename)
     optimizers = prepare_mokp_optimizers(mokp_problem)
 
     optimizer = optimizers.get(optimizer_type)
@@ -267,10 +269,9 @@ def plot_optimizer(
 def plot_all_optimizers(
     filename: str, run_time: str, max_iterations_no_improvement: int
 ):
-    setup_logging(level=logging.INFO)
     max_run_time_seconds = parse_time_string(run_time)
 
-    mokp_problem = load_mokp_problem(filename)
+    mokp_problem = MOKPProblem.load(filename)
     optimizers = prepare_mokp_optimizers(mokp_problem)
 
     for optimizer_type, optimizer in optimizers.items():
@@ -341,37 +342,59 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    setup_logging(level=logging.INFO)
 
-    if args.all:
-        plot_all_optimizers(
-            args.filename,
-            args.run_time,
-            args.max_no_improvements,
+    mokp_problem = MOKPProblem.load(args.filename)
+    max_run_time_seconds = parse_time_string(args.run_time)
+    optimizer = VNSOptimizer(
+        VNSConfig(
+            problem=mokp_problem,
+            search_functions=[noop()] * 5,
+            acceptance_criterion=AcceptBatchBigger(),
+            shake_function=shake_add_remove,
+            name="RVNS Shake bit switch"
         )
-        plt.title(args.filename.split(".json")[0])
+    )
+    solutions = run_vns_optimizer(max_run_time_seconds, optimizer)
 
-    if args.optimizer_type:
-        plot_optimizer(
-            args.filename,
-            args.optimizer_type,
-            args.run_time,
-            args.max_no_improvements,
-        )
-        plt.title(f"{args.optimizer_type} for MOKP {args.filename.split('.json')[0]}")
+    save_run_data(
+        optimizer.config.acceptance_criterion.get_all_solutions(),
+        optimizer.config,
+        "mokp",
+        args.filename,
+        int(max_run_time_seconds),
+    )
 
-    if args.plot_reference_algorithms:
-        plot_reference_algorithms(
-            args.filename,
-            args.run_time,
-            args.max_no_improvements,
-        )
-        plt.title(args.filename.split(".json")[0])
+    # if args.all:
+    #     plot_all_optimizers(
+    #         args.filename,
+    #         args.run_time,
+    #         args.max_no_improvements,
+    #     )
+    #     plt.title(args.filename.split(".json")[0])
 
-    plt.xlabel("Z1")
-    plt.ylabel("Z2")
-    plt.gca().set_aspect("equal", adjustable="box")
+    # if args.optimizer_type:
+    #     plot_optimizer(
+    #         args.filename,
+    #         args.optimizer_type,
+    #         args.run_time,
+    #         args.max_no_improvements,
+    #     )
+    #     plt.title(f"{args.optimizer_type} for MOKP {args.filename.split('.json')[0]}")
 
-    plt.grid(True, linestyle="--", alpha=0.7)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    # if args.plot_reference_algorithms:
+    #     plot_reference_algorithms(
+    #         args.filename,
+    #         args.run_time,
+    #         args.max_no_improvements,
+    #     )
+    #     plt.title(args.filename.split(".json")[0])
+
+    # plt.xlabel("Z1")
+    # plt.ylabel("Z2")
+    # plt.gca().set_aspect("equal", adjustable="box")
+
+    # plt.grid(True, linestyle="--", alpha=0.7)
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
