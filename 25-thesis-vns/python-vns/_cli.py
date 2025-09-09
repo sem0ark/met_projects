@@ -3,6 +3,7 @@ from typing import Callable, Self
 
 import click
 
+
 def parse_time_string(time_str: str) -> float:
     """Parses a time string like '5s', '2m', '1h' into seconds."""
     if not time_str:
@@ -73,8 +74,7 @@ class CLI:
 
         def create_problem_command(problem_name, configs):
             @run_command.command(
-                name=problem_name,
-                help=f"Run the '{problem_name}' optimization."
+                name=problem_name, help=f"Run the '{problem_name}' optimization."
             )
             @click.option(
                 "-f",
@@ -96,21 +96,27 @@ class CLI:
                 configs_filtered = {
                     config_name: runner
                     for config_name, runner in configs
-                    if not filters or any(
+                    if not filters
+                    or any(
                         filter_name in config_name.lower() for filter_name in filters
                     )
                 }
 
                 if not configs_filtered:
-                    raise click.UsageError(f"Failed to match any runner with filters: {filters}")
+                    raise click.UsageError(
+                        f"Failed to match any runner with filters: {filters}"
+                    )
 
                 click.echo(f"Running configs for problem: {problem_name}")
                 for config_name, runner in configs_filtered.items():
-                    click.echo(f"Running {config_name} on problem '{problem_name}' from instance '{instance}' for {run_time_seconds} seconds.")
+                    click.echo(
+                        f"Running {config_name} on problem '{problem_name}' from instance '{instance}' for {run_time_seconds} seconds."
+                    )
                     try:
                         runner(instance, run_time_seconds)
                     except Exception as e:
                         click.echo(f"Error running '{config_name}': {e}", err=True)
+
             return problem_runner
 
         for problem_name, configs in self.runners.items():

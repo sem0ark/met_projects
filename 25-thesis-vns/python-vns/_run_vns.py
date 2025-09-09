@@ -48,8 +48,15 @@ def run_vns_optimizer(
         elapsed_time = time.time() - start_time
 
         if elapsed_time > run_time_seconds:
-            num_solutions = len(optimizer.config.acceptance_criterion.get_all_solutions())
-            logger.info("Timeout after %d iterations, ran for %d seconds. Total # solutions: %d", iteration, elapsed_time, num_solutions)
+            num_solutions = len(
+                optimizer.config.acceptance_criterion.get_all_solutions()
+            )
+            logger.info(
+                "Timeout after %d iterations, ran for %d seconds. Total # solutions: %d",
+                iteration,
+                elapsed_time,
+                num_solutions,
+            )
             break
 
         if improved:

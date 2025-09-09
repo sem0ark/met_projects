@@ -184,6 +184,7 @@ def register_cli(cli: Any) -> None:
     def make_runner(optimizer_name: str):
         def run(instance_path, run_time, _optimizer_name=optimizer_name):
             return prepare_optimizers(instance_path)[_optimizer_name](run_time)
+
         return run
 
     cli.register_runner(
