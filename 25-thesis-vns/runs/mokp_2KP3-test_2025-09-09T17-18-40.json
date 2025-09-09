@@ -1,0 +1,1 @@
+{"metadata": {"date": "2025-09-09T17:18:40.614133", "problem_name": "mokp", "instance_file": "2KP3-test.json", "run_time": 3}, "config": {"name": "skewed_FI_swap_k9_shake_swap", "algorithm": "VNS"}, "solutions": [{"objectives": [0, 0], "data": [0, 0, 0]}]}

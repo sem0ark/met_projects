@@ -1,32 +1,25 @@
+import argparse
+import logging
 import random
 import sys
-import logging
+import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
-from dataclasses import replace
 
-import argparse
 import matplotlib.pyplot as plt
-import time
-
 import numpy as np
 
 sys.path.insert(1, str(Path(__file__).parent.parent.absolute()))
 
-from parse_tsplib_problem import TSPLibParser
 from distance_functions import get_distance_function
+from parse_tsplib_problem import TSPLibParser
+from utils import parse_time_string, setup_logging
 
-from vns.vns_base import VNSOptimizer
 from vns.abstract import Problem, Solution, VNSConfig
-from vns.acceptance import AcceptBeamSmaller, AcceptBeamSkewedSmaller
-from vns.local_search import (
-    best_improvement,
-    first_improvement,
-    noop,
-)
-
-from utils import setup_logging, parse_time_string
-
+from vns.acceptance import AcceptBeamSkewedSmaller, AcceptBeamSmaller
+from vns.local_search import best_improvement, first_improvement, noop
+from vns.vns_base import VNSOptimizer
 
 BASE = Path(__file__).parent.parent.parent / "data" / "tsplib"
 

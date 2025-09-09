@@ -1,5 +1,9 @@
-from pathlib import Path
+import json
 import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any, cast
+
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.core.problem import ElementwiseProblem
@@ -8,7 +12,9 @@ from pymoo.termination.max_time import TimeBasedTermination
 
 sys.path.insert(1, str(Path(__file__).parent.parent.absolute()))
 
-from mokp_problem import MOKPProblem, load_mokp_problem
+from mokp.mokp_problem import MOKPProblem
+
+BASE = Path(__file__).parent.parent.parent / "runs"
 
 
 class MOKP(ElementwiseProblem):
@@ -55,8 +61,8 @@ class MOKP(ElementwiseProblem):
         out["G"] = g1
 
 
-def solve_mokp_ngsa2(filename: str, run_seconds: float) -> np.ndarray:
-    problem = MOKP(load_mokp_problem(filename))
+def solve_mokp_ngsa2(instance_path: str, run_seconds: float):
+    problem = MOKP(MOKPProblem.load(instance_path))
 
     algorithm = NSGA2(pop_size=200, eliminate_duplicates=True)
 
@@ -67,4 +73,42 @@ def solve_mokp_ngsa2(filename: str, run_seconds: float) -> np.ndarray:
         verbose=True,
     )
 
-    return res.F
+    solutions = cast(np.ndarray, -res.F).tolist()
+
+    timestamp = datetime.now().isoformat()
+    BASE.mkdir(parents=True, exist_ok=True)
+    instance_name = Path(instance_path).stem
+    run_path = (
+        BASE / f"mokp_{instance_name}_{timestamp.split('.')[0].replace(':', '-')}.json"
+    )
+
+    solutions_data = [
+        {
+            "objectives": sol,
+            "data": [],
+        }
+        for sol in solutions
+    ]
+
+    run_data = {
+        "metadata": {
+            "date": timestamp,
+            "problem_name": "mokp",
+            "instance_file": instance_name,
+            "run_time": int(run_seconds),
+        },
+        "config": {
+            "name": "NGSA2",
+            "algorithm": "NGSA2",
+        },
+        "solutions": solutions_data,
+    }
+
+    with open(run_path, "w") as f:
+        json.dump(run_data, f)
+
+    print(f"Optimization run data saved to: {run_path}")
+
+
+def register_cli(cli: Any) -> None:
+    cli.register_runner("mokp", [("NGSA2", solve_mokp_ngsa2)])

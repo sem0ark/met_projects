@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from parse_tsplib_problem import TSPLibParser
 
 BASE = Path(__file__).parent.parent.parent.parent / "data" / "tsplib"

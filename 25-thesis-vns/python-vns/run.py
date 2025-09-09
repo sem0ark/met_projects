@@ -1,6 +1,9 @@
 import logging
-from _cli import CLI
 
+import mokp.ngsa2
+import mokp.spea2
+import mokp.vns
+from _cli import CLI
 
 logger = logging.getLogger()
 
@@ -23,16 +26,12 @@ def setup_logging(level=logging.INFO):
     root_logger.addHandler(console_handler)
 
 
-def run_instance(path, time):
-    pass
-
-
 if __name__ == "__main__":
     setup_logging(level=logging.INFO)
+    cli = CLI()
 
-    CLI().register_runner(
-        "mokp",
-        [
-            ("RVNS batch shake 1", run_instance)
-        ]
-    ).run()
+    mokp.vns.register_cli(cli)
+    mokp.ngsa2.register_cli(cli)
+    mokp.spea2.register_cli(cli)
+
+    cli.run()

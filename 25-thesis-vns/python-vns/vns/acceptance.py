@@ -1,7 +1,8 @@
-from collections import deque
 import logging
 import random
+from collections import deque
 from typing import Callable
+
 from vns.abstract import AcceptanceCriterion, Solution
 
 

@@ -29,7 +29,7 @@ class VNSOptimizer:
             self.config.acceptance_criterion.accept(sol)
 
         while True:
-            improved_in_this_vns_iteration = False
+            improved = False
             current_solution = (
                 self.config.acceptance_criterion.get_one_current_solution()
             )
@@ -43,7 +43,7 @@ class VNSOptimizer:
                 accepted = self.config.acceptance_criterion.accept(local_optimum)
 
                 if accepted:
-                    improved_in_this_vns_iteration = True
+                    improved = True
                     break
 
-            yield improved_in_this_vns_iteration
+            yield improved

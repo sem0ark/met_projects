@@ -1,15 +1,11 @@
-import pytest
 from unittest.mock import Mock
 
+import pytest
+
 from vns.abstract import MOKPSolution
-from vns.acceptance import (
-    dominates_minimize,
-    dominates_maximize,
-    TakeBigger,
-    TakeSmaller,
-    TakeBiggerSkewed,
-    TakeSmallerSkewed,
-)
+from vns.acceptance import (TakeBigger, TakeBiggerSkewed, TakeSmaller,
+                            TakeSmallerSkewed, dominates_maximize,
+                            dominates_minimize)
 
 
 class TestDominatesMinimize:

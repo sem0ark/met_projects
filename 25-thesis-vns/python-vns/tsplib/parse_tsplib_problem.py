@@ -1,7 +1,8 @@
 import logging
 import re
+from typing import Any, Dict, List, Tuple, Union
+
 from lark import Lark, Transformer, v_args
-from typing import Dict, List, Tuple, Union, Any
 
 tsplib_grammar = r"""
     %import common.WS

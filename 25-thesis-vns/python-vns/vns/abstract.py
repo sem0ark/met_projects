@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import Any, Callable, Generic, Iterable, Self, TypeVar
 
-
 T = TypeVar("T")
 
 

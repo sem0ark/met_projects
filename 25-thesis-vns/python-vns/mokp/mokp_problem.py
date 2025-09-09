@@ -9,10 +9,6 @@ sys.path.insert(1, str(Path(__file__).parent.parent.absolute()))
 
 from vns.abstract import Problem, Solution
 
-
-BASE = Path(__file__).parent.parent.parent / "data" / "mokp"
-
-
 type MOKPSolution = Solution[np.ndarray]
 
 
@@ -24,7 +20,12 @@ class _MOKPSolution(Solution[np.ndarray]):
 
 
 class MOKPProblem(Problem[np.ndarray]):
-    def __init__(self, weights: list[list[int]], profits: list[list[int]], capacity: int | list[int]):
+    def __init__(
+        self,
+        weights: list[list[int]],
+        profits: list[list[int]],
+        capacity: int | list[int],
+    ):
         super().__init__(self.evaluate, self.generate_initial_solutions)
 
         self.weights = np.array(weights, dtype=int)
@@ -61,9 +62,8 @@ class MOKPProblem(Problem[np.ndarray]):
         )
         return result
 
-    def calculate_solution_distance(
-        self, sol1: MOKPSolution, sol2: MOKPSolution
-    ) -> float:
+    @staticmethod
+    def calculate_solution_distance(sol1: MOKPSolution, sol2: MOKPSolution) -> float:
         """Calculates a distance between two MOKP solutions (binary vectors)."""
         return float(np.sum(sol1.data != sol2.data))
 
@@ -74,10 +74,10 @@ class MOKPProblem(Problem[np.ndarray]):
         In a real scenario, this would load from a file like MOCOLib instances.
         """
         try:
-            with open(BASE / filename, "r") as f:
+            with open(filename, "r") as f:
                 configuration = json.load(f)
         except FileNotFoundError:
-            raise ValueError(f"Error: File not found at {BASE / filename}")
+            raise ValueError(f"Error: File not found at {filename}")
         except Exception as e:
             raise ValueError(f"Error reading file {filename}: {e}")
 
