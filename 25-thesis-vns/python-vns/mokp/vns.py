@@ -47,6 +47,12 @@ def swap_op(solution: MOKPSolution, config: VNSConfig) -> Iterable[MOKPSolution]
             yield solution.new(new_data)
 
 
+def shuffled(lst: Iterable) -> list[Any]:
+    lst = list(lst)
+    random.shuffle(lst)
+    return lst
+
+
 def shake_add_remove(
     solution: MOKPSolution, k: int, _config: VNSConfig
 ) -> MOKPSolution:
@@ -89,12 +95,6 @@ def shake_swap(solution: MOKPSolution, k: int, _config: VNSConfig) -> MOKPSoluti
             solution_data[item_to_swap_in] = 1
 
     return solution.new(solution_data)
-
-
-def shuffled(lst: Iterable) -> list[Any]:
-    lst = list(lst)
-    random.shuffle(lst)
-    return lst
 
 
 # ----------------------------------------------------------------------------------
