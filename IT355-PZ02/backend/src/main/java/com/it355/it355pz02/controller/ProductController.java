@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.HashSet; // Import HashSet
+import java.util.HashSet;
 
 @RestController
 @RequestMapping("/api/products")
@@ -68,7 +68,6 @@ public class ProductController {
         } else {
             product.setCategories(new HashSet<>());
         }
-
 
         if (productPostDTO.getImageUrls() != null && !productPostDTO.getImageUrls().isEmpty()) {
             productPostDTO.getImageUrls().stream()
