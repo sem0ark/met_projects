@@ -25,10 +25,7 @@ from vns.local_search import (
     noop,
 )
 
-from utils.cli import setup_logging, parse_time_string
-from utils.run import run_vns_optimizer
 from mokp_problem import MOKPProblem, MOKPSolution
-from utils.serialize import save_run_data
 
 
 logger = logging.getLogger("mokp-solver")
