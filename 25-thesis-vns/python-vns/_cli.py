@@ -74,29 +74,9 @@ class CLI:
 
         for problem_name, configs in self.runners.items():
 
-            @run_command.group(
+            @run_command.command(
                 name=problem_name,
                 help="Commands for the Multi-objective Knapsack Problem.",
-            )
-            def problem_runner():
-                pass
-
-            for config_name, runner in configs:
-
-                @problem_runner.command(
-                    name=config_name.replace(" ", "_"), help=f"Run {config_name}."
-                )
-                @click.pass_context
-                def run_instance(ctx):
-                    args = ctx.parent.parent.params
-                    click.echo(
-                        f"Running {config_name} on problem '{problem_name}' from instance '{args['instance']}' for {args['max_time']}."
-                    )
-                    run_time_seconds = parse_time_string(args["max_time"])
-                    runner(args["instance"], run_time_seconds)
-
-            @problem_runner.command(
-                name="all", help="Run all configs, optionally filtered."
             )
             @click.option(
                 "-f",
@@ -105,8 +85,8 @@ class CLI:
                 default=None,
             )
             @click.pass_context
-            def run_all(ctx, filter_configs):
-                args = ctx.parent.parent.params
+            def problem_runner(ctx, filter_configs):
+                args = ctx.parent.params
                 run_time_seconds = parse_time_string(args["max_time"])
                 instance = args["instance"]
 
@@ -118,21 +98,17 @@ class CLI:
                 configs_filtered = {
                     config_name: runner
                     for config_name, runner in configs
-                    if any(
+                    if not filters or any(
                         fliter_name in config_name.lower() for fliter_name in filters
                     )
                 }
 
                 if not configs_filtered:
-                    raise click.UsageError(
-                        f"Failed to match any runner with filters: {filters}"
-                    )
+                    raise click.UsageError(f"Failed to match any runner with filters: {filters}")
 
                 click.echo(f"Running configs for problem: {problem_name}")
                 for config_name, runner in configs_filtered.items():
-                    click.echo(
-                        f"Running {config_name} on problem '{problem_name}' from instance '{instance}' for {run_time_seconds} seconds."
-                    )
+                    click.echo(f"Running {config_name} on problem '{problem_name}' from instance '{instance}' for {run_time_seconds} seconds.")
                     try:
                         runner(instance, run_time_seconds)
                     except Exception as e:

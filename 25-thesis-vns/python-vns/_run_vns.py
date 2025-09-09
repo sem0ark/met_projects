@@ -100,6 +100,7 @@ def save_run_data(
         }
         for sol in solutions
     ]
+    print(solutions_data)
 
     run_data = {
         "metadata": {

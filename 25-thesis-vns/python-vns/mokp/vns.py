@@ -20,6 +20,33 @@ from vns.optimizer import VNSOptimizer
 logger = logging.getLogger("mokp-solver")
 
 
+def add_remove_op(solution: MOKPSolution, config: VNSConfig) -> Iterable[MOKPSolution]:
+    """Generates neighbors by adding or removing a single item."""
+    solution_data = solution.data
+    num_items = len(solution_data)
+
+    for i in shuffled(range(num_items)):
+        new_data = solution_data.copy()
+        new_data[i] = 1 - new_data[i]
+        yield solution.new(new_data)
+
+
+def swap_op(solution: MOKPSolution, config: VNSConfig) -> Iterable[MOKPSolution]:
+    """Generates neighbors by swapping one selected item with one unselected item."""
+    solution_data = solution.data
+
+    selected_items = np.where(solution_data == 1)[0]
+    unselected_items = np.where(solution_data == 0)[0]
+
+    for i in shuffled(selected_items):
+        for j in shuffled(unselected_items):
+            new_data = solution_data.copy()
+            new_data[i] = 0
+            new_data[j] = 1
+
+            yield solution.new(new_data)
+
+
 def shake_add_remove(
     solution: MOKPSolution, k: int, _config: VNSConfig
 ) -> MOKPSolution:
@@ -68,33 +95,6 @@ def shuffled(lst: Iterable) -> list[Any]:
     lst = list(lst)
     random.shuffle(lst)
     return lst
-
-
-def add_remove_op(solution: MOKPSolution, config: VNSConfig) -> Iterable[MOKPSolution]:
-    """Generates neighbors by adding or removing a single item."""
-    solution_data = solution.data
-    num_items = len(solution_data)
-
-    for i in shuffled(range(num_items)):
-        new_data = solution_data.copy()
-        new_data[i] = 1 - new_data[i]
-        yield solution.new(new_data)
-
-
-def swap_op(solution: MOKPSolution, config: VNSConfig) -> Iterable[MOKPSolution]:
-    """Generates neighbors by swapping one selected item with one unselected item."""
-    solution_data = solution.data
-
-    selected_items = np.where(solution_data == 1)[0]
-    unselected_items = np.where(solution_data == 0)[0]
-
-    for i in shuffled(selected_items):
-        for j in shuffled(unselected_items):
-            new_data = solution_data.copy()
-            new_data[i] = 0
-            new_data[j] = 1
-
-            yield solution.new(new_data)
 
 
 # ----------------------------------------------------------------------------------
@@ -173,6 +173,7 @@ def prepare_optimizers(instance_path: str | None) -> dict[str, Callable[[float],
             )
 
             def runner_func(run_time):
+                print(config)
                 return run_instance_with_config(run_time, str(instance_path), config)
 
             optimizers[config_name] = runner_func
@@ -181,15 +182,15 @@ def prepare_optimizers(instance_path: str | None) -> dict[str, Callable[[float],
 
 
 def register_cli(cli: Any) -> None:
+    def make_runner(optimizer_name: str):
+        def run(instance_path, run_time):
+            return prepare_optimizers(instance_path)[optimizer_name](run_time)
+        return run
+
     cli.register_runner(
         "mokp",
         [
-            (
-                optimizer_name,
-                lambda instance_path, run_time: prepare_optimizers(instance_path)[
-                    optimizer_name
-                ](run_time),
-            )
+            (optimizer_name, make_runner(optimizer_name))
             for optimizer_name in prepare_optimizers(None).keys()
         ],
     )

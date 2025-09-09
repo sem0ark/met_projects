@@ -29,7 +29,7 @@ class MOKP(ElementwiseProblem):
         super().__init__(
             n_var=problem.num_items,
             n_obj=problem.num_objectives,
-            n_constr=1,
+            n_constr=problem.capacity.size,
             xl=0.0,
             xu=1.0,
             vtype=bool,
