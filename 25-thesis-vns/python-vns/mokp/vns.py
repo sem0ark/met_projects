@@ -154,14 +154,14 @@ def prepare_optimizers(instance_path: str | None) -> dict[str, Callable[[float],
         neighborhood_operations,
         shake_functions,
     ):
-        if search_name == "noop" and op_name != "add_remove_op":
+        if search_name == "noop" and op_name != "add_remove":
             continue
 
         search_func_instance = (
             search_func_factory(op_func) if search_name != "noop" else noop()
         )
 
-        for k in range(1, 11, 2):
+        for k in range(1, 11):
             config_name = f"{acc_name}_{search_name}_{op_name}_k{k}_{shake_name}"
 
             config = VNSConfig(
@@ -172,9 +172,8 @@ def prepare_optimizers(instance_path: str | None) -> dict[str, Callable[[float],
                 name=config_name,
             )
 
-            def runner_func(run_time):
-                print(config)
-                return run_instance_with_config(run_time, str(instance_path), config)
+            def runner_func(run_time, _config=config):
+                return run_instance_with_config(run_time, str(instance_path), _config)
 
             optimizers[config_name] = runner_func
 
@@ -183,8 +182,8 @@ def prepare_optimizers(instance_path: str | None) -> dict[str, Callable[[float],
 
 def register_cli(cli: Any) -> None:
     def make_runner(optimizer_name: str):
-        def run(instance_path, run_time):
-            return prepare_optimizers(instance_path)[optimizer_name](run_time)
+        def run(instance_path, run_time, _optimizer_name=optimizer_name):
+            return prepare_optimizers(instance_path)[_optimizer_name](run_time)
         return run
 
     cli.register_runner(

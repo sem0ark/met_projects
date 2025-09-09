@@ -113,7 +113,4 @@ class VNSConfig(Generic[T]):
             )
 
     def get_name(self):
-        if not self.name:
-            return f"{self.problem} {self.acceptance_criterion} {self.shake_function.__name__}"
-
-        return self.name
+        return self.name or ""

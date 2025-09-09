@@ -43,25 +43,17 @@ def run_vns_optimizer(
     logger = logging.getLogger(optimizer.config.get_name())
     start_time = time.time()
     optimizer.config.acceptance_criterion.clear()
+
     for iteration, improved in enumerate(optimizer.optimize(), 1):
         elapsed_time = time.time() - start_time
 
         if elapsed_time > run_time_seconds:
-            logger.info(
-                "Timeout after %d iterations, ran for %d seconds.",
-                iteration,
-                elapsed_time,
-            )
+            num_solutions = len(optimizer.config.acceptance_criterion.get_all_solutions())
+            logger.info("Timeout after %d iterations, ran for %d seconds. Total # solutions: %d", iteration, elapsed_time, num_solutions)
             break
+
         if improved:
-            num_solutions = len(
-                optimizer.config.acceptance_criterion.get_all_solutions()
-            )
-            logger.info(
-                "Iteration %d: Improved! Total # solutions: %d",
-                iteration,
-                num_solutions,
-            )
+            logger.info("Iteration %d: Improved!", iteration)
 
     return optimizer.config.acceptance_criterion.get_all_solutions()
 
@@ -100,7 +92,6 @@ def save_run_data(
         }
         for sol in solutions
     ]
-    print(solutions_data)
 
     run_data = {
         "metadata": {

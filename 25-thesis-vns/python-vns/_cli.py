@@ -3,7 +3,6 @@ from typing import Callable, Self
 
 import click
 
-
 def parse_time_string(time_str: str) -> float:
     """Parses a time string like '5s', '2m', '1h' into seconds."""
     if not time_str:
@@ -72,11 +71,10 @@ class CLI:
         def run_command(max_time, instance):
             pass
 
-        for problem_name, configs in self.runners.items():
-
+        def create_problem_command(problem_name, configs):
             @run_command.command(
                 name=problem_name,
-                help="Commands for the Multi-objective Knapsack Problem.",
+                help=f"Run the '{problem_name}' optimization."
             )
             @click.option(
                 "-f",
@@ -99,7 +97,7 @@ class CLI:
                     config_name: runner
                     for config_name, runner in configs
                     if not filters or any(
-                        fliter_name in config_name.lower() for fliter_name in filters
+                        filter_name in config_name.lower() for filter_name in filters
                     )
                 }
 
@@ -113,6 +111,10 @@ class CLI:
                         runner(instance, run_time_seconds)
                     except Exception as e:
                         click.echo(f"Error running '{config_name}': {e}", err=True)
+            return problem_runner
+
+        for problem_name, configs in self.runners.items():
+            run_command.add_command(create_problem_command(problem_name, configs))
 
         cli.add_command(run_command, name="run")
         cli()

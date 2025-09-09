@@ -206,6 +206,9 @@ class _AcceptBatch(_Comparison):
             if not self.is_dominated[i] and self.dominates(candidate, solution):
                 self.is_dominated[i] = True
 
+        if any(solution == candidate for solution in self.upcoming_front):
+            return False
+
         self.upcoming_front.append(candidate)
         return True
 
