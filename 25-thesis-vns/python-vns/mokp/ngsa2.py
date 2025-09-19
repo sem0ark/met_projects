@@ -1,6 +1,4 @@
-import json
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -13,6 +11,7 @@ from pymoo.termination.max_time import TimeBasedTermination
 sys.path.insert(1, str(Path(__file__).parent.parent.absolute()))
 
 from mokp.mokp_problem import MOKPProblem
+from _cli import Metadata, SavedRun, SavedSolution
 
 BASE = Path(__file__).parent.parent.parent / "runs"
 
@@ -75,39 +74,19 @@ def solve_mokp_ngsa2(instance_path: str, run_seconds: float):
 
     solutions = cast(np.ndarray, -res.F).tolist()
 
-    timestamp = datetime.now().isoformat()
     BASE.mkdir(parents=True, exist_ok=True)
-    instance_name = Path(instance_path).stem
-    run_path = (
-        BASE / f"mokp_{instance_name}_{timestamp.split('.')[0].replace(':', '-')}.json"
+    solutions_data = [SavedSolution(sol) for sol in solutions]
+
+    return SavedRun(
+        metadata=Metadata(
+            run_time_seconds=int(run_seconds),
+            name="NGSA2",
+            version=1,
+            problem_name="mokp",
+            instance_name=Path(instance_path).stem,
+        ),
+        solutions=solutions_data,
     )
-
-    solutions_data = [
-        {
-            "objectives": sol,
-            "data": [],
-        }
-        for sol in solutions
-    ]
-
-    run_data = {
-        "metadata": {
-            "date": timestamp,
-            "problem_name": "mokp",
-            "instance_file": instance_name,
-            "run_time": int(run_seconds),
-        },
-        "config": {
-            "name": "NGSA2",
-            "algorithm": "NGSA2",
-        },
-        "solutions": solutions_data,
-    }
-
-    with open(run_path, "w") as f:
-        json.dump(run_data, f)
-
-    print(f"Optimization run data saved to: {run_path}")
 
 
 def register_cli(cli: Any) -> None:

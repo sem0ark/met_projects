@@ -1,5 +1,4 @@
-from vns.abstract import (NeighborhoodOperator, SearchFunction, Solution,
-                          VNSConfig)
+from vns.abstract import NeighborhoodOperator, SearchFunction, Solution, VNSConfig
 
 
 def noop():

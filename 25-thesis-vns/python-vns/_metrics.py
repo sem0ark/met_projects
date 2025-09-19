@@ -1,50 +1,16 @@
-import argparse
+from dataclasses import dataclass
 import json
 import logging
-from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
+import tabulate
 import numpy as np
 from pymoo.indicators.hv import HV
+from pymoo.indicators.igd import IGD
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-BASE = Path(__file__).parent.parent.parent / "runs"
-PROBLEM_DATA_DIR = Path(__file__).parent.parent.parent / "problems"
-
-
-def load_instance_data_json(instance_name: str) -> Dict[str, Any]:
-    file_path = PROBLEM_DATA_DIR / instance_name
-    if not file_path.exists():
-        logging.error(f"Problem file not found: {file_path}")
-        return {}
-
-    with open(file_path, "r") as f:
-        return json.load(f)
-
-
-@dataclass
-class Metadata:
-    date: datetime
-    problem_name: str
-    problem_data_file: str
-
-
-@dataclass
-class Config:
-    name: str
-    algorithm: str
-
-
-@dataclass
-class Solution:
-    objectives: List[float]
-    data: List[int]
+from _shared import SavedRun
 
 
 @dataclass
@@ -55,341 +21,304 @@ class Metrics:
     inverted_generational_distance: float
 
 
-@dataclass
-class RunConfig:
-    metadata: Metadata
-    config: Config
-    solutions: List[Solution]
+def load_instance_data_json(file_path: Path) -> dict[str, Any]:
+    if not file_path.exists():
+        return {}
 
-
-def get_all_runs(problem_name: str, name_filter: str = "") -> List[RunConfig]:
-    """
-    Parses and returns a list of RunConfig objects for a given problem,
-    optionally filtered by optimizer name.
-    """
-    run_configs: List[RunConfig] = []
-
-    run_dirs = [
-        d
-        for d in BASE.iterdir()
-        if d.is_dir() and d.name.startswith(f"{problem_name}_")
-    ]
-
-    for run_dir in run_dirs:
-        data_file = run_dir / "run_data.json"
-
-        if not data_file.exists():
-            continue
-
-        try:
-            with open(data_file, "r") as f:
-                run_data = json.load(f)
-
-            config_dict = run_data.get("config", {})
-            if (
-                name_filter
-                and name_filter.lower() not in config_dict.get("name", "").lower()
-            ):
-                continue
-
-            metadata_dict = run_data.get("metadata", {})
-            metadata = Metadata(
-                date=datetime.fromisoformat(metadata_dict.get("date")),
-                problem_name=metadata_dict.get("problem_name"),
-                problem_data_file=metadata_dict.get("problem_data_file"),
-            )
-
-            config = Config(**config_dict)
-            solutions_list = [Solution(**sol) for sol in run_data.get("solutions", [])]
-
-            run_config = RunConfig(
-                metadata=metadata, config=config, solutions=solutions_list
-            )
-            run_configs.append(run_config)
-
-        except (json.JSONDecodeError, KeyError, TypeError) as e:
-            logging.warning(
-                f"Skipping malformed or incomplete run file {data_file}: {e}"
-            )
-            continue
-
-    return run_configs
+    with open(file_path, "r") as f:
+        return json.load(f)
 
 
 def calculate_reference_front(
-    runs: list[RunConfig], predefined_front: list | None = None
-):
+    runs: list[SavedRun], predefined_front: list | None = None
+) -> np.ndarray:
+    """
+    Calculates the reference front by combining and sorting all non-dominated
+    solutions from all runs. It can be overridden by a predefined front.
+
+    Args:
+        runs: A list of SavedRun objects.
+        predefined_front: A list of objective vectors to use as the reference front.
+
+    Returns:
+        A NumPy array representing the non-dominated reference front.
+    """
     if predefined_front:
+        print("Using predefined reference front!")
         return np.array(predefined_front)
 
+    print("Making reference front from merging all available runs.")
     all_objectives = []
 
     for run in runs:
         for sol in run.solutions:
             all_objectives.append(sol.objectives)
 
-    combined_objectives = np.concatenate(all_objectives, axis=0)
+    if not all_objectives:
+        logging.warning("No solutions found in any run to create a reference front.")
+        return np.array([])
+
+    combined_objectives = np.array(all_objectives)
+
+    # Negate objectives to convert maximization to minimization
+    negated_objectives = -combined_objectives
+
     nd_sorting = NonDominatedSorting()
     non_dominated_indices = nd_sorting.do(
-        combined_objectives, only_non_dominated_front=True
+        negated_objectives, only_non_dominated_front=True
     )
+
+    # Return the non-dominated front with original (non-negated) values
     reference_front = combined_objectives[non_dominated_indices]
+
+    # Remove duplicates from the reference front
+    reference_front = np.unique(reference_front, axis=0)
 
     return reference_front
 
 
-def calculate_metrics(
-    run: RunConfig,
-    reference_front: np.ndarray,
-    ref_point: np.ndarray,
-):
-    results = []
-    for run_name, front in runs:
-        if front.size == 0:
-            logging.warning(
-                f"Run '{run_name}' has an empty front. Skipping metrics calculation."
-            )
-            results.append({"name": run_name, "epsilon": "N/A", "hypervolume": "N/A"})
-            continue
-        hv_indicator = HV(ref_point=ref_point)
-        hypervolume_value = hv_indicator.do(front)
-        results.append(
-            {
-                "name": run_name,
-                "epsilon": 0,
-                "hypervolume": hypervolume_value,
-            }
-        )
-    return results
-
-
-def is_weakly_dominated(p1: np.ndarray, p2: np.ndarray) -> bool:
+def calculate_multiplicative_epsilon(A: np.ndarray, R: np.ndarray) -> float:
     """
-    Checks if point p1 weakly dominates point p2 for a minimization problem.
-    A point p1 weakly dominates p2 if p1 is not worse than p2 in any objective
-    and strictly better in at least one objective.
+    Calculates the multiplicative epsilon indicator without using pymoo.
 
     Args:
-        p1: A NumPy array representing the first point.
-        p2: A NumPy array representing the second point.
+        A: The approximation front (a NumPy array).
+        R: The reference front (a NumPy array).
 
     Returns:
-        True if p1 weakly dominates p2, False otherwise.
+        The multiplicative epsilon indicator value. For minimization problems,
+        a value closer to 1 is better.
     """
-    dominates_in_at_least_one = np.any(p1 < p2)
-    not_worse_in_all = np.all(p1 <= p2)
-    return not_worse_in_all and dominates_in_at_least_one
+    if A.size == 0 or R.size == 0:
+        return np.nan
 
+    # Pymoo's Epsilon indicator is for minimization. The formula for the multiplicative
+    # epsilon for minimization is: max_{a in A} min_{r in R} max_i(a_i / r_i).
+    # Since the user's problem is maximization and objectives are positive, we apply this
+    # to the negated fronts.
+    negated_A = -A
+    negated_R = -R
 
-def calculate_c_metric(A: np.ndarray, B: np.ndarray) -> float:
-    """
-    Calculates the Coverage metric C(A, B).
+    ratios = np.zeros((negated_A.shape[0], negated_R.shape[0]))
 
-    This represents the proportion of points in set B that are weakly dominated by
-    at least one point in set A.
+    for i in range(negated_A.shape[0]):
+        for j in range(negated_R.shape[0]):
+            ratios[i, j] = np.max(negated_A[i, :] / negated_R[j, :])
 
-    Args:
-        A: The NumPy array for the first Pareto front.
-        B: The NumPy array for the second Pareto front.
-
-    Returns:
-        The coverage value C(A, B) as a float between 0 and 1.
-    """
-    if B.size == 0:
-        return 0.0
-
-    dominated_count = 0
-    for b_point in B:
-        # Check if the b_point is weakly dominated by any point in A
-        if np.any([is_weakly_dominated(a_point, b_point) for a_point in A]):
-            dominated_count += 1
-
-    return dominated_count / len(B)
+    return np.max(np.min(ratios, axis=1))
 
 
 def calculate_r2_metric(
     front: np.ndarray, ideal_point: np.ndarray, weights: np.ndarray
 ) -> float:
     """
-    Calculates the R2 unary indicator.
-
-    This is based on the weighted Tchebycheff utility function, as defined by Zitzler et al.
-    The formula is R2(A, Λ, i) = (1/|Λ|) * sum over all λ in Λ of (min over all a in A of (max over all j in {1,...,d} of {λj * |ij - aj|})).
+    Calculates the R2 unary indicator based on the weighted Tchebycheff utility function.
 
     Args:
-        front: The NumPy array of the solution set A.
-        ideal_point: The NumPy array of the ideal point i.
-        weights: The NumPy array of weight vectors Λ.
+        front: A NumPy array of objective vectors (solutions).
+        ideal_point: The ideal point as a NumPy array.
+        weights: A NumPy array of weight vectors.
 
     Returns:
         The R2 indicator value.
     """
-    if weights.size == 0:
-        logging.warning(
-            "No weight vectors provided for R2 metric calculation. Returning 0."
-        )
-        return 0.0
+    if front.size == 0 or weights.size == 0:
+        return np.nan
 
-    if front.size == 0:
-        logging.warning("Front is empty for R2 metric calculation. Returning 0.")
-        return 0.0
+    # The formula for R2 is for minimization, so we use negated objectives
+    negated_front = -front
+    negated_ideal_point = -ideal_point
 
-    # The PISA R2 indicator is the average of the minimum utility values.
-    min_utilities = np.zeros(weights.shape[0])
-
-    # Calculate the Tchebycheff value for each solution and weight vector
-    for i, lambda_vec in enumerate(weights):
-        tchebycheff_values = np.max(lambda_vec * np.abs(ideal_point - front), axis=1)
-        min_utilities[i] = np.min(tchebycheff_values)
+    tchebycheff_values = np.max(
+        weights * np.abs(negated_ideal_point - negated_front[:, None, :]), axis=2
+    )
+    min_utilities = np.min(tchebycheff_values, axis=1)
 
     return np.mean(min_utilities)
 
 
-def plot_final_pareto_front(label, improved_objectives_data, pareto_front_objectives):
-    if improved_objectives_data is not None:
-        improved_objectives_data = list(improved_objectives_data)
-        obj1_imp = [o[0] for o in improved_objectives_data]
-        obj2_imp = [o[1] for o in improved_objectives_data]
-        plt.scatter(
-            obj1_imp,
-            obj2_imp,
-            marker="x",
-            linestyle="",
-            label=f"Pareto Front Changes ({label})",
-            alpha=0.5,
-        )
+def _get_hypervolume_ref_point(fronts: list[np.ndarray]) -> np.ndarray:
+    """
+    Determines a suitable reference point for Hypervolume calculation.
 
-    if pareto_front_objectives is not None:
-        obj1_pf = [o[0] for o in pareto_front_objectives]
-        obj2_pf = [o[1] for o in pareto_front_objectives]
-        plt.plot(
-            obj1_pf,
-            obj2_pf,
-            marker="o",
-            linestyle="-",
-            label=f"Pareto Front ({label})",
-        )
+    For maximization, the reference point must be worse than all points in the combined fronts.
+    We find the minimum value for each objective across all fronts and set the reference
+    point slightly below that.
+    """
+    if not fronts:
+        return np.array([])
+
+    all_points = np.concatenate(fronts, axis=0)
+    min_objectives = np.min(all_points, axis=0)
+    return min_objectives - 1e-6  # A small epsilon to ensure all points are dominated
 
 
-def plot_optimizer(
-    filename: str,
-    optimizer_type: str,
-    run_time: str,
-    max_iterations_no_improvement: int,
-):
-    setup_logging(level=logging.INFO)
-    max_run_time_seconds = parse_time_string(run_time)
+def _generate_uniform_weights(num_objectives: int, num_weights: int) -> np.ndarray:
+    """
+    Generates uniformly distributed weight vectors for R2 metric.
+    """
+    if num_objectives == 2:
+        weights = np.zeros((num_weights, 2))
+        for i in range(num_weights):
+            weights[i, 0] = i / (num_weights - 1)
+            weights[i, 1] = 1.0 - weights[i, 0]
+        return weights
+    else:
+        # A simple approximation for more than 2 objectives
+        weights = np.random.rand(num_weights, num_objectives)
+        return weights / np.sum(weights, axis=1, keepdims=True)
 
-    logger.info(f"--- Running {optimizer_type} with {filename} ---")
-    logger.info(f"Max run time: {max_run_time_seconds:.2f} seconds")
-    logger.info(f"Max iterations without improvement: {max_iterations_no_improvement}")
 
-    mokp_problem = MOKPProblem.load(filename)
-    optimizers = prepare_mokp_optimizers(mokp_problem)
+def calculate_metrics(
+    instance_path: Path, runs_grouped: dict[str, list[SavedRun]]
+) -> dict[str, Metrics]:
+    """
+    Calculates performance metrics for each run, and then averages them across multiple runs
+    for the same configuration.
 
-    optimizer = optimizers.get(optimizer_type)
-    if not optimizer:
-        logger.error(f"Unknown optimizer type: {optimizer_type}")
-        return
+    Args:
+        instance_path: The path to the problem instance file.
+        runs_grouped: A dictionary where keys are run names and values are lists of SavedRun objects.
 
-    improved_objectives_data, pareto_front_objectives = run_mokp_optimizer(
-        max_run_time_seconds,
-        max_iterations_no_improvement,
-        optimizer,
-        include_improvement_history=True,
+    Returns:
+        A dictionary where keys are run names and values are a single Metrics object
+        with the averaged metric values.
+    """
+    problem_data = load_instance_data_json(instance_path)
+
+    # Combine all solutions to create a single, shared reference front
+    all_runs = [run for runs in runs_grouped.values() for run in runs]
+    reference_front = calculate_reference_front(
+        all_runs, problem_data.get("reference_front")
     )
 
-    logger.info(f"--- {optimizer_type} Optimization Complete ---")
-    logger.info(f"Final Pareto Front Size: {len(pareto_front_objectives)}")
+    if reference_front.size == 0:
+        logging.error(
+            "Failed to create a reference front from the provided runs or file."
+        )
+        return {}
 
-    plot_final_pareto_front(
-        optimizer_type, improved_objectives_data, pareto_front_objectives
+    num_objectives = reference_front.shape[1]
+
+    # Calculate a reference point for Hypervolume (worst point)
+    hv_ref_point = _get_hypervolume_ref_point([reference_front])
+
+    # Calculate an ideal point for R2 (best point)
+    # The ideal point for a maximization problem is the maximum value for each objective.
+    r2_ideal_point = np.max(reference_front, axis=0)
+    r2_weights = _generate_uniform_weights(num_objectives, num_weights=100)
+
+    metrics_results = {}
+
+    for run_name, runs in runs_grouped.items():
+        run_metrics_list = []
+        for run in runs:
+            front = np.array([sol.objectives for sol in run.solutions])
+
+            if front.size == 0:
+                logging.warning(
+                    f"Run '{run_name}' has an empty front. Skipping metrics calculation."
+                )
+                run_metrics_list.append(
+                    Metrics(
+                        epsilon=np.nan,
+                        hypervolume=np.nan,
+                        r_metric=np.nan,
+                        inverted_generational_distance=np.nan,
+                    )
+                )
+                continue
+
+            # For all pymoo metrics, we negate the fronts to convert to a minimization problem
+            negated_front = -front
+            negated_reference_front = -reference_front
+            negated_hv_ref_point = -hv_ref_point
+
+            # Hypervolume: The original hypervolume is maximized, but this implementation
+            # calculates the hypervolume of the dominated space. For minimization, a larger
+            # dominated space is better, so the result is better for better fronts.
+            hv_indicator = HV(ref_point=negated_hv_ref_point)
+            hypervolume = hv_indicator.do(negated_front)
+
+            # Epsilon: The user requested a custom implementation.
+            epsilon = calculate_multiplicative_epsilon(front, reference_front)
+
+            # R2 Unary Indicator: For minimization, smaller is better.
+            r_metric = calculate_r2_metric(front, r2_ideal_point, r2_weights)
+
+            # Inverted Generational Distance (IGD): For minimization, smaller is better.
+            igd_indicator = IGD(negated_reference_front)
+            inverted_generational_distance = igd_indicator.do(negated_front)
+
+            run_metrics_list.append(
+                Metrics(
+                    epsilon=epsilon,
+                    hypervolume=hypervolume or float("inf"),
+                    r_metric=r_metric,
+                    inverted_generational_distance=inverted_generational_distance
+                    or float("inf"),
+                )
+            )
+
+        # Average the metrics for each run group
+        if run_metrics_list:
+            avg_epsilon = np.nanmean([m.epsilon for m in run_metrics_list])
+            avg_hypervolume = np.nanmean([m.hypervolume for m in run_metrics_list])
+            avg_r_metric = np.nanmean([m.r_metric for m in run_metrics_list])
+            avg_igd = np.nanmean(
+                [m.inverted_generational_distance for m in run_metrics_list]
+            )
+
+            metrics_results[run_name] = Metrics(
+                epsilon=float(avg_epsilon),
+                hypervolume=float(avg_hypervolume),
+                r_metric=float(avg_r_metric),
+                inverted_generational_distance=float(avg_igd),
+            )
+
+    return metrics_results
+
+
+def display_metrics(metrics: dict[str, Metrics]) -> None:
+    """
+    Displays the calculated metrics in a sorted console table.
+    """
+    # Sort the metrics. Lower values are better for all of them.
+    sorted_metrics = sorted(
+        metrics.items(),
+        key=lambda item: (
+            item[1].inverted_generational_distance,
+            item[1].epsilon,
+            item[1].hypervolume,
+            item[1].r_metric,
+        ),
     )
 
+    headers = [
+        "Config",
+        "Epsilon",
+        "Hypervolume",
+        "R-Metric",
+        "IGD",
+    ]
 
-def plot_all_optimizers(
-    filename: str, run_time: str, max_iterations_no_improvement: int
-):
-    max_run_time_seconds = parse_time_string(run_time)
+    table_data = []
+    for run_name, metric_values in sorted_metrics:
+        row = [
+            run_name,
+            f"{metric_values.epsilon:.4f}"
+            if not np.isnan(metric_values.epsilon)
+            else "N/A",
+            f"{metric_values.hypervolume:.4f}"
+            if not np.isnan(metric_values.hypervolume)
+            else "N/A",
+            f"{metric_values.r_metric:.4f}"
+            if not np.isnan(metric_values.r_metric)
+            else "N/A",
+            f"{metric_values.inverted_generational_distance:.4f}"
+            if not np.isnan(metric_values.inverted_generational_distance)
+            else "N/A",
+        ]
+        table_data.append(row)
 
-    mokp_problem = MOKPProblem.load(filename)
-    optimizers = prepare_mokp_optimizers(mokp_problem)
-
-    for optimizer_type, optimizer in optimizers.items():
-        logger.info(f"--- Running {optimizer_type} with {filename} ---")
-        logger.info(f"Max run time: {max_run_time_seconds:.2f} seconds")
-        logger.info(
-            f"Max iterations without improvement: {max_iterations_no_improvement}"
-        )
-
-        _, pareto_front_objectives = run_mokp_optimizer(
-            max_run_time_seconds, max_iterations_no_improvement, optimizer
-        )
-        plot_final_pareto_front(optimizer_type, None, pareto_front_objectives)
-
-        logger.info(f"--- {optimizer_type} Optimization Complete ---")
-        logger.info(f"Final Pareto Front Size: {len(pareto_front_objectives)}")
-
-
-def plot_reference_algorithms(
-    filename: str, run_time: str, max_iterations_no_improvement: int
-):
-    max_run_time_seconds = parse_time_string(run_time)
-
-    ngsa2_data: np.ndarray = solve_mokp_ngsa2(filename, max_run_time_seconds)
-    ngsa2_data = -ngsa2_data
-    ngsa2_data_list = [(o[0], o[1]) for o in ngsa2_data]
-    ngsa2_data_list.sort()
-    plot_final_pareto_front("NGSA2", None, ngsa2_data_list)
-
-    spea2_data: np.ndarray = solve_mokp_spea2(filename, max_run_time_seconds)
-    spea2_data = -spea2_data
-    spea2_data_list = [(o[0], o[1]) for o in spea2_data]
-    spea2_data_list.sort()
-    plot_final_pareto_front("SPEA2", None, spea2_data_list)
-
-
-# def main():
-#     """
-#     Main function for the CLI utility.
-#     """
-#     parser = argparse.ArgumentParser(description="Compare saved optimization runs.")
-#     parser.add_argument("--problem-instance", '-p', type=str, required=True, help="The name of the problem file (e.g., '2KP100-1B.json').")
-#     parser.add_argument("--filter-run-name", '-f', type=str, default=None, help="Filter runs by optimizer name (e.g., 'RVNS').")
-#     parser.add_argument("--group-by-run-time", action="store_true", help="Group runs by run time.")
-
-#     args = parser.parse_args()
-#     problem_instance, filter_run_name = args.problem_instance, args.filter_run_name
-
-#     problem_data = load_instance_data_json(problem_instance)
-#     if not problem_data:
-#         return
-
-#     runs = get_all_runs(problem_instance, filter_run_name)
-#     if not runs:
-#         logging.warning(f"No runs found for problem '{problem_instance}' with filter '{filter_run_name}'.")
-#         return
-
-#     # reference_front = calculate_reference_front(runs, problem_data.get("reference_front"))
-#     # metrics_results = calculate_metrics(runs_data, reference_front, ref_point)
-
-#     print("\n--- Optimization Run Comparison ---")
-#     print(f"Problem: {args.problem}")
-#     if args.name:
-#         print(f"Filtered by Optimizer Name: {args.name}")
-
-#     header = f"{'Run Name':<30} | {'Hypervolume':<15} | {'Epsilon':<15}"
-#     print("-" * len(header))
-#     print(header)
-#     print("-" * len(header))
-
-#     for result in metrics_results:
-#         hv_str = f"{result['hypervolume']:.4f}" if isinstance(result['hypervolume'], (float, int)) else "N/A"
-#         eps_str = f"{result['epsilon']:.4f}" if isinstance(result['epsilon'], (float, int)) else "N/A"
-#         print(f"{result['name']:<30} | {hv_str:<15} | {eps_str:<15}")
-
-#     print("-" * len(header))
-
-
-if __name__ == "__main__":
-    main()
+    print(tabulate.tabulate(table_data, headers=headers, tablefmt="fancy_grid"))

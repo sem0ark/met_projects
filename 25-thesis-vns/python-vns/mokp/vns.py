@@ -1,21 +1,20 @@
 import itertools
 import logging
-import random
-import sys
-from functools import lru_cache
 from pathlib import Path
+import random
+from functools import lru_cache
 from typing import Any, Callable, Iterable
 
 import numpy as np
 
-sys.path.insert(1, str(Path(__file__).parent.parent.absolute()))
-
-from _run_vns import run_vns_optimizer, save_run_data
 from mokp.mokp_problem import MOKPProblem, MOKPSolution
 from vns.abstract import VNSConfig
 from vns.acceptance import AcceptBatchBigger, AcceptBatchSkewedBigger
 from vns.local_search import best_improvement, first_improvement, noop
 from vns.optimizer import VNSOptimizer
+
+from _run_vns import run_vns_optimizer
+from _cli import CLI, SavedRun, Metadata, SavedSolution
 
 logger = logging.getLogger("mokp-solver")
 
@@ -101,29 +100,40 @@ def shake_swap(solution: MOKPSolution, k: int, _config: VNSConfig) -> MOKPSoluti
 
 
 def run_instance_with_config(
-    run_time_seconds: float, instance_path: str, optimizer_config: VNSConfig
-):
+    run_time_seconds: float,
+    instance_path: str,
+    optimizer_config: VNSConfig,
+) -> SavedRun:
     solutions = run_vns_optimizer(
         run_time_seconds,
         VNSOptimizer(optimizer_config),
     )
-    save_run_data(
-        solutions,
-        optimizer_config,
-        "mokp",
-        instance_path,
-        run_time_seconds,
+
+    return SavedRun(
+        metadata=Metadata(
+            run_time_seconds=int(run_time_seconds),
+            name=optimizer_config.name,
+            version=optimizer_config.version,
+            problem_name="mokp",
+            instance_name=Path(instance_path).stem,
+        ),
+        solutions=[
+            SavedSolution(sol.objectives, sol.to_json_serializable())
+            for sol in solutions
+        ],
     )
 
 
 @lru_cache
-def prepare_optimizers(instance_path: str | None) -> dict[str, Callable[[float], None]]:
+def prepare_optimizers(
+    instance_path: str | None,
+) -> dict[str, Callable[[float], SavedRun]]:
     """
     Automatically generates all possible optimizer configurations using itertools.product.
     """
     problem: Any = MOKPProblem.load(instance_path) if instance_path else None
 
-    optimizers: dict[str, Callable[[float], None]] = {}
+    optimizers: dict[str, Callable[[float], SavedRun]] = {}
 
     acceptance_criteria = [
         ("batch", AcceptBatchBigger()),
@@ -161,7 +171,7 @@ def prepare_optimizers(instance_path: str | None) -> dict[str, Callable[[float],
             search_func_factory(op_func) if search_name != "noop" else noop()
         )
 
-        for k in range(1, 11):
+        for k in [1, 3, 5, 7]:
             config_name = f"{acc_name}_{search_name}_{op_name}_k{k}_{shake_name}"
 
             config = VNSConfig(
@@ -170,6 +180,7 @@ def prepare_optimizers(instance_path: str | None) -> dict[str, Callable[[float],
                 acceptance_criterion=acc_func,
                 shake_function=shake_func,
                 name=config_name,
+                version=2,
             )
 
             def runner_func(run_time, _config=config):
@@ -180,7 +191,7 @@ def prepare_optimizers(instance_path: str | None) -> dict[str, Callable[[float],
     return optimizers
 
 
-def register_cli(cli: Any) -> None:
+def register_cli(cli: CLI) -> None:
     def make_runner(optimizer_name: str):
         def run(instance_path, run_time, _optimizer_name=optimizer_name):
             return prepare_optimizers(instance_path)[_optimizer_name](run_time)

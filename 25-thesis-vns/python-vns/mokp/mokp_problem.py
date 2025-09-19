@@ -1,4 +1,5 @@
 import json
+import random
 import sys
 from pathlib import Path
 from typing import Any, Iterable
@@ -44,7 +45,20 @@ class MOKPProblem(Problem[np.ndarray]):
         Each solution is created by iterating through items in a random order
         and adding them to the knapsack if they do not violate the capacity constraint.
         """
-        return [_MOKPSolution(np.zeros(self.num_items, dtype=int), self)]
+        solutions = []
+        for _ in range(num_solutions):
+            solution_data = np.zeros(self.num_items, dtype=int)
+            items_to_add = list(range(self.num_items))
+            random.shuffle(items_to_add)
+
+            for item_idx in items_to_add:
+                temp_data = solution_data.copy()
+                temp_data[item_idx] = 1
+                if self.is_feasible(temp_data):
+                    solution_data = temp_data
+
+            solutions.append(_MOKPSolution(solution_data, self))
+        return solutions
 
     def is_feasible(self, solution_data: np.ndarray) -> bool:
         """Checks if a solution is feasible with respect to knapsack capacity."""

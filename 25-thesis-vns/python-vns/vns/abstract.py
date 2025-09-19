@@ -46,7 +46,7 @@ class Solution(Generic[T]):
             abs(o1 - o2) < 1e-6 for o1, o2 in zip(self.objectives, other.objectives)
         )
 
-    def get_data(self) -> T:
+    def to_json_serializable(self) -> Any:
         return self.data
 
 
@@ -104,13 +104,11 @@ class VNSConfig(Generic[T]):
     shake_function: ShakeFunction
 
     acceptance_criterion: AcceptanceCriterion[Solution[T]]
-    name: str | None = None
+    name: str = "default_name"
+    version: int = 1
 
     def __post_init__(self):
         if not self.search_functions:
             raise ValueError(
                 "At least one neighborhood operator must be provided or defined by the problem."
             )
-
-    def get_name(self):
-        return self.name or ""
