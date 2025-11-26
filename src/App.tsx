@@ -1,16 +1,3 @@
-// Copyright (C) Svetlin Tassev
-
-// CrochetPARADE is free software: you can redistribute it and/or modify it under
-// the terms of the GNU General Public License as published by the Free Software
-// Foundation, either version 3 of the License, or (at your option) any later version.
-
-// CrochetPARADE is distributed in the hope that it will be useful, but WITHOUT
-// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License along
-// with CrochetPARADE. If not, see <https://www.gnu.org/licenses/>.
-
 import clsx from "clsx"
 import { HashRouter, NavLink, Outlet, Route, Routes } from "react-router"
 import { Manual } from "./pages/Manual";
@@ -31,7 +18,7 @@ const Layout = () => {
         </nav>
       </div>
 
-      <main className="mx-auto max-w-7xl w-3xl p-6">
+      <main className="mx-auto my-0 max-w-7xl w-3xl p-6">
         <Outlet />
       </main>
     </>
