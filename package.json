@@ -1,7 +1,6 @@
 {
   "name": "crochet-parade",
   "description": "CrochetPARADE - Crochet PAttern Renderer, Analyzer and DEbugger - is a platform that allows users to create, visualize, and analyze both 2D and 3D crochet patterns.",
-  "private": true,
   "version": "0.0.0",
   "type": "module",
   "license": "GPL-3.0-only",
@@ -14,17 +13,26 @@
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.17",
+    "bezier-js": "^6.1.4",
     "clsx": "^2.1.1",
-    "force-graph": "^1.51.0",
+    "d3-array": "^3.2.4",
+    "d3-drag": "^3.0.0",
+    "d3-force": "^3.0.0",
+    "d3-scale": "^4.0.2",
+    "d3-scale-chromatic": "^3.1.0",
+    "d3-selection": "^3.0.0",
+    "d3-zoom": "^3.0.0",
+    "immer": "^11.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
     "react-router": "^7.9.6",
     "tailwindcss": "^4.1.17",
-    "three": "^0.181.1"
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@types/d3-force": "^3.0.10",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",

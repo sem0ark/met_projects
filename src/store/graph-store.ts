@@ -70,7 +70,6 @@ const storeFunction = () => {
     const b = gData.nodes[link.target];
     a.neighbors.push(b);
     b.neighbors.push(a);
-
     a.links.push(link);
     b.links.push(link);
   });
@@ -95,6 +94,15 @@ const storeFunction = () => {
   graphInstance
     .width(availableWidth)
     .height(availableHeight - 100)
+    .nodeCanvasObjectMode(node => node === focusedNode ? 'before' : undefined)
+    .nodeCanvasObject((node, ctx) => {
+      if (node.x, node.y) {
+        ctx.beginPath();
+        ctx.arc(node.x ?? 0, node.y ?? 0, NODE_R * 1.4, 0, 2 * Math.PI, false);
+        ctx.fillStyle = node === focusedNode ? 'red' : 'orange';
+        ctx.fill();
+      }
+    })
     .graphData(gData)
     .nodeRelSize(NODE_R)
     .cooldownTicks(100)
@@ -106,17 +114,6 @@ const storeFunction = () => {
     set: SetState<typeof store>,
     get: GetState<typeof store>
   ) {
-    graphInstance
-      .nodeCanvasObjectMode(node => node === focusedNode ? 'before' : undefined)
-      .nodeCanvasObject((node, ctx) => {
-        if (node.x, node.y) {
-          ctx.beginPath();
-          ctx.arc(node.x ?? 0, node.y ?? 0, NODE_R * 1.4, 0, 2 * Math.PI, false);
-          ctx.fillStyle = node === focusedNode ? 'red' : 'orange';
-          ctx.fill();
-        }
-      });
-
     return {
       graphInstance: graphInstance,
       graphData: graphData,
