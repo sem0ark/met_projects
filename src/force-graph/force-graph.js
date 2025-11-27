@@ -38,12 +38,6 @@ const linkedProps = Object.assign(
     "linkDirectionalArrowLength",
     "linkDirectionalArrowColor",
     "linkDirectionalArrowRelPos",
-    "linkDirectionalParticles",
-    "linkDirectionalParticleSpeed",
-    "linkDirectionalParticleOffset",
-    "linkDirectionalParticleWidth",
-    "linkDirectionalParticleColor",
-    "linkDirectionalParticleCanvasObject",
     "dagMode",
     "dagLevelDistance",
     "dagNodeFilter",
@@ -69,7 +63,7 @@ const linkedProps = Object.assign(
   ].map((p) => ({ [p]: bindBoth.linkProp(p) })),
 );
 const linkedMethods = Object.assign(
-  ...["d3Force", "d3ReheatSimulation", "emitParticle"].map((p) => ({
+  ...["d3Force", "d3ReheatSimulation"].map((p) => ({
     [p]: bindFG.linkMethod(p),
   })),
 );
@@ -709,8 +703,7 @@ export default Kapsule({
       const doRedraw =
         !state.autoPauseRedraw ||
         !!state.needsRedraw ||
-        state.forceGraph.isEngineRunning() ||
-        state.graphData.links.some((d) => d.__photons && d.__photons.length);
+        state.forceGraph.isEngineRunning();
       state.needsRedraw = false;
 
       if (state.enablePointerInteraction) {

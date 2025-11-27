@@ -26,21 +26,6 @@ const DAG_LEVEL_NODE_RATIO = 2;
 // whenever styling props are changed that require a canvas redraw
 const notifyRedraw = (_, state) => state.onNeedsRedraw && state.onNeedsRedraw();
 
-const updDataPhotons = (_, state) => {
-  if (!state.isShadow) {
-    // Add photon particles
-    const linkParticlesAccessor = accessorFn(state.linkDirectionalParticles);
-    state.graphData.links.forEach((link) => {
-      const numPhotons = Math.round(Math.abs(linkParticlesAccessor(link)));
-      if (numPhotons) {
-        link.__photons = [...Array(numPhotons)].map(() => ({}));
-      } else {
-        delete link.__photons;
-      }
-    });
-  }
-};
-
 export default Kapsule({
   props: {
     graphData: {
@@ -50,7 +35,6 @@ export default Kapsule({
       },
       onChange(_, state) {
         state.engineRunning = false; // Pause simulation
-        updDataPhotons(_, state);
       },
     },
     dagMode: {
@@ -118,16 +102,6 @@ export default Kapsule({
       triggerUpdate: false,
       onChange: notifyRedraw,
     }, // value between 0<>1 indicating the relative pos along the (exposed) line
-    linkDirectionalParticles: {
-      default: 0,
-      triggerUpdate: false,
-      onChange: updDataPhotons,
-    }, // animate photons travelling in the link direction
-    linkDirectionalParticleSpeed: { default: 0.01, triggerUpdate: false }, // in link length ratio per frame
-    linkDirectionalParticleOffset: { default: 0, triggerUpdate: false }, // starting position offset along the link's length, like a pre-delay. Values between [0, 1]
-    linkDirectionalParticleWidth: { default: 4, triggerUpdate: false },
-    linkDirectionalParticleColor: { triggerUpdate: false },
-    linkDirectionalParticleCanvasObject: { triggerUpdate: false },
     globalScale: { default: 1, triggerUpdate: false },
     d3AlphaMin: { default: 0, triggerUpdate: false },
     d3AlphaDecay: {
@@ -188,7 +162,6 @@ export default Kapsule({
       if (!state.isShadow) layoutTick();
       paintLinks();
       if (!state.isShadow) paintArrows();
-      if (!state.isShadow) paintPhotons();
       paintNodes();
 
       return this;
@@ -506,122 +479,6 @@ export default Kapsule({
         });
         ctx.restore();
       }
-
-      function paintPhotons() {
-        const getNumPhotons = accessorFn(state.linkDirectionalParticles);
-        const getSpeed = accessorFn(state.linkDirectionalParticleSpeed);
-        const getOffset = accessorFn(state.linkDirectionalParticleOffset);
-        const getDiameter = accessorFn(state.linkDirectionalParticleWidth);
-        const getVisibility = accessorFn(state.linkVisibility);
-        const getColor = accessorFn(
-          state.linkDirectionalParticleColor || state.linkColor,
-        );
-        const ctx = state.ctx;
-
-        ctx.save();
-        state.graphData.links.filter(getVisibility).forEach((link) => {
-          const numCyclePhotons = getNumPhotons(link);
-
-          if (!link.hasOwnProperty("__photons") || !link.__photons.length)
-            return;
-
-          const start = link.source;
-          const end = link.target;
-
-          if (
-            !start ||
-            !end ||
-            !start.hasOwnProperty("x") ||
-            !end.hasOwnProperty("x")
-          )
-            return; // skip invalid link
-
-          const particleSpeed = getSpeed(link);
-          const particleOffset = Math.abs(getOffset(link));
-          const photons = link.__photons || [];
-          const photonR =
-            Math.max(0, getDiameter(link) / 2) / Math.sqrt(state.globalScale);
-          const photonColor = getColor(link) || "rgba(0,0,0,0.28)";
-
-          ctx.fillStyle = photonColor;
-
-          // Construct bezier for curved lines
-          const bzLine = link.__controlPoints
-            ? new Bezier(
-                start.x,
-                start.y,
-                ...link.__controlPoints,
-                end.x,
-                end.y,
-              )
-            : null;
-
-          let cyclePhotonIdx = 0;
-          let needsCleanup = false; // whether some photons need to be removed from list
-          photons.forEach((photon) => {
-            const singleHop = !!photon.__singleHop;
-
-            if (!photon.hasOwnProperty("__progressRatio")) {
-              photon.__progressRatio = singleHop
-                ? 0
-                : (cyclePhotonIdx + particleOffset) / numCyclePhotons;
-            }
-
-            if (!singleHop) cyclePhotonIdx++; // increase regular photon index
-
-            photon.__progressRatio += particleSpeed;
-
-            if (photon.__progressRatio >= 1) {
-              if (!singleHop) {
-                photon.__progressRatio = photon.__progressRatio % 1;
-              } else {
-                needsCleanup = true;
-                return;
-              }
-            }
-
-            const photonPosRatio = photon.__progressRatio;
-
-            const coords = bzLine
-              ? bzLine.get(photonPosRatio) // get position along bezier line
-              : {
-                  // straight line: interpolate linearly
-                  x: start.x + (end.x - start.x) * photonPosRatio || 0,
-                  y: start.y + (end.y - start.y) * photonPosRatio || 0,
-                };
-
-            if (state.linkDirectionalParticleCanvasObject) {
-              state.linkDirectionalParticleCanvasObject(
-                coords.x,
-                coords.y,
-                link,
-                ctx,
-                state.globalScale,
-              );
-            } else {
-              ctx.beginPath();
-              ctx.arc(coords.x, coords.y, photonR, 0, 2 * Math.PI, false);
-              ctx.fill();
-            }
-          });
-
-          if (needsCleanup) {
-            // remove expired single hop photons
-            link.__photons = link.__photons.filter(
-              (photon) => !photon.__singleHop || photon.__progressRatio <= 1,
-            );
-          }
-        });
-        ctx.restore();
-      }
-    },
-    emitParticle: function (state, link) {
-      if (link) {
-        !link.__photons && (link.__photons = []);
-        link.__photons.push({ __singleHop: true }); // add a single hop particle
-      }
-
-      return this;
     },
   },
 
