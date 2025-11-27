@@ -1,3 +1,6 @@
+// Source (MIT, made by vasturiano, changed by sem0ark to remove deouncing as it creates reace conditions)
+// https://github.com/vasturiano/react-kapsule/blob/master/src/index.js
+
 const noop = (..._skip) => {};
 
 class Prop {

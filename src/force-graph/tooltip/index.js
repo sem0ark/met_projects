@@ -3,7 +3,7 @@ import Kapsule from "../kapsule";
 
 import "./index.css";
 
-// Source (MIT, made by vasturiano, changed by sem0ark to remove react & preact deps)
+// Source (MIT, made by vasturiano, changed by sem0ark to remove react/preact deps)
 // https://github.com/vasturiano/float-tooltip/blob/master/src/index.js
 
 export default Kapsule({
