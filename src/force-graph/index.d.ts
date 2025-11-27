@@ -43,13 +43,6 @@ export type CanvasPointerAreaPaintFn<T> = (
   canvasContext: CanvasRenderingContext2D,
   globalScale: number,
 ) => void;
-export type CanvasLinkParticleRenderFn<L> = (
-  x: number,
-  y: number,
-  link: L,
-  canvasContext: CanvasRenderingContext2D,
-  globalScale: number,
-) => void;
 
 type DagMode = "td" | "bu" | "lr" | "rl" | "radialout" | "radialin";
 
@@ -155,31 +148,6 @@ export declare class ForceGraphGeneric<
   linkDirectionalArrowRelPos(
     fractionAccessor: LinkAccessor<number, N, L>,
   ): ChainableInstance;
-  linkDirectionalParticles(): LinkAccessor<number, N, L>;
-  linkDirectionalParticles(
-    numParticlesAccessor: LinkAccessor<number, N, L>,
-  ): ChainableInstance;
-  linkDirectionalParticleSpeed(): LinkAccessor<number, N, L>;
-  linkDirectionalParticleSpeed(
-    relDistancePerFrameAccessor: LinkAccessor<number, N, L>,
-  ): ChainableInstance;
-  linkDirectionalParticleOffset(): LinkAccessor<number, N, L>;
-  linkDirectionalParticleOffset(
-    relOffset: LinkAccessor<number, N, L>,
-  ): ChainableInstance;
-  linkDirectionalParticleWidth(): LinkAccessor<number, N, L>;
-  linkDirectionalParticleWidth(
-    widthAccessor: LinkAccessor<number, N, L>,
-  ): ChainableInstance;
-  linkDirectionalParticleColor(): LinkAccessor<string, N, L>;
-  linkDirectionalParticleColor(
-    colorAccessor: LinkAccessor<string, N, L>,
-  ): ChainableInstance;
-  linkDirectionalParticleCanvasObject(): CanvasLinkParticleRenderFn<L>;
-  linkDirectionalParticleCanvasObject(
-    renderFn: CanvasLinkParticleRenderFn<L>,
-  ): ChainableInstance;
-  emitParticle(link: L): ChainableInstance;
   linkPointerAreaPaint(): CanvasPointerAreaPaintFn<L>;
   linkPointerAreaPaint(
     renderFn: CanvasPointerAreaPaintFn<L>,

@@ -95,26 +95,16 @@ class GraphController {
       .graphData(initialData);
 
     this.graphData = this.instance.graphData() as GraphData;
-    for(const link of this.graphData.links) {
-      link.source.neighbors = link.source.neighbors ?? [];
-      link.target.neighbors = link.target.neighbors ?? [];
-      link.source.links = link.source.links ?? [];
-      link.target.links = link.target.links ?? [];
-
-      link.source.neighbors.push(link.target);
-      link.target.neighbors.push(link.source);
-      link.source.links.push(link);
-      link.target.links.push(link);
-    }
+    this.updateLocalNeighborhoods(this.graphData.links);
 
     this.initGraph();
   }
 
   private initGraph() {
     this.instance
-      .nodeCanvasObjectMode((node) =>
-        this.nodeToConfigs.has(node as GraphNode) ? "before" : undefined,
-      )
+      .nodeCanvasObjectMode((node) => {
+        return this.nodeToConfigs.has(node as GraphNode) ? "before" : undefined
+      })
       .nodeCanvasObject((node, ctx) => {
         if (node.x && node.y) {
           const configs = this.nodeToConfigs.get(node as GraphNode);
@@ -187,6 +177,57 @@ class GraphController {
 
     return bestMatch;
   }
+
+  public updateLocalNeighborhoods(links: GraphLink[]) {
+    for(const link of links) {
+      link.source.neighbors = link.source.neighbors ?? [];
+      link.target.neighbors = link.target.neighbors ?? [];
+      link.source.links = link.source.links ?? [];
+      link.target.links = link.target.links ?? [];
+
+      link.source.neighbors.push(link.target);
+      link.target.neighbors.push(link.source);
+      link.source.links.push(link);
+      link.target.links.push(link);
+    }
+  }
+
+  public addLink(linkData: Partial<GraphLink>, nodeFrom: GraphNode, nodeTo: GraphNode): GraphLink {
+    const newLink = {source: nodeFrom.id, target: nodeTo.id, ...linkData}
+    this.instance.graphData({
+      nodes: this.graphData.nodes,
+      links: [...this.graphData.links, newLink],
+    });
+
+    this.graphData = this.instance.graphData() as GraphData;
+    const updatedLink = newLink as unknown as GraphLink; // modified inplace by d3-force
+
+    this.updateLocalNeighborhoods([updatedLink]);
+    return updatedLink;
+  }
+
+  public addNode(nodeData: Partial<GraphNode>, neighbors: GraphNode[]): GraphNode {
+    const newId = this.graphData.nodes.length;
+    const newNode = {id: newId, ...nodeData};
+    const newLinks = [];
+
+    for(const neighbor of neighbors) {
+      newLinks.push({
+        source: newNode.id,
+        target: neighbor.id,
+      });
+    }
+
+    this.instance.graphData({
+      nodes: [...this.graphData.nodes, newNode],
+      links: [...this.graphData.links, ...newLinks],
+    });
+    this.graphData = this.instance.graphData() as GraphData;
+    const updatedLinks = newLinks as unknown as GraphLink[]; // modified inplace by d3-force
+
+    this.updateLocalNeighborhoods(updatedLinks);
+    return newNode as GraphNode;
+  }
 }
 
 class SchemaController {
@@ -225,10 +266,26 @@ class SchemaController {
     this.schemaView.setSelector(node, this.targetStitchConfig)
     this.targetStitchFocus = node;
   }
+
+  public addChainStitch() {
+    const newNode = this.schemaView.addNode({
+      x: this.startStitchFocus.x + 10,
+      y: this.startStitchFocus.y - 5 + 10 * Math.random(),
+    }, [this.startStitchFocus]);
+    this.setStartStitch(newNode);
+  }
+
+  public addLinkStitch() {
+    if (this.startStitchFocus === this.targetStitchFocus || this.startStitchFocus.links.some(l => l.source === this.targetStitchFocus || l.target === this.targetStitchFocus)) return;
+    console.log("Link");
+    
+    this.schemaView.addLink({}, this.startStitchFocus, this.targetStitchFocus);
+  }
 }
 
-export const SchemaDesktop = ({className}: {
+export const SchemaEditor = ({className, inputData}: {
   className?: string
+  inputData: InputGraphData
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<SchemaController>(undefined);
@@ -251,32 +308,14 @@ export const SchemaDesktop = ({className}: {
   useEffect(() => {
     if (!ref.current || controllerRef.current) return; // Prevent re-instantiation
 
-    const n = 10;
-    const nodes = Array.from({ length: n * n }, (_, i) => ({
-      id: i,
-      index: i,
-    }));
-
-    const links = [];
-    for (let y = 0; y < n; ++y) {
-      for (let x = 0; x < n; ++x) {
-        if (y > 0) links.push({ source: (y - 1) * n + x, target: y * n + x });
-        if (x > 0) links.push({ source: y * n + (x - 1), target: y * n + x });
-      }
-    }
-
-    const instance = new SchemaController(new GraphController(new ForceGraph(ref.current), {
-      nodes: nodes,
-      links: links,
-    }));
-
+    const instance = new SchemaController(new GraphController(new ForceGraph(ref.current), inputData));
     controllerRef.current = instance;
 
     // TODO: Ensure proper destruction
     // return () => {
     //   container.innerHTML = ""
     // }
-  }, []);
+  }, [inputData]);
 
   // Init view configuration
   useEffect(() => {
@@ -331,13 +370,13 @@ export const SchemaDesktop = ({className}: {
         }
       }
 
-      // if (ev.key === "c" && focusedNode.current && controllerRef.current) {
-      //   const newNode = {id: graphData.nodes.length, neighbors: [], links: []}
-      //   controllerRef.current.graphData({
-      //     nodes: [...graphData.nodes, newNode],
-      //     links: [...graphData.links, {source: focusedNode.current, target: newNode}],
-      //   })
-      // }
+      if (ev.key === "c") {
+        controller.addChainStitch()
+      }
+
+      if (ev.key === "l") {
+        controller.addLinkStitch()
+      }
     },
     [],
   );

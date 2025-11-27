@@ -54,11 +54,14 @@ Possible implementation will be something like selecting buttons and clicking wh
 
 # Tasks
 - [x] Migrate deps from force-graph to lower the bundle -> reworked some of the dependencies and changed their implementation to lower the amount of downloaded libraries, because multiple deps of force-graph were loading something like preact just for a single utility function.
-- [ ] Initial POC implementation -> make a graph viz with keyboard controls and just colors as stubs.
+
+- [x] Initial POC implementation -> make a graph viz with keyboard controls and just colors as stubs.
   - [x] Get graph highlight implementation working.
   - [x] Make a connector of the Graph instance to React through Zustand.
-  - [ ] Make highligh movable with keyboard.
-  - [ ] Allow multiple pointers, attaching to the graph instance.
+  - [x] Make highligh movable with keyboard.
+  - [x] Allow multiple pointers, attaching to the graph instance.
+- [ ] Intial implementation
+
 - [ ] Moving from the custom webassembly implementation
   - [ ] Make it parallel, otherwise webassembly is mainly pointless...
 - [ ] Performance improvements:

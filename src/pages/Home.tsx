@@ -1,5 +1,10 @@
-import { SchemaDesktop } from "../components/SchemeGraph";
+import { useMemo } from "react";
+import { SchemaEditor } from "../components/SchemeGraph";
 
 export const Home = () => {
-  return <SchemaDesktop className="w-screen -z-10 h-screen m-0 p-0 border-2 absolute top-0 left-0"/>
+  const graphData = useMemo(() => {
+    return {nodes: [{id: 0}], links: []};
+  }, [])
+
+  return <SchemaEditor inputData={graphData} className="w-screen -z-10 h-screen m-0 p-0 border-2 absolute top-0 left-0"/>
 };
