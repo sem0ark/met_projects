@@ -54,7 +54,7 @@ export default Kapsule({
       }
     },
     dagMode: { onChange(dagMode, state) { // td, bu, lr, rl, radialin, radialout
-      !dagMode && (state.graphData.nodes || []).forEach(n => n.fx = n.fy = undefined); // unfix nodes when disabling dag mode
+      if (!dagMode) (state.graphData.nodes || []).forEach(n => n.fx = n.fy = undefined); // unfix nodes when disabling dag mode
     }},
     dagLevelDistance: {},
     dagNodeFilter: { default: node => true },

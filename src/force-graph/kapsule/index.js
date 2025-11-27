@@ -1,5 +1,3 @@
-import { debounce } from '../utils/debounce'
-
 const noop = (..._skip) => {}
 
 class Prop {
@@ -57,11 +55,11 @@ export default function ({
       state.initialised = true;
     };
 
-    const digest = debounce(() => {
+    const digest = () => {
       if (!state.initialised) { return; }
       updateFn.call(comp, state, changedProps);
       changedProps = {};
-    }, 1);
+    };
 
     // Getter/setter methods
     props.forEach(prop => {
@@ -73,17 +71,15 @@ export default function ({
         onChange = noop,
         defaultVal = null
       }) {
-        return function(_) {
+        return function(providedVal) {
           const curVal = state[prop];
           if (!arguments.length) { return curVal } // Getter mode
 
-          const val = _ === undefined ? defaultVal : _; // pick default if value passed is undefined
+          const val = providedVal === undefined ? defaultVal : providedVal; // pick default if value passed is undefined
           state[prop] = val;
           onChange.call(comp, val, state, curVal);
 
-          // track changed props
           if (!changedProps.hasOwnProperty(prop)) changedProps[prop] = curVal;
-
           if (redigest) { digest(); }
           return comp;
         }
