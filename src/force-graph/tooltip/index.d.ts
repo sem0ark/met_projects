@@ -1,6 +1,6 @@
 type ConfigOptions = {
   style: {};
-}
+};
 
 declare class Tooltip {
   constructor(element: HTMLElement, configOptions?: ConfigOptions);

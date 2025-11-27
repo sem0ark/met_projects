@@ -1,18 +1,21 @@
-import { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
-export const MarkdownRender = ({ filePath, markdownText }: {
-  filePath?: string
-  markdownText?: string
+export const MarkdownRender = ({
+  filePath,
+  markdownText,
+}: {
+  filePath?: string;
+  markdownText?: string;
 }) => {
-  const [markdownContent, setMarkdownContent] = useState(markdownText ?? '');
+  const [markdownContent, setMarkdownContent] = useState(markdownText ?? "");
   useEffect(() => {
-    if(!filePath) return;
+    if (!filePath) return;
 
     fetch(filePath)
       .then((response) => response.text())
       .then((text) => setMarkdownContent(text))
-      .catch((error) => console.error('Failed to fetch markdown:', error));
+      .catch((error) => console.error("Failed to fetch markdown:", error));
   }, [filePath]);
 
   return (

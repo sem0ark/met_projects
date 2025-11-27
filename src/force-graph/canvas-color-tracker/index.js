@@ -3,11 +3,12 @@
 
 const ENTROPY = 123; // Raise numbers to prevent collisions in lower indexes
 
-const int2HexColor = num => `#${Math.min(num, Math.pow(2, 24)).toString(16).padStart(6, '0')}`;
+const int2HexColor = (num) =>
+  `#${Math.min(num, Math.pow(2, 24)).toString(16).padStart(6, "0")}`;
 const rgb2Int = (r, g, b) => (r << 16) + (g << 8) + b;
 
-const colorStr2Int = str => {
-  str = str.startsWith('#') ? str.substring(1) : str
+const colorStr2Int = (str) => {
+  str = str.startsWith("#") ? str.substring(1) : str;
   return Number.parseInt(str, 16);
 };
 
@@ -15,8 +16,8 @@ const checksum = (n, csBits) => (n * ENTROPY) % Math.pow(2, csBits);
 
 export default class {
   // Internal state
-  #registry;  // indexed objects for rgb lookup;
-  #csBits;    // How many bits to reserve for checksum.
+  #registry; // indexed objects for rgb lookup;
+  #csBits; // How many bits to reserve for checksum.
   // Will eat away into the usable size of the registry.
 
   constructor(csBits = 6) {
@@ -25,11 +26,12 @@ export default class {
   }
 
   reset() {
-    this.#registry = ['__reserved for background__'];
+    this.#registry = ["__reserved for background__"];
   }
 
   register(obj) {
-    if (this.#registry.length >= Math.pow(2, 24 - this.#csBits)) { // color has 24 bits (-checksum)
+    if (this.#registry.length >= Math.pow(2, 24 - this.#csBits)) {
+      // color has 24 bits (-checksum)
       return null; // Registry is full
     }
 
@@ -45,14 +47,16 @@ export default class {
   lookup(color) {
     if (!color) return null; // invalid color
 
-    const n = typeof color === 'string' ? colorStr2Int(color) : rgb2Int(...color);
+    const n =
+      typeof color === "string" ? colorStr2Int(color) : rgb2Int(...color);
 
     if (!n) return null; // 0 index is reserved for background
 
     const idx = n & (Math.pow(2, 24 - this.#csBits) - 1); // registry index
     const cs = (n >> (24 - this.#csBits)) & (Math.pow(2, this.#csBits) - 1); // extract bits reserved for checksum
 
-    if (checksum(idx, this.#csBits) !== cs || idx >= this.#registry.length) return null; // failed checksum or registry out of bounds
+    if (checksum(idx, this.#csBits) !== cs || idx >= this.#registry.length)
+      return null; // failed checksum or registry out of bounds
 
     return this.#registry[idx];
   }

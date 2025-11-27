@@ -1,13 +1,21 @@
 // Source (MIT, made by vasturiano)
 // https://github.com/vasturiano/index-array-by/blob/master/src/index.js
 
-export default (list = [], keyAccessors = [], multiItem = true, flattenKeys = false) => {
-
-  const keys = (keyAccessors instanceof Array
-    ? (keyAccessors.length ? keyAccessors : [undefined])
-    : [keyAccessors]).map(key => ({
+export default (
+  list = [],
+  keyAccessors = [],
+  multiItem = true,
+  flattenKeys = false,
+) => {
+  const keys = (
+    keyAccessors instanceof Array
+      ? keyAccessors.length
+        ? keyAccessors
+        : [undefined]
+      : [keyAccessors]
+  ).map((key) => ({
     keyAccessor: key,
-    isProp: !(key instanceof Function)
+    isProp: !(key instanceof Function),
   }));
 
   const indexedResult = list.reduce((res, item) => {
@@ -29,7 +37,8 @@ export default (list = [], keyAccessors = [], multiItem = true, flattenKeys = fa
           iterObj[key] = {};
         }
         iterObj = iterObj[key];
-      } else { // Leaf key
+      } else {
+        // Leaf key
         if (multiItem) {
           if (!iterObj.hasOwnProperty(key)) {
             iterObj[key] = [];
@@ -43,13 +52,13 @@ export default (list = [], keyAccessors = [], multiItem = true, flattenKeys = fa
     return res;
   }, {});
 
-  if (multiItem  instanceof Function) {
+  if (multiItem instanceof Function) {
     // Reduce leaf multiple values
     (function reduce(node, level = 1) {
       if (level === keys.length) {
-        Object.keys(node).forEach(k => node[k] = multiItem(node[k]));
+        Object.keys(node).forEach((k) => (node[k] = multiItem(node[k])));
       } else {
-        Object.values(node).forEach(child => reduce(child, level + 1));
+        Object.values(node).forEach((child) => reduce(child, level + 1));
       }
     })(indexedResult); // IIFE
   }
@@ -64,19 +73,24 @@ export default (list = [], keyAccessors = [], multiItem = true, flattenKeys = fa
       if (accKeys.length === keys.length) {
         result.push({
           keys: accKeys,
-          vals: node
+          vals: node,
         });
       } else {
-        Object.entries(node)
-          .forEach(([key, val]) => flatten(val, [...accKeys, key]));
+        Object.entries(node).forEach(([key, val]) =>
+          flatten(val, [...accKeys, key]),
+        );
       }
     })(indexedResult); //IIFE
 
-    if (keyAccessors instanceof Array && keyAccessors.length === 0 && result.length === 1) {
+    if (
+      keyAccessors instanceof Array &&
+      keyAccessors.length === 0 &&
+      result.length === 1
+    ) {
       // clear keys if there's no key accessors (single result)
       result[0].keys = [];
     }
   }
 
   return result;
-}
+};

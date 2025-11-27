@@ -26,10 +26,12 @@ type GraphLink = {
 
 const findNeighborsUpToDepth = (
   startNode: GraphNode,
-  maxDepth: number
+  maxDepth: number,
 ): Set<GraphNode> => {
   const visited = new Set<GraphNode>();
-  const queue: { node: GraphNode; depth: number }[] = [{ node: startNode, depth: 0 }];
+  const queue: { node: GraphNode; depth: number }[] = [
+    { node: startNode, depth: 0 },
+  ];
 
   visited.add(startNode);
 
@@ -57,7 +59,7 @@ export const Home = () => {
 
   const [graphData] = useState(() => {
     const n = 10;
-    const nodes = Array.from({length: n * n}, (_, i) => ({
+    const nodes = Array.from({ length: n * n }, (_, i) => ({
       id: i,
       index: i,
       neighbors: [],
@@ -67,8 +69,8 @@ export const Home = () => {
     const links = [];
     for (let y = 0; y < n; ++y) {
       for (let x = 0; x < n; ++x) {
-        if (y > 0) links.push({source: (y - 1) * n + x, target: y * n + x});
-        if (x > 0) links.push({source: y * n + (x - 1), target: y * n + x});
+        if (y > 0) links.push({ source: (y - 1) * n + x, target: y * n + x });
+        if (x > 0) links.push({ source: y * n + (x - 1), target: y * n + x });
       }
     }
     const gData = {
@@ -138,8 +140,14 @@ export const Home = () => {
       .graphData(graphData);
 
     setTimeout(() => {
-      graphInstance.current!.d3Force("charge", d3.forceManyBody().strength(-30));
-      graphInstance.current!.d3Force("link", d3.forceLink(graphData.links).strength(1).distance(20));
+      graphInstance.current!.d3Force(
+        "charge",
+        d3.forceManyBody().strength(-30),
+      );
+      graphInstance.current!.d3Force(
+        "link",
+        d3.forceLink(graphData.links).strength(1).distance(20),
+      );
     }, 10);
 
     // Set initial focused node after data is loaded
@@ -155,12 +163,19 @@ export const Home = () => {
     // Apply render-specific configuration to the existing instance
     graphInstance.current
       .nodeCanvasObjectMode((node) =>
-        node === focusedNode.current ? "before" : undefined
+        node === focusedNode.current ? "before" : undefined,
       )
       .nodeCanvasObject((node, ctx) => {
         if (node.x && node.y) {
           ctx.beginPath();
-          ctx.arc(node.x ?? 0, node.y ?? 0, NODE_R * 1.4, 0, 2 * Math.PI, false);
+          ctx.arc(
+            node.x ?? 0,
+            node.y ?? 0,
+            NODE_R * 1.4,
+            0,
+            2 * Math.PI,
+            false,
+          );
           ctx.fillStyle = node === focusedNode.current ? "red" : "orange";
           ctx.fill();
         }
@@ -212,40 +227,33 @@ export const Home = () => {
   const onKeyDown = useCallback(
     (ev: KeyboardEvent) => {
       // Ensure that user is moving somewhere in the same direction.
-      if (ev.key === "ArrowUp") return moveByDirection(0, -1);
-      if (ev.key === "ArrowDown") return moveByDirection(0, 1);
+      if (ev.key === "ArrowUp") moveByDirection(0, -1);
+      if (ev.key === "ArrowDown") moveByDirection(0, 1);
 
       if (ev.key === "ArrowLeft" || ev.key === "ArrowRight") {
-        const movedStraight = ev.key === "ArrowLeft" && moveByDirection(-1, 0) || ev.key === "ArrowRight" && moveByDirection(1, 0);
+        const movedStraight =
+          (ev.key === "ArrowLeft" && moveByDirection(-1, 0)) ||
+          (ev.key === "ArrowRight" && moveByDirection(1, 0));
 
         if (movedStraight || !focusedNode.current || !ref.current) return;
 
         const currentNode = focusedNode.current;
-        const [width, height] = getSize();
+        const vecX = currentNode.x;
+        const vecY = currentNode.y;
 
-        // Assuming the D3 center is half the available width/height
-        const centerX = width / 2;
-        const centerY = height / 2;
-        
-        // Calculate the vector from the center to the current node
-        const vecX = currentNode.x - centerX;
-        const vecY = currentNode.y - centerY;
-
-        // Calculate the magnitude for normalization (avoid Math.sqrt in loop, but need it here)
         const magnitude = Math.sqrt(vecX * vecX + vecY * vecY);
-
         if (magnitude === 0) return; // Avoid division by zero if exactly at center
 
         const unitVecX = vecX / magnitude;
         const unitVecY = vecY / magnitude;
-        if (ev.key === "ArrowRight") {
+        if (ev.key === "ArrowLeft") {
           moveByDirection(unitVecY, -unitVecX);
-        } else if (ev.key === "ArrowLeft") {
+        } else if (ev.key === "ArrowRight") {
           moveByDirection(-unitVecY, unitVecX);
         }
       }
     },
-    [moveByDirection, getSize]
+    [moveByDirection, getSize],
   );
 
   useEffect(() => {

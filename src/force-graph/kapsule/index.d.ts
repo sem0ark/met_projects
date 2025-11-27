@@ -22,7 +22,7 @@ export interface KapsuleCfg {
   init?: (
     contructorItem?: any,
     state?: State,
-    initOptions?: InitOptions
+    initOptions?: InitOptions,
   ) => void;
   update: (state?: State, changedProps?: { [prop: string]: PropVal }) => void;
 }

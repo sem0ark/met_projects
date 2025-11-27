@@ -1,15 +1,19 @@
 // Source: lodash-es, changed to TS implementation
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type AnyFunction = (...args: any[]) => any
+type AnyFunction = (...args: any[]) => any;
 
 export type DebounceOptions = {
-  maxWait?: number
-  leading?: boolean
-  trailing?: boolean
-}
+  maxWait?: number;
+  leading?: boolean;
+  trailing?: boolean;
+};
 
-export function debounce(func: AnyFunction, wait: number, options?: DebounceOptions) {
+export function debounce(
+  func: AnyFunction,
+  wait: number,
+  options?: DebounceOptions,
+) {
   let lastArgs: IArguments | undefined = undefined;
   let lastThis: any | undefined = undefined;
   let result: unknown = undefined;
@@ -23,7 +27,7 @@ export function debounce(func: AnyFunction, wait: number, options?: DebounceOpti
   const maxing = !!options?.maxWait;
   const trailing = options?.trailing ?? true;
 
-  if (typeof func != 'function') {
+  if (typeof func != "function") {
     throw new TypeError("Expected func to be a function");
   }
 
@@ -51,7 +55,9 @@ export function debounce(func: AnyFunction, wait: number, options?: DebounceOpti
     const timeSinceLastInvoke = time - lastInvokeTime;
     const timeWaiting = wait - timeSinceLastCall;
 
-    return maxing ? Math.min(timeWaiting, maxWait - timeSinceLastInvoke) : timeWaiting;
+    return maxing
+      ? Math.min(timeWaiting, maxWait - timeSinceLastInvoke)
+      : timeWaiting;
   }
 
   function shouldInvoke(time: number) {
@@ -61,8 +67,12 @@ export function debounce(func: AnyFunction, wait: number, options?: DebounceOpti
     // Either this is the first call, activity has stopped and we're at the
     // trailing edge, the system time has gone backwards and we're treating
     // it as the trailing edge, or we've hit the `maxWait` limit.
-    return (lastCallTime === undefined || (timeSinceLastCall >= wait) ||
-      (timeSinceLastCall < 0) || (maxing && timeSinceLastInvoke >= maxWait));
+    return (
+      lastCallTime === undefined ||
+      timeSinceLastCall >= wait ||
+      timeSinceLastCall < 0 ||
+      (maxing && timeSinceLastInvoke >= maxWait)
+    );
   }
 
   function timerExpired() {
@@ -100,7 +110,8 @@ export function debounce(func: AnyFunction, wait: number, options?: DebounceOpti
   }
 
   function debounced(...args: any[]) {
-    const time = Date.now(), isInvoking = shouldInvoke(time);
+    const time = Date.now(),
+      isInvoking = shouldInvoke(time);
 
     lastArgs = args;
     lastThis = this;

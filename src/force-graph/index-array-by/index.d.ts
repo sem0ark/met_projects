@@ -11,14 +11,14 @@ interface NestedResult {
 
 type FlatResult = {
   keys: string[];
-  vals: ListItem | ListItem[]
+  vals: ListItem | ListItem[];
 }[];
 
 declare function indexBy(
   list: ListItem[],
   keyAccessors: KeyAccessor | KeyAccessor[],
   multiItem?: boolean | ReducerFn,
-  flattenKeys?: boolean
+  flattenKeys?: boolean,
 ): NestedResult | FlatResult;
 
 export default indexBy;

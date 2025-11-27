@@ -1,4 +1,7 @@
-export interface GraphData<N extends NodeObject = NodeObject, L extends LinkObject<N> = LinkObject<N>> {
+export interface GraphData<
+  N extends NodeObject = NodeObject,
+  L extends LinkObject<N> = LinkObject<N>,
+> {
   nodes: N[];
   links: L[];
 }
@@ -25,13 +28,30 @@ type LinkAccessor<T, N, L> = Accessor<L, T>;
 
 type Label = string | HTMLElement;
 
-type CanvasCustomRenderMode = 'replace' | 'before' | 'after';
-export type CanvasCustomRenderModeFn<T> = (obj: T) => CanvasCustomRenderMode | any;
-export type CanvasCustomRenderFn<T> = (obj: T, canvasContext: CanvasRenderingContext2D, globalScale: number) => void;
-export type CanvasPointerAreaPaintFn<T> = (obj: T, paintColor: string, canvasContext: CanvasRenderingContext2D, globalScale: number) => void;
-export type CanvasLinkParticleRenderFn<L> = (x: number, y: number, link: L, canvasContext: CanvasRenderingContext2D, globalScale: number) => void;
+type CanvasCustomRenderMode = "replace" | "before" | "after";
+export type CanvasCustomRenderModeFn<T> = (
+  obj: T,
+) => CanvasCustomRenderMode | any;
+export type CanvasCustomRenderFn<T> = (
+  obj: T,
+  canvasContext: CanvasRenderingContext2D,
+  globalScale: number,
+) => void;
+export type CanvasPointerAreaPaintFn<T> = (
+  obj: T,
+  paintColor: string,
+  canvasContext: CanvasRenderingContext2D,
+  globalScale: number,
+) => void;
+export type CanvasLinkParticleRenderFn<L> = (
+  x: number,
+  y: number,
+  link: L,
+  canvasContext: CanvasRenderingContext2D,
+  globalScale: number,
+) => void;
 
-type DagMode = 'td' | 'bu' | 'lr' | 'rl' | 'radialout' | 'radialin';
+type DagMode = "td" | "bu" | "lr" | "rl" | "radialout" | "radialin";
 
 interface ForceFn<N extends NodeObject = NodeObject> {
   (alpha: number): void;
@@ -39,7 +59,11 @@ interface ForceFn<N extends NodeObject = NodeObject> {
   [key: string]: any;
 }
 
-export declare class ForceGraphGeneric<ChainableInstance, N extends NodeObject = NodeObject, L extends LinkObject<N> = LinkObject<N>> {
+export declare class ForceGraphGeneric<
+  ChainableInstance,
+  N extends NodeObject = NodeObject,
+  L extends LinkObject<N> = LinkObject<N>,
+> {
   constructor(element: HTMLElement);
   resetProps(): ChainableInstance;
   _destructor(): void;
@@ -70,75 +94,126 @@ export declare class ForceGraphGeneric<ChainableInstance, N extends NodeObject =
   nodeLabel(): NodeAccessor<Label, N>;
   nodeLabel(labelAccessor: NodeAccessor<Label, N>): ChainableInstance;
   nodeVisibility(): NodeAccessor<boolean, N>;
-  nodeVisibility(visibilityAccessor: NodeAccessor<boolean, N>): ChainableInstance;
+  nodeVisibility(
+    visibilityAccessor: NodeAccessor<boolean, N>,
+  ): ChainableInstance;
   nodeColor(): NodeAccessor<string, N>;
   nodeColor(colorAccessor: NodeAccessor<string, N>): ChainableInstance;
   nodeAutoColorBy(): NodeAccessor<string | null, N>;
-  nodeAutoColorBy(colorByAccessor: NodeAccessor<string | null, N>): ChainableInstance;
+  nodeAutoColorBy(
+    colorByAccessor: NodeAccessor<string | null, N>,
+  ): ChainableInstance;
   nodeCanvasObject(): CanvasCustomRenderFn<N>;
   nodeCanvasObject(renderFn: CanvasCustomRenderFn<N>): ChainableInstance;
   nodeCanvasObjectMode(): string | CanvasCustomRenderModeFn<N>;
-  nodeCanvasObjectMode(modeAccessor: string | CanvasCustomRenderModeFn<N>): ChainableInstance;
+  nodeCanvasObjectMode(
+    modeAccessor: string | CanvasCustomRenderModeFn<N>,
+  ): ChainableInstance;
   nodePointerAreaPaint(): CanvasPointerAreaPaintFn<N>;
-  nodePointerAreaPaint(renderFn: CanvasPointerAreaPaintFn<N>): ChainableInstance;
+  nodePointerAreaPaint(
+    renderFn: CanvasPointerAreaPaintFn<N>,
+  ): ChainableInstance;
 
   // Link styling
   linkLabel(): LinkAccessor<Label, N, L>;
   linkLabel(labelAccessor: LinkAccessor<Label, N, L>): ChainableInstance;
   linkVisibility(): LinkAccessor<boolean, N, L>;
-  linkVisibility(visibilityAccessor: LinkAccessor<boolean, N, L>): ChainableInstance;
+  linkVisibility(
+    visibilityAccessor: LinkAccessor<boolean, N, L>,
+  ): ChainableInstance;
   linkColor(): LinkAccessor<string, N, L>;
   linkColor(colorAccessor: LinkAccessor<string, N, L>): ChainableInstance;
   linkAutoColorBy(): LinkAccessor<string | null, N, L>;
-  linkAutoColorBy(colorByAccessor: LinkAccessor<string | null, N, L>): ChainableInstance;
+  linkAutoColorBy(
+    colorByAccessor: LinkAccessor<string | null, N, L>,
+  ): ChainableInstance;
   linkLineDash(): LinkAccessor<number[] | null, N, L>;
-  linkLineDash(linkLineDashAccessor: LinkAccessor<number[] | null, N, L>): ChainableInstance;
+  linkLineDash(
+    linkLineDashAccessor: LinkAccessor<number[] | null, N, L>,
+  ): ChainableInstance;
   linkWidth(): LinkAccessor<number, N, L>;
   linkWidth(widthAccessor: LinkAccessor<number, N, L>): ChainableInstance;
   linkCurvature(): LinkAccessor<number, N, L>;
-  linkCurvature(curvatureAccessor: LinkAccessor<number, N, L>): ChainableInstance;
+  linkCurvature(
+    curvatureAccessor: LinkAccessor<number, N, L>,
+  ): ChainableInstance;
   linkCanvasObject(): CanvasCustomRenderFn<L>;
   linkCanvasObject(renderFn: CanvasCustomRenderFn<L>): ChainableInstance;
   linkCanvasObjectMode(): string | CanvasCustomRenderModeFn<L>;
-  linkCanvasObjectMode(modeAccessor: string | CanvasCustomRenderModeFn<L>): ChainableInstance;
+  linkCanvasObjectMode(
+    modeAccessor: string | CanvasCustomRenderModeFn<L>,
+  ): ChainableInstance;
   linkDirectionalArrowLength(): LinkAccessor<number, N, L>;
-  linkDirectionalArrowLength(lengthAccessor: LinkAccessor<number, N, L>): ChainableInstance;
+  linkDirectionalArrowLength(
+    lengthAccessor: LinkAccessor<number, N, L>,
+  ): ChainableInstance;
   linkDirectionalArrowColor(): LinkAccessor<string, N, L>;
-  linkDirectionalArrowColor(colorAccessor: LinkAccessor<string, N, L>): ChainableInstance;
+  linkDirectionalArrowColor(
+    colorAccessor: LinkAccessor<string, N, L>,
+  ): ChainableInstance;
   linkDirectionalArrowRelPos(): LinkAccessor<number, N, L>;
-  linkDirectionalArrowRelPos(fractionAccessor: LinkAccessor<number, N, L>): ChainableInstance;
+  linkDirectionalArrowRelPos(
+    fractionAccessor: LinkAccessor<number, N, L>,
+  ): ChainableInstance;
   linkDirectionalParticles(): LinkAccessor<number, N, L>;
-  linkDirectionalParticles(numParticlesAccessor: LinkAccessor<number, N, L>): ChainableInstance;
+  linkDirectionalParticles(
+    numParticlesAccessor: LinkAccessor<number, N, L>,
+  ): ChainableInstance;
   linkDirectionalParticleSpeed(): LinkAccessor<number, N, L>;
-  linkDirectionalParticleSpeed(relDistancePerFrameAccessor: LinkAccessor<number, N, L>): ChainableInstance;
+  linkDirectionalParticleSpeed(
+    relDistancePerFrameAccessor: LinkAccessor<number, N, L>,
+  ): ChainableInstance;
   linkDirectionalParticleOffset(): LinkAccessor<number, N, L>;
-  linkDirectionalParticleOffset(relOffset: LinkAccessor<number, N, L>): ChainableInstance;
+  linkDirectionalParticleOffset(
+    relOffset: LinkAccessor<number, N, L>,
+  ): ChainableInstance;
   linkDirectionalParticleWidth(): LinkAccessor<number, N, L>;
-  linkDirectionalParticleWidth(widthAccessor: LinkAccessor<number, N, L>): ChainableInstance;
+  linkDirectionalParticleWidth(
+    widthAccessor: LinkAccessor<number, N, L>,
+  ): ChainableInstance;
   linkDirectionalParticleColor(): LinkAccessor<string, N, L>;
-  linkDirectionalParticleColor(colorAccessor: LinkAccessor<string, N, L>): ChainableInstance;
+  linkDirectionalParticleColor(
+    colorAccessor: LinkAccessor<string, N, L>,
+  ): ChainableInstance;
   linkDirectionalParticleCanvasObject(): CanvasLinkParticleRenderFn<L>;
-  linkDirectionalParticleCanvasObject(renderFn: CanvasLinkParticleRenderFn<L>): ChainableInstance;
+  linkDirectionalParticleCanvasObject(
+    renderFn: CanvasLinkParticleRenderFn<L>,
+  ): ChainableInstance;
   emitParticle(link: L): ChainableInstance;
   linkPointerAreaPaint(): CanvasPointerAreaPaintFn<L>;
-  linkPointerAreaPaint(renderFn: CanvasPointerAreaPaintFn<L>): ChainableInstance;
+  linkPointerAreaPaint(
+    renderFn: CanvasPointerAreaPaintFn<L>,
+  ): ChainableInstance;
 
   // Render control
   autoPauseRedraw(): boolean;
   autoPauseRedraw(enable?: boolean): ChainableInstance;
   pauseAnimation(): ChainableInstance;
   resumeAnimation(): ChainableInstance;
-  centerAt(): {x: number, y: number};
+  centerAt(): { x: number; y: number };
   centerAt(x?: number, y?: number): ChainableInstance;
   zoom(): number;
   zoom(scale: number): ChainableInstance;
-  zoomToFit(padding?: number, nodeFilter?: (node: N) => boolean): ChainableInstance;
+  zoomToFit(
+    padding?: number,
+    nodeFilter?: (node: N) => boolean,
+  ): ChainableInstance;
   minZoom(): number;
   minZoom(scale: number): ChainableInstance;
   maxZoom(): number;
   maxZoom(scale: number): ChainableInstance;
-  onRenderFramePre(callback: (canvasContext: CanvasRenderingContext2D, globalScale: number) => void): ChainableInstance;
-  onRenderFramePost(callback: (canvasContext: CanvasRenderingContext2D, globalScale: number) => void): ChainableInstance;
+  onRenderFramePre(
+    callback: (
+      canvasContext: CanvasRenderingContext2D,
+      globalScale: number,
+    ) => void,
+  ): ChainableInstance;
+  onRenderFramePost(
+    callback: (
+      canvasContext: CanvasRenderingContext2D,
+      globalScale: number,
+    ) => void,
+  ): ChainableInstance;
 
   // Force engine (d3-force) configuration
   dagMode(): DagMode | null;
@@ -148,15 +223,22 @@ export declare class ForceGraphGeneric<ChainableInstance, N extends NodeObject =
   dagNodeFilter(): (node: N) => boolean;
   dagNodeFilter(filterFn: (node: N) => boolean): ChainableInstance;
   onDagError(): (loopNodeIds: (string | number)[]) => void;
-  onDagError(errorHandleFn: (loopNodeIds: (string | number)[]) => void): ChainableInstance;
+  onDagError(
+    errorHandleFn: (loopNodeIds: (string | number)[]) => void,
+  ): ChainableInstance;
   d3AlphaMin(): number;
   d3AlphaMin(alphaMin: number): ChainableInstance;
   d3AlphaDecay(): number;
   d3AlphaDecay(alphaDecay: number): ChainableInstance;
   d3VelocityDecay(): number;
   d3VelocityDecay(velocityDecay: number): ChainableInstance;
-  d3Force(forceName: 'link' | 'charge' | 'center' | string): ForceFn<N> | undefined;
-  d3Force(forceName: 'link' | 'charge' | 'center' | string, forceFn: ForceFn<N> | null): ChainableInstance;
+  d3Force(
+    forceName: "link" | "charge" | "center" | string,
+  ): ForceFn<N> | undefined;
+  d3Force(
+    forceName: "link" | "charge" | "center" | string,
+    forceFn: ForceFn<N> | null,
+  ): ChainableInstance;
   d3ReheatSimulation(): ChainableInstance;
   warmupTicks(): number;
   warmupTicks(ticks: number): ChainableInstance;
@@ -168,37 +250,71 @@ export declare class ForceGraphGeneric<ChainableInstance, N extends NodeObject =
   onEngineStop(callback: () => void): ChainableInstance;
 
   // Interaction
-  onNodeClick(callback: (node: N, event: MouseEvent) => void): ChainableInstance;
-  onNodeRightClick(callback: (node: N, event: MouseEvent) => void): ChainableInstance;
-  onNodeHover(callback: (node: N | null, previousNode: N | null) => void): ChainableInstance;
-  onNodeDrag(callback: (node: N, translate: { x: number, y: number }) => void): ChainableInstance;
-  onNodeDragEnd(callback: (node: N, translate: { x: number, y: number }) => void): ChainableInstance;
-  onLinkClick(callback: (link: L, event: MouseEvent) => void): ChainableInstance;
-  onLinkRightClick(callback: (link: L, event: MouseEvent) => void): ChainableInstance;
-  onLinkHover(callback: (link: L | null, previousLink: L | null) => void): ChainableInstance;
+  onNodeClick(
+    callback: (node: N, event: MouseEvent) => void,
+  ): ChainableInstance;
+  onNodeRightClick(
+    callback: (node: N, event: MouseEvent) => void,
+  ): ChainableInstance;
+  onNodeHover(
+    callback: (node: N | null, previousNode: N | null) => void,
+  ): ChainableInstance;
+  onNodeDrag(
+    callback: (node: N, translate: { x: number; y: number }) => void,
+  ): ChainableInstance;
+  onNodeDragEnd(
+    callback: (node: N, translate: { x: number; y: number }) => void,
+  ): ChainableInstance;
+  onLinkClick(
+    callback: (link: L, event: MouseEvent) => void,
+  ): ChainableInstance;
+  onLinkRightClick(
+    callback: (link: L, event: MouseEvent) => void,
+  ): ChainableInstance;
+  onLinkHover(
+    callback: (link: L | null, previousLink: L | null) => void,
+  ): ChainableInstance;
   linkHoverPrecision(): number;
   linkHoverPrecision(precision: number): ChainableInstance;
   onBackgroundClick(callback: (event: MouseEvent) => void): ChainableInstance;
-  onBackgroundRightClick(callback: (event: MouseEvent) => void): ChainableInstance;
+  onBackgroundRightClick(
+    callback: (event: MouseEvent) => void,
+  ): ChainableInstance;
   showPointerCursor(): Accessor<N | L | undefined, boolean>;
-  showPointerCursor(objAccessor: Accessor<N | L | undefined, boolean>): ChainableInstance;
-  onZoom(callback: (transform: {k: number, x: number, y: number}) => void): ChainableInstance;
-  onZoomEnd(callback: (transform: {k: number, x: number, y: number}) => void): ChainableInstance;
+  showPointerCursor(
+    objAccessor: Accessor<N | L | undefined, boolean>,
+  ): ChainableInstance;
+  onZoom(
+    callback: (transform: { k: number; x: number; y: number }) => void,
+  ): ChainableInstance;
+  onZoomEnd(
+    callback: (transform: { k: number; x: number; y: number }) => void,
+  ): ChainableInstance;
   enableNodeDrag(): boolean;
   enableNodeDrag(enable: boolean): ChainableInstance;
   enableZoomInteraction(): boolean;
-  enableZoomInteraction(enable: boolean | ((event: MouseEvent) => boolean)): ChainableInstance;
+  enableZoomInteraction(
+    enable: boolean | ((event: MouseEvent) => boolean),
+  ): ChainableInstance;
   enablePanInteraction(): boolean;
-  enablePanInteraction(enable: boolean | ((event: MouseEvent) => boolean)): ChainableInstance;
+  enablePanInteraction(
+    enable: boolean | ((event: MouseEvent) => boolean),
+  ): ChainableInstance;
   enablePointerInteraction(): boolean;
   enablePointerInteraction(enable?: boolean): ChainableInstance;
 
   // Utility
-  getGraphBbox(nodeFilter?: (node: N) => boolean): { x: [number, number], y: [number, number] };
-  screen2GraphCoords(x: number, y: number): { x: number, y: number };
-  graph2ScreenCoords(x: number, y: number): { x: number, y: number };
+  getGraphBbox(nodeFilter?: (node: N) => boolean): {
+    x: [number, number];
+    y: [number, number];
+  };
+  screen2GraphCoords(x: number, y: number): { x: number; y: number };
+  graph2ScreenCoords(x: number, y: number): { x: number; y: number };
 }
 
-declare class ForceGraph<N extends NodeObject = NodeObject, L extends LinkObject<N> = LinkObject<N>> extends ForceGraphGeneric<ForceGraph<N, L>, N, L> {}
+declare class ForceGraph<
+  N extends NodeObject = NodeObject,
+  L extends LinkObject<N> = LinkObject<N>,
+> extends ForceGraphGeneric<ForceGraph<N, L>, N, L> {}
 
 export default ForceGraph;
