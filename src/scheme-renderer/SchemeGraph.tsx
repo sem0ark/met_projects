@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import ForceGraph from "../force-graph";
+import ForceGraph from "./force-graph";
 
 import * as d3 from "d3-force";
 
@@ -277,8 +277,6 @@ class SchemaController {
 
   public addLinkStitch() {
     if (this.startStitchFocus === this.targetStitchFocus || this.startStitchFocus.links.some(l => l.source === this.targetStitchFocus || l.target === this.targetStitchFocus)) return;
-    console.log("Link");
-    
     this.schemaView.addLink({}, this.startStitchFocus, this.targetStitchFocus);
   }
 }

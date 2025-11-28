@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { SchemaEditor } from "../components/SchemeGraph";
+import { SchemaEditor } from "../scheme-renderer/SchemeGraph";
 
 export const Home = () => {
   const graphData = useMemo(() => {
