@@ -1,4 +1,5 @@
-import { select as d3Select, pointer as d3Pointer } from "d3-selection";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { select as d3Select, pointer as d3Pointer, type Selection } from "d3-selection";
 import Kapsule from "../kapsule";
 
 import "./index.css";
@@ -8,12 +9,22 @@ import "./index.css";
 
 export default Kapsule({
   props: {
-    content: { default: false },
-    offsetX: { triggerUpdate: false }, // null or number
-    offsetY: { triggerUpdate: false }, // null or number
+    content: { defaultVal: false },
+    offsetX: { defaultVal: null as null | number, triggerUpdate: false },
+    offsetY: { defaultVal: null as null | number, triggerUpdate: false },
   },
+  methods: {},
+  aliases: {},
 
-  init: function (domNode, state, { style = {} } = {}) {
+  stateInit(cfg: {
+    domNode: any;
+    tooltipEl: Selection<HTMLDivElement, any, any, any>;
+    style?: CSSStyleDeclaration;
+  }) {
+    return {style: {}, ...cfg};
+  },
+  init(state, { style }) {
+    const domNode = state.domNode;
     const isD3Selection =
       !!domNode &&
       typeof domNode === "object" &&
@@ -26,14 +37,14 @@ export default Kapsule({
 
     state.tooltipEl = el.append("div").attr("class", "float-tooltip-kap");
 
-    Object.entries(style).forEach(([k, v]) => state.tooltipEl.style(k, v));
+    Object.entries(style as any).forEach(([k, v]) => state.tooltipEl.style(k, v as any));
     state.tooltipEl // start off-screen
       .style("left", "-10000px")
       .style("display", "none");
 
     const evSuffix = `tooltip-${Math.round(Math.random() * 1e12)}`;
     state.mouseInside = false;
-    el.on(`mousemove.${evSuffix}`, function (ev) {
+    el.on(`mousemove.${evSuffix}`, (ev: MouseEvent) => {
       state.mouseInside = true;
 
       const mousePos = d3Pointer(ev);
@@ -89,7 +100,7 @@ export default Kapsule({
       state.tooltipEl.text("");
     } else if (state.content instanceof HTMLElement) {
       state.tooltipEl.text(""); // empty it
-      state.tooltipEl.append(() => state.content);
+      state.tooltipEl.append((() => state.content as any));
     } else if (typeof state.content === "string") {
       state.tooltipEl.html(state.content);
     } else {

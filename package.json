@@ -6,6 +6,7 @@
   "license": "GPL-3.0-only",
   "scripts": {
     "dev": "vite",
+    "test": "vitest",
     "build": "tsc -b && vite build",
     "lint": "prettier --write ./src && eslint ./src",
     "preview": "vite preview"
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/d3-force": "^3.0.10",
+    "@types/d3-selection": "^3.0.11",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
@@ -46,6 +48,7 @@
     "prettier-plugin-tailwindcss": "^0.7.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.3",
-    "vite": "^7.2.2"
+    "vite": "^7.2.2",
+    "vitest": "^4.0.14"
   }
 }

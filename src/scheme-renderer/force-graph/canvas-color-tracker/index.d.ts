@@ -1,10 +1,9 @@
-type Obj = any;
-
-declare class ColorTracker {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare class ColorTracker<T = any> {
   constructor(bits?: number);
 
-  register(obj: Obj): string | null;
-  lookup(color: string | [number, number, number]): Obj | null;
+  register(obj: T): string | null;
+  lookup(color: string | [number, number, number]): T | null;
   reset(): void;
 }
 
