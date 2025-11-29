@@ -9,9 +9,9 @@ import "./index.css";
 
 export default Kapsule({
   props: {
-    content: { defaultVal: false },
-    offsetX: { defaultVal: null as null | number, triggerUpdate: false },
-    offsetY: { defaultVal: null as null | number, triggerUpdate: false },
+    content: { default: false },
+    offsetX: { default: null as null | number, triggerUpdate: false },
+    offsetY: { default: null as null | number, triggerUpdate: false },
   },
   methods: {},
   aliases: {},

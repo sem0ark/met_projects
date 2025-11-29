@@ -8,8 +8,8 @@ import Kapsule, { asKapsuleConfig, type KapsuleState } from ".";
 describe("Kapsule Factory Function", () => {
   const simpleCfg = asKapsuleConfig({
     props: {
-      count: { defaultVal: 0, },
-      name: { defaultVal: "Anon" },
+      count: { default: 0, },
+      name: { default: "Anon" },
     },
     methods: {
       getStatus: (state: KapsuleState) =>
@@ -124,8 +124,8 @@ describe("Kapsule Factory Function", () => {
     const factory = Kapsule({
       props: {
         // This prop will not cause an update automatically
-        lazyProp: { defaultVal: "initial", triggerUpdate: false },
-        eagerProp: { defaultVal: 1, triggerUpdate: true },
+        lazyProp: { default: "initial", triggerUpdate: false },
+        eagerProp: { default: 1, triggerUpdate: true },
       },
       methods: {},
       aliases: {},
@@ -152,7 +152,7 @@ describe("Kapsule Factory Function", () => {
     const factory = Kapsule({
       props: {
         value: {
-          defaultVal: 10,
+          default: 10,
           onChange: onChangeSpy,
         },
       },

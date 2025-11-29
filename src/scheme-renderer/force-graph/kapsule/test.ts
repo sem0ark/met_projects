@@ -3,18 +3,18 @@ import { debounceRendering } from "./kapsule-utils";
 
 const myComplexComponentFactory = Kapsule({
   props: {
-    count: { defaultVal: 0 },
-    isActive: { defaultVal: false },
+    count: { default: 0 },
+    isActive: { default: false },
     label: {
-      defaultVal: "Default Label",
+      default: "Default Label",
       onChange: (newVal, state, prevVal) => {
         console.log(`Label changed from "${prevVal}" to "${newVal}"`);
         // You can react to changes here, e.g., update the DOM directly
         state.containerEl.querySelector("#label-display")!.textContent = newVal;
       },
     },
-    items: { defaultVal: [] },
-    config: { defaultVal: { theme: "light", size: "small" } },
+    items: { default: [] },
+    config: { default: { theme: "light", size: "small" } },
   },
   methods: {
     increment: (state, amount: number) => {
