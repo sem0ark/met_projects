@@ -1,9 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { type Force } from "d3-force";
+import { select as d3Select } from "d3-selection";
+import { zoom as d3Zoom, zoomTransform as d3ZoomTransform } from "d3-zoom";
+import { drag as d3Drag } from "d3-drag";
+import { max as d3Max, min as d3Min, sum as d3Sum } from "d3-array";
 
 import Kapsule, { asKapsuleConfig, type ExtractKapsuleStateType } from "./kapsule";
 import { toFlat } from "./index-array-by";
 import { d3ForceConfig, layoutTick, type GraphLink, type GraphNode } from "./force-graph-d3-bindings";
+import ColorTracker from "./canvas-color-tracker";
 
 // import { autoColorObjects } from "./color-utils";
 
@@ -50,7 +55,7 @@ const defaultLinkStyle: LinkStyle = {
   directionalArrowRelPos: 0.5,
 }
 
-export const forceGraphConfigCanvas2D = asKapsuleConfig({
+export const graphRendererConfigCanvas2D = asKapsuleConfig({
   props: {
     ...d3ForceConfig.props,
 
@@ -69,37 +74,13 @@ export const forceGraphConfigCanvas2D = asKapsuleConfig({
 
     globalScale: { default: 1, triggerUpdate: false },
     onNeedsRedraw: { default: noop, triggerUpdate: false },
-  },
-    
-  methods: {
-    addD3Force: (state, forceName: string, forceFn?: Force<any, any>) => {
-      if (forceFn === undefined) {
-        return state.forceSimulation.force(forceName); // Force getter
-      }
-      state.forceSimulation.force(forceName, forceFn); // Force setter
-    },
-    d3ReheatSimulation(state) {
-      
-      state.forceSimulation.alpha(1);
-      forceGraphConfigCanvas2D.methods.resetCountdown(state);
-    },
-    resetCountdown(state) { // reset cooldown state
-      state.cntTicks = 0;
-      state.startTickTimeMs = Number(new Date());
-      state.engineRunning = true;
-    },
-    isEngineRunning: (state) => !!state.engineRunning,
-
-    tickFrame(state) {
-      state.tickSteps?.forEach(step => step(state))
-    },
+    canvasContext: { default: null as null | CanvasRenderingContext2D }
   },
 
-  stateInit: ({ canvasContext }: {
-    canvasContext: CanvasRenderingContext2D
-  }) => ({
+  methods: d3ForceConfig.methods,
+
+  stateInit: () => ({
     ...d3ForceConfig.stateInit!({}),
-    canvasContext: canvasContext,
   }),
 
   update(state, changedProps) {
@@ -108,9 +89,10 @@ export const forceGraphConfigCanvas2D = asKapsuleConfig({
 })
 
 // Rendering logic
-type ForceGraphCanvasState = ExtractKapsuleStateType<typeof forceGraphConfigCanvas2D>;
+type ForceGraphCanvasState = ExtractKapsuleStateType<typeof graphRendererConfigCanvas2D>;
 
 const paintNodes = (padAmount: number) => (state: ForceGraphCanvasState) => {
+  if (!state.canvasContext) return;
   const ctx = state.canvasContext;
   const padding = padAmount / state.globalScale;
 
@@ -131,6 +113,7 @@ const paintNodes = (padAmount: number) => (state: ForceGraphCanvasState) => {
 }
 
 const paintLinks = (padAmount: number) => (state: ForceGraphCanvasState) => {
+  if (!state.canvasContext) return;
   const padding = padAmount / state.globalScale;
 
   const getStyle = (typeof state.linkStyle === "function" ? state.linkStyle : () => state.linkStyle) as ((link: GraphLink) => LinkStyle);
@@ -298,16 +281,44 @@ const getControlPoints = (link: GraphLink, curvature: number): number[] => {
 //   ctx.restore();
 // }
 
-export const ShadowGraph2DCanvas = (canvas: CanvasRenderingContext2D) => Kapsule(forceGraphConfigCanvas2D)({ canvasContext: canvas }).tickSteps([
-    // Draw wider lines by 2px on shadow canvas for more precise hovering (due to boundary anti-aliasing)
-    paintLinks(2),
-    // Draw wider nodes by 1px on shadow canvas for more precise hovering (due to boundary anti-aliasing)
-    paintNodes(1)
-  ])
+const newShadowGraph2DCanvas = () => Kapsule(graphRendererConfigCanvas2D)({}).tickSteps([
+  // Draw wider lines by 2px on shadow canvas for more precise hovering (due to boundary anti-aliasing)
+  paintLinks(2),
+  // Draw wider nodes by 1px on shadow canvas for more precise hovering (due to boundary anti-aliasing)
+  paintNodes(1)
+]);
 
-export const ForceGraph2DCanvas = (canvas: CanvasRenderingContext2D) => Kapsule(forceGraphConfigCanvas2D)({ canvasContext: canvas }).tickSteps([
+const newForegroundGraph2DCanvas = () => Kapsule(graphRendererConfigCanvas2D)({}).tickSteps([
   layoutTick,
   paintLinks(0),
   // paintArrows,
   paintNodes(0),
 ])
+
+export const forceGraphConfigCanvas2D = asKapsuleConfig({
+  props: {},
+  methods: {},
+
+  stateInit: ({ root }: {
+    root: HTMLDivElement,
+  }) => ({
+    root: root,
+    lastSetZoom: 1,
+    zoom: d3Zoom(),
+    forceGraph: newForegroundGraph2DCanvas(),
+    shadowGraph: newShadowGraph2DCanvas()
+      .cooldownTicks(0)
+      .nodeStyle((v: GraphNode) => ({ ...defaultNodeStyle, color: (v as any).__indexColor as string}))
+      .linkStyle((v: GraphLink) => ({ ...defaultLinkStyle, color: (v as any).__indexColor as string})),
+    colorTracker: new ColorTracker(), // indexed objects for rgb lookup
+  }),
+
+  init(state, initOptions) {
+    
+  },
+
+  update(state, changedProps) {
+    
+  },
+
+});
