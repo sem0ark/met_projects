@@ -6,6 +6,8 @@
 // Core Types
 
 export type KapsuleState = {
+  root: any;
+  canvas(canvas: any): unknown;
   _destructor: () => void;
   _rerender: () => void;
   _initialised: boolean;
@@ -53,8 +55,8 @@ export type KapsuleMethods<TMethods, TState> = {
 // The final inferred component instance type
 export type KapsuleComponentInstance<TProps, TMethods, TState extends KapsuleState> = 
   & {
-    _state: KapsuleState
-    _resetProps: () => KapsuleComponentInstance<TProps, TMethods, TState>
+    _state: Readonly<TState>
+    _resetProps: () => void
   }
   & KapsulePropMethods<TProps, TMethods, TState>
   & KapsuleMethods<TMethods, TState>;
@@ -125,7 +127,7 @@ export default function Kapsule<
     // We use a general type assertion here because we build the concrete type dynamically below
     const comp = {
       _state: state,
-      _resetProps: () => comp, // placeholder
+      _resetProps: noop, // placeholder
     } as KapsuleComponentInstance<TProps, TMethods, KapsuleState & TInitStateOptions & TProps>;
 
     state._rerender = () => {
@@ -168,7 +170,9 @@ export default function Kapsule<
       parsedProps.forEach((prop) => {
         (state as any)[prop.name] = prop.default;
       });
-      return comp;
+      parsedProps.forEach((prop) => {
+        prop.onChange?.(prop.default, state as any, prop.default);
+      });
     };
 
     // Run initialisation sequence
@@ -177,7 +181,7 @@ export default function Kapsule<
     state._initialised = true;
     state._rerender();
 
-    return comp;
+    return comp as KapsuleComponentInstance<TProps, TMethods, KapsuleState & TInitStateOptions & TProps>;
   };
 }
 

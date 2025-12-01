@@ -1,10 +1,10 @@
-import { useMemo } from "react";
-import { SchemaEditor } from "../scheme-renderer/SchemeGraph";
+// import { useMemo } from "react";
+import { SchemaEditor } from "../scheme-renderer/test";
 
 export const Home = () => {
-  const graphData = useMemo(() => {
-    return {nodes: [{id: 0}], links: []};
-  }, [])
+  // const graphData = useMemo(() => {
+  //   return {nodes: [{id: 0}], links: []};
+  // }, [])
 
-  return <SchemaEditor inputData={graphData} className="w-screen -z-10 h-screen m-0 p-0 border-2 absolute top-0 left-0"/>
+  return <SchemaEditor className="w-screen -z-10 h-screen m-0 p-0 border-2 absolute top-0 left-0"/>
 };

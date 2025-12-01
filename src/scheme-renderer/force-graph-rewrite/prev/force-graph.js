@@ -2,10 +2,10 @@ import { select as d3Select } from "d3-selection";
 import { zoom as d3Zoom, zoomTransform as d3ZoomTransform } from "d3-zoom";
 import { drag as d3Drag } from "d3-drag";
 import { max as d3Max, min as d3Min, sum as d3Sum } from "d3-array";
-import Kapsule from "./kapsule";
-import ColorTracker from "./canvas-color-tracker";
-import Tooltip from "./tooltip";
-import CanvasForceGraph from "./canvas-force-graph";
+import Kapsule from "./kapsule/index.js";
+import ColorTracker from "./canvas-color-tracker/index.js";
+import Tooltip from "./tooltip/index.js";
+import CanvasForceGraph from "./canvas-force-graph.js";
 import linkKapsule from "./kapsule-link.js";
 import { throttle } from "./utils/throttle.js";
 
@@ -38,10 +38,10 @@ const linkedProps = Object.assign(
     "linkDirectionalArrowLength",
     "linkDirectionalArrowColor",
     "linkDirectionalArrowRelPos",
-    "dagMode",
-    "dagLevelDistance",
-    "dagNodeFilter",
-    "onDagError",
+    // "dagMode",
+    // "dagLevelDistance",
+    // "dagNodeFilter",
+    // "onDagError",
     "d3AlphaMin",
     "d3AlphaDecay",
     "d3VelocityDecay",
@@ -68,58 +68,6 @@ const linkedMethods = Object.assign(
   })),
 );
 
-function adjustCanvasSize(state) {
-  if (state.canvas) {
-    let curWidth = state.canvas.width;
-    let curHeight = state.canvas.height;
-    if (curWidth === 300 && curHeight === 150) {
-      // Default canvas dimensions
-      curWidth = curHeight = 0;
-    }
-
-    const pxScale = window.devicePixelRatio; // 2 on retina displays
-    curWidth /= pxScale;
-    curHeight /= pxScale;
-
-    // Resize canvases
-    [state.canvas, state.shadowCanvas].forEach((canvas) => {
-      // Element size
-      canvas.style.width = `${state.width}px`;
-      canvas.style.height = `${state.height}px`;
-
-      // Memory size (scaled to avoid blurriness)
-      canvas.width = state.width * pxScale;
-      canvas.height = state.height * pxScale;
-
-      // Normalize coordinate system to use css pixels (on init only)
-      if (!curWidth && !curHeight) {
-        canvas.getContext("2d").scale(pxScale, pxScale);
-      }
-    });
-
-    // Relative center panning based on 0,0
-    const k = d3ZoomTransform(state.canvas).k;
-    state.zoom.translateBy(
-      state.zoom.__baseElem,
-      (state.width - curWidth) / 2 / k,
-      (state.height - curHeight) / 2 / k,
-    );
-    state.needsRedraw = true;
-  }
-}
-
-function resetTransform(ctx) {
-  const pxRatio = window.devicePixelRatio;
-  ctx.setTransform(pxRatio, 0, 0, pxRatio, 0, 0);
-}
-
-function clearCanvas(ctx, width, height) {
-  ctx.save();
-  resetTransform(ctx); // reset transform
-  ctx.clearRect(0, 0, width, height);
-  ctx.restore(); //restore transforms
-}
-
 export default Kapsule({
   props: {
     width: {
@@ -136,9 +84,7 @@ export default Kapsule({
       default: { nodes: [], links: [] },
       onChange: (d, state) => {
         // Wipe color registry if all objects are new
-        [d.nodes, d.links].every((arr) =>
-          (arr || []).every((d) => !d.hasOwnProperty("__indexColor")),
-        ) && state.colorTracker.reset();
+        [d.nodes, d.links].every((arr) => (arr || []).every((d) => !d.hasOwnProperty("__indexColor"))) && state.colorTracker.reset();
 
         [
           { type: "Node", objs: d.nodes },
@@ -168,33 +114,33 @@ export default Kapsule({
       },
       triggerUpdate: false,
     },
-    nodeLabel: { default: "name", triggerUpdate: false },
-    nodePointerAreaPaint: {
-      onChange(paintFn, state) {
-        state.shadowGraph.nodeCanvasObject(
-          !paintFn
-            ? null
-            : (node, ctx, globalScale) =>
-                paintFn(node, node.__indexColor, ctx, globalScale),
-        );
-        state.flushShadowCanvas?.();
-      },
-      triggerUpdate: false,
-    },
-    linkPointerAreaPaint: {
-      onChange(paintFn, state) {
-        state.shadowGraph.linkCanvasObject(
-          !paintFn
-            ? null
-            : (link, ctx, globalScale) =>
-                paintFn(link, link.__indexColor, ctx, globalScale),
-        );
-        state.flushShadowCanvas?.();
-      },
-      triggerUpdate: false,
-    },
-    linkLabel: { default: "name", triggerUpdate: false },
-    linkHoverPrecision: { default: 4, triggerUpdate: false },
+    // nodeLabel: { default: "name", triggerUpdate: false },
+    // nodePointerAreaPaint: {
+    //   onChange(paintFn, state) {
+    //     state.shadowGraph.nodeCanvasObject(
+    //       !paintFn
+    //         ? null
+    //         : (node, ctx, globalScale) =>
+    //             paintFn(node, node.__indexColor, ctx, globalScale),
+    //     );
+    //     state.flushShadowCanvas?.();
+    //   },
+    //   triggerUpdate: false,
+    // },
+    // linkPointerAreaPaint: {
+    //   onChange(paintFn, state) {
+    //     state.shadowGraph.linkCanvasObject(
+    //       !paintFn
+    //         ? null
+    //         : (link, ctx, globalScale) =>
+    //             paintFn(link, link.__indexColor, ctx, globalScale),
+    //     );
+    //     state.flushShadowCanvas?.();
+    //   },
+    //   triggerUpdate: false,
+    // },
+    // linkLabel: { default: "name", triggerUpdate: false },
+    // linkHoverPrecision: { default: 4, triggerUpdate: false },
     minZoom: {
       default: 0.01,
       onChange(minZoom, state) {
@@ -209,10 +155,12 @@ export default Kapsule({
       },
       triggerUpdate: false,
     },
+
     enableNodeDrag: { default: true, triggerUpdate: false },
     enableZoomInteraction: { default: true, triggerUpdate: false },
     enablePanInteraction: { default: true, triggerUpdate: false },
-    enableZoomPanInteraction: { default: true, triggerUpdate: false }, // to be deprecated
+
+    // enableZoomPanInteraction: { default: true, triggerUpdate: false }, // to be deprecated
     enablePointerInteraction: {
       default: true,
       onChange(_, state) {
@@ -221,6 +169,9 @@ export default Kapsule({
       triggerUpdate: false,
     },
     autoPauseRedraw: { default: true, triggerUpdate: false },
+
+    showPointerCursor: { default: true, triggerUpdate: false },
+
     onNodeDrag: { default: () => {}, triggerUpdate: false },
     onNodeDragEnd: { default: () => {}, triggerUpdate: false },
     onNodeClick: { triggerUpdate: false },
@@ -231,11 +182,12 @@ export default Kapsule({
     onLinkHover: { triggerUpdate: false },
     onBackgroundClick: { triggerUpdate: false },
     onBackgroundRightClick: { triggerUpdate: false },
-    showPointerCursor: { default: true, triggerUpdate: false },
     onZoom: { triggerUpdate: false },
     onZoomEnd: { triggerUpdate: false },
+
     onRenderFramePre: { triggerUpdate: false },
     onRenderFramePost: { triggerUpdate: false },
+
     ...linkedProps,
   },
 
@@ -291,21 +243,13 @@ export default Kapsule({
 
       // setter
       if (k !== undefined) {
-        setZoom(k);
+        state.zoom.scaleTo(state.zoom.__baseElem, k);
+        state.needsRedraw = true;
         return this;
       }
 
       // getter
-      return getZoom();
-
-      function getZoom() {
-        return d3ZoomTransform(state.canvas).k;
-      }
-
-      function setZoom(k) {
-        state.zoom.scaleTo(state.zoom.__baseElem, k);
-        state.needsRedraw = true;
-      }
+      return d3ZoomTransform(state.canvas).k;
     },
     zoomToFit: function (state, padding = 10, ...bboxArgs) {
       const bbox = this.getGraphBbox(...bboxArgs);
@@ -398,17 +342,18 @@ export default Kapsule({
     domNode.appendChild(container);
 
     state.canvas = document.createElement("canvas");
-    if (state.backgroundColor)
+    if (state.backgroundColor) {
       state.canvas.style.background = state.backgroundColor;
+    }
     container.appendChild(state.canvas);
 
     state.shadowCanvas = document.createElement("canvas");
 
     // Show shadow canvas
-    //state.shadowCanvas.style.position = 'absolute';
-    //state.shadowCanvas.style.top = '0';
-    //state.shadowCanvas.style.left = '0';
-    //container.appendChild(state.shadowCanvas);
+    // state.shadowCanvas.style.position = 'absolute';
+    // state.shadowCanvas.style.top = '0';
+    // state.shadowCanvas.style.left = '0';
+    // container.appendChild(state.shadowCanvas);
 
     const ctx = state.canvas.getContext("2d");
     const shadowCtx = state.shadowCanvas.getContext("2d", {
@@ -531,15 +476,13 @@ export default Kapsule({
 
     // Setup zoom / pan interaction
     state.zoom((state.zoom.__baseElem = d3Select(state.canvas))); // Attach controlling elem for easy access
-
     state.zoom.__baseElem.on("dblclick.zoom", null); // Disable double-click to zoom
-
     state.zoom
       .filter(
         (ev) =>
           // disable zoom interaction
           !ev.button &&
-          state.enableZoomPanInteraction &&
+          // state.enableZoomPanInteraction &&
           (ev.type !== "wheel" ||
             accessorFn(state.enableZoomInteraction)(ev)) &&
           (ev.type === "wheel" || accessorFn(state.enablePanInteraction)(ev)),
@@ -580,7 +523,7 @@ export default Kapsule({
       });
 
     // Setup tooltip
-    state.tooltip = new Tooltip(container);
+    // state.tooltip = new Tooltip(container);
 
     // Capture pointer coords on move or touchstart
     ["pointermove", "pointerdown"].forEach((evType) =>
@@ -695,15 +638,12 @@ export default Kapsule({
       const t = d3ZoomTransform(state.canvas);
       state.shadowGraph.globalScale(t.k).tickFrame();
     }, HOVER_CANVAS_THROTTLE_DELAY);
-    state.flushShadowCanvas = refreshShadowCanvas.flush; // hook to immediately invoke shadow canvas paint
+    // state.flushShadowCanvas = refreshShadowCanvas.flush; // hook to immediately invoke shadow canvas paint
 
     // Kick-off renderer
     (this._animationCycle = function animate() {
       // IIFE
-      const doRedraw =
-        !state.autoPauseRedraw ||
-        !!state.needsRedraw ||
-        state.forceGraph.isEngineRunning();
+      const doRedraw = !state.autoPauseRedraw || !!state.needsRedraw || state.forceGraph.isEngineRunning();
       state.needsRedraw = false;
 
       if (state.enablePointerInteraction) {
@@ -726,12 +666,12 @@ export default Kapsule({
             );
           }
 
-          state.tooltip.content(
-            obj
-              ? accessorFn(state[`${obj.type.toLowerCase()}Label`])(obj.d) ||
-                  null
-              : null,
-          );
+          // state.tooltip.content(
+          //   obj
+          //     ? accessorFn(state[`${obj.type.toLowerCase()}Label`])(obj.d) ||
+          //         null
+          //     : null,
+          // );
 
           // set pointer if hovered object is clickable
           state.canvas.classList[

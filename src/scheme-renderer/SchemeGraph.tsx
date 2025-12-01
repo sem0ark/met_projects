@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import ForceGraph from "./force-graph";
+import ForceGraph from "force-graph";
 
 import * as d3 from "d3-force";
 
@@ -105,6 +105,8 @@ class GraphController {
       .nodeCanvasObjectMode((node) => {
         return this.nodeToConfigs.has(node as GraphNode) ? "before" : undefined
       })
+      .nodeCanvasObject((node, ctx) => nodePaint(node, this.instance.nodeColor(), ctx))
+      .nodePointerAreaPaint(nodePaint)
       .nodeCanvasObject((node, ctx) => {
         if (node.x && node.y) {
           const configs = this.nodeToConfigs.get(node as GraphNode);
@@ -208,7 +210,7 @@ class GraphController {
 
   public addNode(nodeData: Partial<GraphNode>, neighbors: GraphNode[]): GraphNode {
     const newId = this.graphData.nodes.length;
-    const newNode = {id: newId, ...nodeData};
+    const newNode = {...nodeData, id: newId};
     const newLinks = [];
 
     for(const neighbor of neighbors) {

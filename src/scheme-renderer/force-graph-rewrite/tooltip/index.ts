@@ -14,7 +14,6 @@ export default Kapsule({
     offsetY: { default: null as null | number, triggerUpdate: false },
   },
   methods: {},
-  aliases: {},
 
   stateInit(cfg: {
     domNode: any;
