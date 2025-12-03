@@ -1,1 +1,0 @@
-"""VNS Optimizer Library."""
