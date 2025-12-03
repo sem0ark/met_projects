@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import {GraphControllerCanvas2D} from "./force-graph-rewrite/force-graph-renderer";
+import { d3ForceCollide } from "./force-graph-rewrite/force-graph-d3-bindings";
 
 type GraphNode = {
   id: number;
@@ -58,7 +59,10 @@ export const SchemaEditor = ({className}: {
         .filter(id => id)
         .map(id => ({
           source: id,
-          target: Math.round(Math.random() * (id-1))
+          target: Math.round(Math.random() * (id-1)),
+          data: {
+            type: Math.random() > 0.5 ? "long" : "short"
+          }
         }))
     };
 
@@ -67,7 +71,26 @@ export const SchemaEditor = ({className}: {
     controllerRef.current = new GraphControllerCanvas2D(ref.current, {
       width: availableWidth,  
       height: availableHeight,
-    }).updateSimulation(sim => sim.graphData.set(gData as any))
+    })
+      .updateSimulation(sim => sim.graphData.set(gData))
+      .updateSimulation(sim => {
+        sim.createLinkForce("short", ({links}) => links.filter(link => link.data?.type === "short")).distance(50);
+        sim.createLinkForce("long", ({links}) => links.filter(link => link.data?.type === "long")).distance(200);
+
+        sim.setForce("collide", d3ForceCollide().radius(5));
+      })
+      .updateForegroundRender(graph => {
+        const prev = graph.linkStyle.value;
+
+        graph.linkStyle.set((link) => ({
+        ...prev(link),
+        color: (() => {
+          if (link.data?.type === "short") return "blue";
+          if (link.data?.type === "long") return "red";
+          return "yellow";
+        })(),
+      }))
+      })
 
     controllerRef.current.init();
     controllerRef.current.startRenderCycle();
@@ -145,16 +168,19 @@ export const SchemaEditor = ({className}: {
   //   return () => removeEventListener("keydown", onKeyDown);
   // }, [onKeyDown]);
 
-  // const onResize = useCallback(() => {
-  //   if (!controllerRef.current) return;
-  //   const [availableWidth, availableHeight] = getSize();
-  //   controllerRef.current.schemaView.setDimensions(availableWidth, availableHeight);
-  // }, [getSize]);
+  const onResize = useCallback(() => {
+    if (!controllerRef.current) return;
+    const [availableWidth, availableHeight] = getSize();
+    controllerRef.current.dimensions.set({
+      width: availableWidth,
+      height: availableHeight,
+    });
+  }, [getSize]);
 
-  // useEffect(() => {
-  //   addEventListener("resize", onResize);
-  //   return () => removeEventListener("resize", onResize);
-  // }, [onResize]);
+  useEffect(() => {
+    addEventListener("resize", onResize);
+    return () => removeEventListener("resize", onResize);
+  }, [onResize]);
 
   return (
     <div ref={ref} className={className}></div>

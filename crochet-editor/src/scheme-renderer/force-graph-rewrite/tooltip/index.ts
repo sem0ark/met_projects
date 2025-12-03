@@ -1,50 +1,54 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { select as d3Select, pointer as d3Pointer, type Selection } from "d3-selection";
-import Kapsule from "../kapsule";
 
 import "./index.css";
+import { Observable } from "../utils/observable";
 
 // Source (MIT, made by vasturiano, changed by sem0ark to remove react/preact deps)
 // https://github.com/vasturiano/float-tooltip/blob/master/src/index.js
 
-export default Kapsule({
-  props: {
-    content: { default: false },
-    offsetX: { default: null as null | number, triggerUpdate: false },
-    offsetY: { default: null as null | number, triggerUpdate: false },
-  },
-  methods: {},
+export class Tooltip {
+  public readonly content: Observable<string | HTMLElement | null, this>;
+  public readonly offsetX: Observable<number | null, this>;
+  public readonly offsetY: Observable<number | null, this>;
 
-  stateInit(cfg: {
-    domNode: any;
-    tooltipEl: Selection<HTMLDivElement, any, any, any>;
-    style?: CSSStyleDeclaration;
-  }) {
-    return {style: {}, ...cfg};
-  },
-  init(state, { style }) {
-    const domNode = state.domNode;
+  private domNode: any;
+  private tooltipEl: Selection<HTMLDivElement, any, any, any>;
+  private mouseInside: boolean;
+
+  constructor(
+    domNode: any,
+    style: Partial<CSSStyleDeclaration> = {},
+  ) {
+    this.content = new Observable(this, null as null | string | HTMLElement, [
+      () => this.update(),
+    ]);
+    this.offsetX = new Observable(this, null as null | number, []);
+    this.offsetY = new Observable(this, null as null | number, []);
+
+    this.domNode = domNode;
+    this.mouseInside = false;
+
     const isD3Selection =
-      !!domNode &&
-      typeof domNode === "object" &&
-      !!domNode.node &&
-      typeof domNode.node === "function";
-    const el = d3Select(isD3Selection ? domNode.node() : domNode);
+      !!this.domNode &&
+      typeof this.domNode === "object" &&
+      !!this.domNode.node &&
+      typeof this.domNode.node === "function";
+    const el = d3Select(isD3Selection ? this.domNode.node() : this.domNode);
 
     // make sure container is positioned, to provide anchor for tooltip
     if (el.style("position") === "static") el.style("position", "relative");
 
-    state.tooltipEl = el.append("div").attr("class", "float-tooltip-kap");
+    this.tooltipEl = el.append("div").attr("class", "float-tooltip-kap");
 
-    Object.entries(style as any).forEach(([k, v]) => state.tooltipEl.style(k, v as any));
-    state.tooltipEl // start off-screen
+    Object.entries(style).forEach(([k, v]) => this.tooltipEl.style(k, v as any));
+    this.tooltipEl // start off-screen
       .style("left", "-10000px")
       .style("display", "none");
 
     const evSuffix = `tooltip-${Math.round(Math.random() * 1e12)}`;
-    state.mouseInside = false;
     el.on(`mousemove.${evSuffix}`, (ev: MouseEvent) => {
-      state.mouseInside = true;
+      this.mouseInside = true;
 
       const mousePos = d3Pointer(ev);
 
@@ -53,62 +57,62 @@ export default Kapsule({
       const canvasHeight = domNode.offsetHeight;
 
       const translate = [
-        state.offsetX === null || state.offsetX === undefined
+        this.offsetX === null || this.offsetX === undefined
           ? // auto: adjust horizontal position to not exceed canvas boundaries
             `-${(mousePos[0] / canvasWidth) * 100}%`
-          : typeof state.offsetX === "number"
-            ? `calc(-50% + ${state.offsetX}px)`
-            : state.offsetX,
-        state.offsetY === null || state.offsetY === undefined
+          : typeof this.offsetX === "number"
+            ? `calc(-50% + ${this.offsetX}px)`
+            : this.offsetX,
+        this.offsetY === null || this.offsetY === undefined
           ? // auto: flip to above if near bottom
             canvasHeight > 130 && canvasHeight - mousePos[1] < 100
             ? "calc(-100% - 6px)"
             : "21px"
-          : typeof state.offsetY === "number"
-            ? state.offsetY < 0
-              ? `calc(-100% - ${Math.abs(state.offsetY)}px)`
-              : `${state.offsetY}px`
-            : state.offsetY,
+          : typeof this.offsetY === "number"
+            ? this.offsetY < 0
+              ? `calc(-100% - ${Math.abs(this.offsetY)}px)`
+              : `${this.offsetY}px`
+            : this.offsetY,
       ];
 
-      state.tooltipEl
+      this.tooltipEl
         .style("left", mousePos[0] + "px")
         .style("top", mousePos[1] + "px")
         .style("transform", `translate(${translate.join(",")})`);
 
-      if (state.content) state.tooltipEl.style("display", "inline");
+      if (this.content) this.tooltipEl.style("display", "inline");
     });
 
     el.on(`mouseover.${evSuffix}`, () => {
-      state.mouseInside = true;
-      if (state.content) state.tooltipEl.style("display", "inline");
+      this.mouseInside = true;
+      if (this.content) this.tooltipEl.style("display", "inline");
     });
     el.on(`mouseout.${evSuffix}`, () => {
-      state.mouseInside = false;
-      state.tooltipEl.style("display", "none");
+      this.mouseInside = false;
+      this.tooltipEl.style("display", "none");
     });
-  },
+  }
 
-  update: function (state) {
-    state.tooltipEl.style(
+  private update() {
+    this.tooltipEl.style(
       "display",
-      !!state.content && state.mouseInside ? "inline" : "none",
+      !!this.content && this.mouseInside ? "inline" : "none",
     );
 
-    if (!state.content) {
-      state.tooltipEl.text("");
-    } else if (state.content instanceof HTMLElement) {
-      state.tooltipEl.text(""); // empty it
-      state.tooltipEl.append((() => state.content as any));
-    } else if (typeof state.content === "string") {
-      state.tooltipEl.html(state.content);
+    if (!this.content) {
+      this.tooltipEl.text("");
+    } else if (this.content instanceof HTMLElement) {
+      this.tooltipEl.text(""); // empty it
+      this.tooltipEl.append((() => this.content as any));
+    } else if (typeof this.content === "string") {
+      this.tooltipEl.html(this.content);
     } else {
-      state.tooltipEl.style("display", "none");
+      this.tooltipEl.style("display", "none");
       console.warn(
         "Tooltip content is invalid, skipping.",
-        state.content,
-        state.content.toString(),
+        this.content,
+        this.content.toString(),
       );
     }
-  },
-});
+  }
+}

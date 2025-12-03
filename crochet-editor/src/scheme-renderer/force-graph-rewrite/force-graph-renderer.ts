@@ -6,7 +6,7 @@ import { max as d3Max, min as d3Min, sum as d3Sum } from "d3-array";
 import { toFlat } from "./index-array-by";
 import { D3Bindings, type GraphData, type GraphLink, type GraphNode } from "./force-graph-d3-bindings";
 import ColorTracker from "./canvas-color-tracker";
-import { LinkedObservable, Observable } from "./kapsule/observable";
+import { LinkedObservable, Observable } from "./utils/observable";
 import { throttle } from "./utils/throttle";
 
 import "./force-graph.css";
@@ -22,11 +22,14 @@ export type NodeStyle = {
   visible: boolean;
   relSize: number; // Ratio of node circle area (square px) per value unit.
   color: string; // Attribute for node color (affects circle color).
+  
+  // Optional override function to totally replace the rendering logic
+  drawNodeFn?: (ctx: CanvasRenderingContext2D, node: GraphNode, style: NodeStyle, globalScale: number, isShadow: boolean) => void;
 }
 const defaultNodeStyle: Readonly<NodeStyle> = {
   visible: true,
   relSize: 5,
-  color: "rgba(31, 120, 180, 0.92)",
+  color: "rgba(31, 120, 180)",
 }
 export type LinkStyle = {
   visible: boolean;
@@ -35,10 +38,14 @@ export type LinkStyle = {
   width: number;
   curvature: number;
 
-  directionalArrowLength: number;
-  directionalArrowColor: string;
-  directionalArrowRelPos: number; // value between 0<>1 indicating the relative pos along the (exposed) line
+  // directionalArrowLength: number;
+  // directionalArrowColor: string;
+  // directionalArrowRelPos: number; // value between 0<>1 indicating the relative pos along the (exposed) line
+
+  // Optional override function to totally replace the rendering logic
+  drawLinkFn?: (ctx: CanvasRenderingContext2D, link: GraphLink, style: LinkStyle, globalScale: number, isShadow: boolean) => void;
 }
+
 const defaultLinkStyle: LinkStyle = {
   visible: true,
   color: "rgba(0,0,0,0.15)",
@@ -46,121 +53,11 @@ const defaultLinkStyle: LinkStyle = {
   width: 1,
   curvature: 0,
 
-  directionalArrowLength: 0,
-  directionalArrowColor: "rgba(0,0,0,0.15)",
-  directionalArrowRelPos: 0.5,
+  // directionalArrowLength: 0,
+  // directionalArrowColor: "rgba(0,0,0,0.15)",
+  // directionalArrowRelPos: 0.5,
 }
 
-
-export class GraphRendererCanvas2D {
-  public readonly onNeedsRedraw: Observable<() => void, this>;
-  public readonly nodeStyle: Observable<NodeStyle | ((node: GraphNode) => NodeStyle), this>;
-  public readonly linkStyle: Observable<LinkStyle | ((node: GraphLink) => LinkStyle), this>;
-  public readonly tickSteps: Observable<((self: GraphRendererCanvas2D) => void)[], this>;
-  public readonly globalScale: Observable<number, this>;
-
-  canvasContext: Observable<CanvasRenderingContext2D, this>;
-  graphData: Observable<GraphData, this>
-
-  constructor(canvasContext: CanvasRenderingContext2D, tickSteps: ((self: GraphRendererCanvas2D) => void)[], graphDataObs: Observable<GraphData, unknown>) {
-    this.graphData = new LinkedObservable(this, graphDataObs, [])
-
-    this.onNeedsRedraw = new Observable(this, noop, []);
-
-    this.nodeStyle = new Observable(this, defaultNodeStyle as NodeStyle | ((node: GraphNode) => NodeStyle), [
-      () => this.onNeedsRedraw.value()
-    ]);
-    this.linkStyle = new Observable(this, defaultLinkStyle as LinkStyle | ((node: GraphLink) => LinkStyle), [
-      () => this.onNeedsRedraw.value()
-    ]);
-
-    this.tickSteps = new Observable(this, tickSteps, [
-      () => this.onNeedsRedraw.value()
-    ]);
-
-    this.globalScale = new Observable(this, 1, []);
-    this.canvasContext = new Observable(this, canvasContext, []);
-  }
-
-  public tick() {
-    this.tickSteps.value.forEach(step => step(this))
-  }
-}
-
-// Rendering logic
-const paintNodes = (padAmount: number) => (renderer: GraphRendererCanvas2D) => {
-  const ctx = renderer.canvasContext.value;
-  const padding = padAmount / renderer.globalScale.value;
-
-  const styleGetter = renderer.nodeStyle.value;
-  const getStyle = typeof styleGetter === "function" ? styleGetter : () => styleGetter;
-
-  ctx.save();
-  for(const node of renderer.graphData.value.nodes) {
-    const style = getStyle(node);
-    if (!style.visible) continue;
-    
-    // Draw wider nodes by 1px on shadow canvas for more precise hovering (due to boundary anti-aliasing)
-    const r = style.relSize + padding;
-
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
-    ctx.fillStyle = style.color;
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-const paintLinks = (padAmount: number) => (renderer: GraphRendererCanvas2D) => {  
-  const ctx = renderer.canvasContext.value;
-  const globalScale = renderer.globalScale.value;
-  const padding = padAmount / renderer.globalScale.value;
-
-  const styleGetter = renderer.linkStyle.value;
-  const getStyle = typeof styleGetter === "function" ? styleGetter : () => styleGetter;
-
-  const isIncorrect = (link: GraphLink) => {
-    const start = link.source;
-    const end = link.target;
-    return !start || !end || start.x === undefined || end.x === undefined;
-  }
-
-  const linksToDraw = renderer.graphData.value.links.filter(link => !isIncorrect(link) && getStyle(link).visible);
-
-  // Bundle strokes per unique color/width/dash for performance optimization
-  const linksGrouped = toFlat(linksToDraw, [
-    link => getStyle(link).color,
-    link => getStyle(link).width,
-    link => getStyle(link).lineDash + "",
-  ]);
-
-  ctx.save();
-  for (const { values: links } of linksGrouped) {
-    const style = getStyle(links[0]);
-
-    ctx.beginPath();
-    for (const link of links) {
-      const start = link.source;
-      const end = link.target;
-      ctx.moveTo(start.x, start.y);
-
-      const cps = getControlPoints(link, style.curvature);
-      if (cps.length === 0) {
-        ctx.lineTo(end.x, end.y);
-      } else if (cps.length === 2) {
-        ctx.quadraticCurveTo(cps[0], cps[1], end.x, end.y);
-      } else {
-        ctx.bezierCurveTo(cps[0], cps[1], cps[2], cps[3], end.x, end.y);
-      }
-    }
-
-    ctx.strokeStyle = style.color;
-    ctx.lineWidth = (style.width || 1) / globalScale + padding;
-    ctx.setLineDash(style.lineDash);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
 
 const getControlPoints = (link: GraphLink, curvature: number): number[] => {
   if (!curvature || curvature === 0) return [];
@@ -183,6 +80,137 @@ const getControlPoints = (link: GraphLink, curvature: number): number[] => {
     // Same point, draw a loop
     const d = curvature * 70;
     return [end.x, end.y - d, end.x + d, end.y];
+  }
+}
+
+
+export class Canvas2DGraphRender {
+  private readonly NODE_PADDING_SHADOW = 1;
+  // padding for wider line Link (2) + interaction precision (4)
+  private readonly LINK_PADDING_SHADOW = 2 + 4; 
+
+  public readonly onNeedsRedraw: Observable<() => void, this>;
+  public readonly nodeStyle: Observable<((node: GraphNode) => NodeStyle), this>;
+  public readonly linkStyle: Observable<((node: GraphLink) => LinkStyle), this>;
+  public readonly tickSteps: Observable<(() => void)[], this>;
+  public readonly globalScale: Observable<number, this>;
+
+  isShadowCanvas: boolean;
+  canvasContext: Observable<CanvasRenderingContext2D, this>;
+  graphData: Observable<GraphData, this>
+
+  constructor(canvasContext: CanvasRenderingContext2D, graphDataObs: Observable<GraphData, unknown>, isShadowCanvas = false) {
+    this.isShadowCanvas = isShadowCanvas;
+    this.onNeedsRedraw = new Observable(this, noop, []);
+    const requestRedraw = () => this.onNeedsRedraw.value()
+
+    this.graphData = new LinkedObservable(this, graphDataObs, [requestRedraw]);
+
+    this.nodeStyle = new Observable(this, (() => defaultNodeStyle) as ((node: GraphNode) => NodeStyle), [requestRedraw]);
+    this.linkStyle = new Observable(this, (() => defaultLinkStyle) as ((node: GraphLink) => LinkStyle), [requestRedraw]);
+
+    this.tickSteps = new Observable(this, [
+      () => this.renderLinks(),
+      () => this.renderNodes(),
+    ], [requestRedraw]);
+
+    this.globalScale = new Observable(this, 1, []);
+    this.canvasContext = new Observable(this, canvasContext, []);
+  }
+
+  public tick() {
+    this.tickSteps.value.forEach(step => step())
+  }
+
+  private renderNodes() {
+    const ctx = this.canvasContext.value;
+    const globalScale = this.globalScale.value;
+    // Select padding dynamically based on whether it's a shadow canvas or main canvas
+    const paddingAmount = this.isShadowCanvas ? this.NODE_PADDING_SHADOW : 0;
+    const padding = paddingAmount / globalScale;
+
+    const getStyle = this.nodeStyle.value;
+
+    ctx.save();
+    for (const node of this.graphData.value.nodes) {
+      const style = getStyle(node);
+      if (!style.visible) continue;
+
+      // Check if a custom draw function is provided in the style
+      if (style.drawNodeFn) {
+        // Call the custom function if provided
+        style.drawNodeFn(ctx, node, style, globalScale, this.isShadowCanvas);
+      } else {
+        // Use the default internal drawing function
+        this.defaultPaintNode(ctx, node, style, padding);
+      }
+    }
+    ctx.restore();
+  }
+  
+  private defaultPaintNode(ctx: CanvasRenderingContext2D, node: GraphNode, style: NodeStyle, padding: number) {
+    // Draw logic extracted from the original paintNodes function
+    const r = style.relSize + padding;
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
+    ctx.fillStyle = style.color;
+    ctx.fill();
+  }
+
+  private renderLinks() {
+    const ctx = this.canvasContext.value;
+    const globalScale = this.globalScale.value;
+    // Select padding dynamically
+    const paddingAmount = this.isShadowCanvas ? this.LINK_PADDING_SHADOW : 0;
+    const padding = paddingAmount / globalScale;
+
+    const getStyle = this.linkStyle.value;
+
+    const isIncorrect = (link: GraphLink) => {
+      const start = link.source;
+      const end = link.target;
+      return !start || !end || start.x === undefined || end.x === undefined;
+    }
+
+    const linksToDraw = this.graphData.value.links.filter(link => !isIncorrect(link) && getStyle(link).visible);
+
+    ctx.save();
+    // In this refactored approach, we iterate through links, handling default vs custom drawing per link
+    for (const link of linksToDraw) {
+        const style = getStyle(link);
+
+        // Check if a custom draw function is provided in the style
+        if (style.drawLinkFn) {
+            style.drawLinkFn(ctx, link, style, globalScale, this.isShadowCanvas);
+        } else {
+            // Use the default internal drawing function
+            this.defaultPaintLink(ctx, link, style, padding, globalScale);
+        }
+    }
+    ctx.restore();
+  }
+
+  // Extracted default link painting logic (simplified grouping is removed for clarity/dynamic style iteration)
+  private defaultPaintLink(ctx: CanvasRenderingContext2D, link: GraphLink, style: LinkStyle, padding: number, globalScale: number) {
+    const start = link.source;
+    const end = link.target;
+    
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+
+    const cps = getControlPoints(link, style.curvature);
+    if (cps.length === 0) {
+        ctx.lineTo(end.x, end.y);
+    } else if (cps.length === 2) {
+        ctx.quadraticCurveTo(cps[0], cps[1], end.x, end.y);
+    } else {
+        ctx.bezierCurveTo(cps[0], cps[1], cps[2], cps[3], end.x, end.y);
+    }
+
+    ctx.strokeStyle = style.color;
+    ctx.lineWidth = (style.width || 1) / globalScale + padding;
+    ctx.setLineDash(style.lineDash);
+    ctx.stroke();
   }
 }
 
@@ -213,8 +241,8 @@ export class GraphControllerCanvas2D {
   public readonly graphData: Observable<GraphData, this>;
 
   public readonly simulation: D3Bindings;
-  public readonly forceGraph: GraphRendererCanvas2D;
-  public readonly shadowGraph: GraphRendererCanvas2D;
+  public readonly forceGraph: Canvas2DGraphRender;
+  public readonly shadowGraph: Canvas2DGraphRender;
   private colorTracker: ColorTracker<{
     type: string;
     entity: GraphNode | GraphLink
@@ -294,30 +322,22 @@ export class GraphControllerCanvas2D {
 
     this.simulation = new D3Bindings();
 
-    this.forceGraph = new GraphRendererCanvas2D(
+    this.forceGraph = new Canvas2DGraphRender(
       this.canvasContext,
-      [
-        paintLinks(0),
-        paintNodes(0),
-      ],
       this.simulation.graphData,
     ).onNeedsRedraw.set(() => (this.needsRedraw = true));
 
     this.colorTracker = new ColorTracker();
-    this.shadowGraph = new GraphRendererCanvas2D(
+    this.shadowGraph = new Canvas2DGraphRender(
       this.shadowCanvasContext,
-      [
-        paintLinks(2 + 4), // linkHoverPrecision
-        paintNodes(1),
-      ],
       this.simulation.graphData,
+      true,
     )
       .onNeedsRedraw.set(() => (this.needsRedraw = true))
       .nodeStyle.set((v: GraphNode) => ({ ...defaultNodeStyle, color: v.data?.__indexColor ?? defaultNodeStyle.color}))
       .linkStyle.set((v: GraphLink) => ({ ...defaultLinkStyle, color: v.data?.__indexColor ?? defaultLinkStyle.color}));
-    
-    this.autoPauseRedraw = new Observable(this, true, []);
 
+    this.autoPauseRedraw = new Observable(this, true, []);
     this.graphData = new LinkedObservable(this, this.simulation.graphData, [
       (graphData) => {
         if ([graphData.nodes, graphData.links].every((arr) => (arr || []).every((element) => !element.data?.__indexColor))) {
@@ -340,7 +360,6 @@ export class GraphControllerCanvas2D {
               element.data.__indexColor = this.colorTracker.register({ type, entity: element });
             })
         })
-
       }
     ])
   }
@@ -349,11 +368,11 @@ export class GraphControllerCanvas2D {
     cb(this.simulation);
     return this;
   }
-  updateForegroundRender(cb: (root: GraphRendererCanvas2D) => unknown) {
+  updateForegroundRender(cb: (root: Canvas2DGraphRender) => unknown) {
     cb(this.forceGraph);
     return this;
   }
-  updateMouseTrackingRender(cb: (root: GraphRendererCanvas2D) => unknown) {
+  updateMouseTrackingRender(cb: (root: Canvas2DGraphRender) => unknown) {
     cb(this.shadowGraph);
     return this;
   }
@@ -381,7 +400,7 @@ export class GraphControllerCanvas2D {
             return null;
           }
           const obj = this.getObjUnderPointer();
-          return obj && obj.type === "Node" ? obj.d : null; // Only drag nodes
+          return obj && obj.type === "Node" ? obj.entity : null; // Only drag nodes
         })
         .on("start", (ev) => {
           const obj = ev.subject;
@@ -517,7 +536,7 @@ export class GraphControllerCanvas2D {
     ["pointermove", "pointerdown"].forEach((evType) =>
       this.container.addEventListener(
         evType,
-        (ev) => {
+        (ev: any) => {
           if (evType === "pointerdown") {
             this.isPointerPressed = true; // track click state
             // pointerDownEvent = ev;
@@ -546,7 +565,7 @@ export class GraphControllerCanvas2D {
     // Handle click/touch events on nodes/links
     this.container.addEventListener(
       "pointerup",
-      (ev) => {
+      () => {
         if (!this.isPointerPressed) {
           return; // don't trigger click events if pointer is not pressed on the canvas
         }
@@ -606,11 +625,6 @@ export class GraphControllerCanvas2D {
     const refreshShadowCanvas = throttle(() => {
       // wipe canvas
       clearCanvas(this.shadowCanvasContext, this.dimensions.value.width, this.dimensions.value.height);
-
-      // Adjust link hover area
-      // this.shadowGraph.linkWidth(
-      //   (l) => accessorFn(this.linkWidth)(l) + this.linkHoverPrecision,
-      // );
 
       // redraw
       const t = d3ZoomTransform(this.canvas);

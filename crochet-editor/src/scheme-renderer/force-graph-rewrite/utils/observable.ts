@@ -20,6 +20,10 @@ export class Observable<T, R> {
   public triggerChange(): void {
     this.handlers.forEach(h => h(this.value, null));
   }
+
+  public onChange(handler: (value: T, prev: T | null) => unknown) {
+    this.handlers.push(handler)
+  }
 }
 
 export class LinkedObservable<T, R> extends Observable<T, R> {

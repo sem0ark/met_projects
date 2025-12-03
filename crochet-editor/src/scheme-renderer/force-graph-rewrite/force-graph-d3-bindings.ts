@@ -2,7 +2,7 @@
 import * as d3 from "d3-force";
 import { type Force } from "d3-force";
 
-import { Observable } from "./kapsule/observable";
+import { Observable } from "./utils/observable";
 
 const noop = () => {}
 
@@ -41,6 +41,12 @@ export type GraphData = {
   data?: Record<string, any>
 };
 
+export const d3ForceCenter = () => d3.forceCenter();
+export const d3ForceCollide = () => d3.forceCollide();
+export const d3ForceLink = () => d3.forceLink();
+export const d3ForceManyBody = () => d3.forceManyBody();
+
+
 export class D3Bindings {
   public readonly graphData: Observable<GraphData, this>;
 
@@ -65,19 +71,18 @@ export class D3Bindings {
     this.engineRunning = false;
     this.forceSimulation = d3.forceSimulation().stop();
 
-    this.forceSimulation.force("link", d3.forceLink())
-    this.forceSimulation.force("charge", d3.forceManyBody())
-    this.forceSimulation.force("center", d3.forceCenter())
-    // .force("dagRadial", null)
+    this.forceSimulation.force("link", d3.forceCollide(5))
+
+    // this.forceSimulation.force("link", d3.forceLink())
+    // this.forceSimulation.force("charge", d3.forceManyBody())
+    // this.forceSimulation.force("center", d3.forceCenter())
 
     this.cntTicks = 0; // ticks passed from the start of countdown
     this.startTickTimeMs = Number(new Date()); // countdown start time
     this.engineRunning = false;
 
     this.graphData = new Observable(this, { nodes: [], links: [] } as GraphData, [
-      () => {
-        this.recomputeGraph()
-      }
+      () => this.update(),
     ]);
 
     this.d3AlphaMin = new Observable(this, 0, [])
@@ -95,12 +100,36 @@ export class D3Bindings {
     this.onEngineStop = new Observable(this, noop, [])
   }
 
-  public getD3Force(forceName: string) {
+  public getForce(forceName: string) {
     return this.forceSimulation.force(forceName); // Force getter
   }
-  public setD3Force(forceName: string, forceFn: Force<any, any>) {
+
+  public setForce<T extends Force<any, any>>(forceName: string, forceFn: T): T {
     this.forceSimulation.force(forceName, forceFn); // Force setter
+    return forceFn;
   }
+
+  public removeForce(forceName: string) {
+    if(this.getForce(forceName)) {
+      this.forceSimulation.force(forceName, null);
+    }
+
+    throw new Error(`Force '${forceName}' does not exist.`);
+  }
+
+  public createLinkForce(forceName: string, getLinks: (data: GraphData) => GraphLink[]): ReturnType<typeof d3.forceLink> {
+    if(this.getForce(forceName)) {
+      throw new Error(`Force '${forceName}' was already added.`);
+    }
+
+    const force = d3.forceLink().id(node => (node as GraphNode).id);
+    this.forceSimulation.force(forceName, force);
+
+    this.graphData.onChange((data) => force.links(getLinks(data)));
+    this.graphData.triggerChange();
+    return force;
+  }
+
   public d3ReheatSimulation() {
     this.forceSimulation.alpha(1);
     this.resetCountdown();
@@ -130,21 +159,18 @@ export class D3Bindings {
     }
   }
 
-  private recomputeGraph() {
+  private update() {
     this.engineRunning = false; // Pause simulation
     this.onUpdate.value();
 
-    // Feed data to force-directed layout
-    this.forceSimulation
-      .stop()
-      .alpha(1) // re-heat the simulation
-      .nodes(this.graphData.value.nodes);
+    // Feed data to force-directed layout and re-heat the simulation.
+    this.forceSimulation.stop().alpha(1).nodes(this.graphData.value.nodes);
 
     // add links (if link force is still active)
-    const linkForce = this.forceSimulation.force("link")! as ReturnType<typeof d3.forceLink>;
-    if (linkForce) {
-      linkForce.id(node => (node as GraphNode).id).links(this.graphData.value.links);
-    }
+    // const linkForce = this.forceSimulation.force("link")! as ReturnType<typeof d3.forceLink>;
+    // if (linkForce) {
+    //   linkForce.id(node => (node as GraphNode).id).links(this.graphData.value.links);
+    // }
 
     // Initial ticks before starting to render.
     // Repeat "warmupTicks" times or when simulation slows down enough.

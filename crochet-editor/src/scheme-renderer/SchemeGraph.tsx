@@ -76,7 +76,6 @@ type GraphNodeSelectorConfig = {
   radius: number
   color: string // css color
 }
-// type GraphControllerOptions = {}
 
 class GraphController {
   private instance: ForceGraph;
@@ -105,8 +104,6 @@ class GraphController {
       .nodeCanvasObjectMode((node) => {
         return this.nodeToConfigs.has(node as GraphNode) ? "before" : undefined
       })
-      .nodeCanvasObject((node, ctx) => nodePaint(node, this.instance.nodeColor(), ctx))
-      .nodePointerAreaPaint(nodePaint)
       .nodeCanvasObject((node, ctx) => {
         if (node.x && node.y) {
           const configs = this.nodeToConfigs.get(node as GraphNode);
