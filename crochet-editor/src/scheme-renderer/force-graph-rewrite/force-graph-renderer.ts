@@ -3,9 +3,8 @@ import { zoom as d3Zoom, zoomTransform as d3ZoomTransform } from "d3-zoom";
 import { drag as d3Drag } from "d3-drag";
 import { max as d3Max, min as d3Min, sum as d3Sum } from "d3-array";
 
-import { toFlat } from "./index-array-by";
 import { D3Bindings, type GraphData, type GraphLink, type GraphNode } from "./force-graph-d3-bindings";
-import ColorTracker from "./canvas-color-tracker";
+import { ColorTracker } from "./color-tracker";
 import { LinkedObservable, Observable } from "./utils/observable";
 import { throttle } from "./utils/throttle";
 
@@ -97,14 +96,14 @@ export class Canvas2DGraphRender {
 
   isShadowCanvas: boolean;
   canvasContext: Observable<CanvasRenderingContext2D, this>;
-  graphData: Observable<GraphData, this>
+  graph: Observable<GraphData, this>
 
   constructor(canvasContext: CanvasRenderingContext2D, graphDataObs: Observable<GraphData, unknown>, isShadowCanvas = false) {
     this.isShadowCanvas = isShadowCanvas;
     this.onNeedsRedraw = new Observable(this, noop, []);
     const requestRedraw = () => this.onNeedsRedraw.value()
 
-    this.graphData = new LinkedObservable(this, graphDataObs, [requestRedraw]);
+    this.graph = new LinkedObservable(this, graphDataObs, [requestRedraw]);
 
     this.nodeStyle = new Observable(this, (() => defaultNodeStyle) as ((node: GraphNode) => NodeStyle), [requestRedraw]);
     this.linkStyle = new Observable(this, (() => defaultLinkStyle) as ((node: GraphLink) => LinkStyle), [requestRedraw]);
@@ -132,7 +131,7 @@ export class Canvas2DGraphRender {
     const getStyle = this.nodeStyle.value;
 
     ctx.save();
-    for (const node of this.graphData.value.nodes) {
+    for (const node of this.graph.value.nodes) {
       const style = getStyle(node);
       if (!style.visible) continue;
 
@@ -172,7 +171,7 @@ export class Canvas2DGraphRender {
       return !start || !end || start.x === undefined || end.x === undefined;
     }
 
-    const linksToDraw = this.graphData.value.links.filter(link => !isIncorrect(link) && getStyle(link).visible);
+    const linksToDraw = this.graph.value.links.filter(link => !isIncorrect(link) && getStyle(link).visible);
 
     ctx.save();
     // In this refactored approach, we iterate through links, handling default vs custom drawing per link
@@ -238,11 +237,11 @@ export class GraphControllerCanvas2D {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private hoverObject: any;
 
-  public readonly graphData: Observable<GraphData, this>;
+  public readonly graph: Observable<GraphData, this>;
 
   public readonly simulation: D3Bindings;
-  public readonly forceGraph: Canvas2DGraphRender;
-  public readonly shadowGraph: Canvas2DGraphRender;
+  public readonly foregroundRender: Canvas2DGraphRender;
+  public readonly mouseInteractionRender: Canvas2DGraphRender;
   private colorTracker: ColorTracker<{
     type: string;
     entity: GraphNode | GraphLink
@@ -257,7 +256,7 @@ export class GraphControllerCanvas2D {
   public readonly zoomInteractionEnabled: Observable<boolean, this>;
   public readonly panInteractionEnabled: Observable<boolean, this>;
 
-  constructor(root: HTMLElement, dimensions: {width: number, height: number}) {
+  constructor(graphSimulation: D3Bindings, root: HTMLElement, dimensions: {width: number, height: number}) {
     this.is_initialized = false;
     this.needsRedraw = false
 
@@ -320,27 +319,27 @@ export class GraphControllerCanvas2D {
       }
     ]);
 
-    this.simulation = new D3Bindings();
+    this.simulation = graphSimulation;
 
-    this.forceGraph = new Canvas2DGraphRender(
+    this.foregroundRender = new Canvas2DGraphRender(
       this.canvasContext,
-      this.simulation.graphData,
+      this.simulation.graph,
     ).onNeedsRedraw.set(() => (this.needsRedraw = true));
 
     this.colorTracker = new ColorTracker();
-    this.shadowGraph = new Canvas2DGraphRender(
+    this.mouseInteractionRender = new Canvas2DGraphRender(
       this.shadowCanvasContext,
-      this.simulation.graphData,
+      this.simulation.graph,
       true,
     )
       .onNeedsRedraw.set(() => (this.needsRedraw = true))
-      .nodeStyle.set((v: GraphNode) => ({ ...defaultNodeStyle, color: v.data?.__indexColor ?? defaultNodeStyle.color}))
-      .linkStyle.set((v: GraphLink) => ({ ...defaultLinkStyle, color: v.data?.__indexColor ?? defaultLinkStyle.color}));
+      .nodeStyle.set((v: GraphNode) => ({ ...defaultNodeStyle, color: v.__indexColor ?? defaultNodeStyle.color}))
+      .linkStyle.set((v: GraphLink) => ({ ...defaultLinkStyle, color: v.__indexColor ?? defaultLinkStyle.color}));
 
     this.autoPauseRedraw = new Observable(this, true, []);
-    this.graphData = new LinkedObservable(this, this.simulation.graphData, [
+    this.graph = new LinkedObservable(this, this.simulation.graph, [
       (graphData) => {
-        if ([graphData.nodes, graphData.links].every((arr) => (arr || []).every((element) => !element.data?.__indexColor))) {
+        if ([graphData.nodes, graphData.links].every((arr) => (arr || []).every((element) => !element.__indexColor))) {
           this.colorTracker.reset();
         }
 
@@ -350,34 +349,36 @@ export class GraphControllerCanvas2D {
         ].forEach(({ type, objs }) => {
           objs
             .filter((element) => {
-              if (!element.data?.__indexColor) return true;
+              if (!element.__indexColor) return true;
 
-              const cur = this.colorTracker.lookup(element.data?.__indexColor);
+              const cur = this.colorTracker.lookup(element.__indexColor);
               return !cur || !cur.entity || cur.entity !== element;
             })
             .forEach((element) => {
-              element.data ??= {};
-              element.data.__indexColor = this.colorTracker.register({ type, entity: element });
+              element.__indexColor = this.colorTracker.register({ type, entity: element });
             })
         })
       }
     ])
+
+    this.init();
+    setTimeout(() => this.startRenderCycle(), 10);
   }
 
-  updateSimulation(cb: (root: D3Bindings) => unknown) {
+  public updateSimulation(cb: (root: D3Bindings) => unknown) {
     cb(this.simulation);
     return this;
   }
-  updateForegroundRender(cb: (root: Canvas2DGraphRender) => unknown) {
-    cb(this.forceGraph);
+  public updateForegroundRender(cb: (root: Canvas2DGraphRender) => unknown) {
+    cb(this.foregroundRender);
     return this;
   }
-  updateMouseTrackingRender(cb: (root: Canvas2DGraphRender) => unknown) {
-    cb(this.shadowGraph);
+  public updateMouseTrackingRender(cb: (root: Canvas2DGraphRender) => unknown) {
+    cb(this.mouseInteractionRender);
     return this;
   }
 
-  getObjUnderPointer() {
+  private getObjUnderPointer() {
     const pxScale = window.devicePixelRatio;
     const px =
       this.pointerPos.x > 0 && this.pointerPos.y > 0
@@ -386,12 +387,13 @@ export class GraphControllerCanvas2D {
 
     // Lookup object per pixel color
     if (px) {
-      return this.colorTracker.lookup(px.data);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return this.colorTracker.lookup(px.data as any);
     }
     return null;
   };
 
-  init() {
+  private init() {
     // Setup node drag interaction
     d3Select(this.canvas).call(
       d3Drag<HTMLCanvasElement, unknown>()
@@ -520,12 +522,12 @@ export class GraphControllerCanvas2D {
         // re-zoom, if still in default position (not user modified)
         if (
           d3ZoomTransform(this.canvas).k === this.lastSetZoom &&
-          this.simulation.graphData.value.nodes.length
+          this.simulation.graph.value.nodes.length
         ) {
           this.zoom.scaleTo(
             this.zoom.__baseElem,
             (this.lastSetZoom =
-              ZOOM2NODES_FACTOR / Math.cbrt(this.simulation.graphData.value.nodes.length)),
+              ZOOM2NODES_FACTOR / Math.cbrt(this.simulation.graph.value.nodes.length)),
           );
           this.needsRedraw = true;
         }
@@ -621,14 +623,14 @@ export class GraphControllerCanvas2D {
     this.is_initialized = true;
   }
 
-  startRenderCycle() {
+  private startRenderCycle() {
     const refreshShadowCanvas = throttle(() => {
       // wipe canvas
       clearCanvas(this.shadowCanvasContext, this.dimensions.value.width, this.dimensions.value.height);
 
       // redraw
       const t = d3ZoomTransform(this.canvas);
-      this.shadowGraph.globalScale.set(t.k).tick();
+      this.mouseInteractionRender.globalScale.set(t.k).tick();
     }, HOVER_CANVAS_THROTTLE_DELAY);
 
     const animationCycle = () => {
@@ -686,7 +688,7 @@ export class GraphControllerCanvas2D {
         const globalScale = d3ZoomTransform(this.canvas).k;
         // state?.onRenderFramePre?.(ctx, globalScale);
         this.simulation.tick();
-        this.forceGraph.globalScale.set(globalScale).tick();
+        this.foregroundRender.globalScale.set(globalScale).tick();
         // state?.onRenderFramePost?.(ctx, globalScale);
       }
 
@@ -697,12 +699,12 @@ export class GraphControllerCanvas2D {
     animationCycle();
   }
 
-  destructor() {
+  public destructor() {
     this.pauseAnimation();
     this.simulation.destructor();
   }
 
-  adjustCanvasSize() {
+  private adjustCanvasSize() {
     if (!this.is_initialized || !this.canvas) {
       return;
     }
@@ -740,17 +742,17 @@ export class GraphControllerCanvas2D {
     this.needsRedraw = true;
   }
 
-  graph2ScreenCoords(x: number, y: number) {
+  public graph2ScreenCoords(x: number, y: number) {
     const t = d3ZoomTransform(this.canvas);
     return { x: x * t.k + t.x, y: y * t.k + t.y };
   }
 
-  screen2GraphCoords(x: number, y: number) {
+  public screen2GraphCoords(x: number, y: number) {
     const t = d3ZoomTransform(this.canvas);
     return { x: (x - t.x) / t.k, y: (y - t.y) / t.k };
   }
 
-  centerAt(x: number, y: number) {
+  public centerAt(x?: number, y?: number) {
     if (!this.canvas) return null; // no canvas yet
     const t = d3ZoomTransform(this.canvas);
     const centerX = (this.dimensions.value.width / 2 - t.x) / t.k;
@@ -773,7 +775,7 @@ export class GraphControllerCanvas2D {
     };
   }
 
-  canvasZoom(k: number) {
+  public canvasZoom(k?: number) {
     if (!this.canvas) return null; // no canvas yet
 
     // setter
@@ -787,7 +789,7 @@ export class GraphControllerCanvas2D {
     return d3ZoomTransform(this.canvas).k;
   }
 
-  zoomToFit(padding = 10, bboxArgs: null | {x: [number, number], y: [number, number]} = null) {
+  public zoomToFit(padding = 10, bboxArgs: null | {x: [number, number], y: [number, number]} = null) {
     const bbox = !bboxArgs ? this.getGraphBbox() : bboxArgs;
 
     if (bbox) {
@@ -812,11 +814,11 @@ export class GraphControllerCanvas2D {
     return this;
   }
 
-  getGraphBbox(nodeFilter = () => true) {
-    const styleGetter = this.forceGraph.nodeStyle.value;
+  public getGraphBbox(nodeFilter = () => true) {
+    const styleGetter = this.foregroundRender.nodeStyle.value;
     const getStyle = typeof styleGetter === "function" ? styleGetter : () => styleGetter;
 
-    const nodesPos = this.simulation.graphData.value.nodes.filter(nodeFilter).map((node) => ({
+    const nodesPos = this.simulation.graph.value.nodes.filter(nodeFilter).map((node) => ({
       x: node.x,
       y: node.y,
       r: getStyle(node).relSize,
@@ -836,14 +838,14 @@ export class GraphControllerCanvas2D {
     };
   }
 
-  pauseAnimation() {
+  public pauseAnimation() {
     if (this.animationFrameRequestId) {
       cancelAnimationFrame(this.animationFrameRequestId);
       this.animationFrameRequestId = null;
     }
   }
 
-  resumeAnimation() {
+  public resumeAnimation() {
     if (!this.animationFrameRequestId) {
       this.animationCycle();
     }

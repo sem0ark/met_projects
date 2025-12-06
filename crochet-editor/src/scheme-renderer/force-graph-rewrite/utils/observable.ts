@@ -17,6 +17,10 @@ export class Observable<T, R> {
     return this.root;
   }
 
+  public setFunc(setter: (old: T) => T): R {
+    return this.set(setter(this.value));
+  }
+
   public triggerChange(): void {
     this.handlers.forEach(h => h(this.value, null));
   }
