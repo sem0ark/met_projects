@@ -1,4 +1,4 @@
-import { D3Bindings, type GraphNode, type GraphLink } from "./force-graph-rewrite/force-graph-d3-bindings";
+import { D3Bindings, type GraphNode, type GraphLink } from "./force-graph-rewrite/d3-bindings";
 
 function findNeighborsUpToDepth(
   startNode: GraphNode,

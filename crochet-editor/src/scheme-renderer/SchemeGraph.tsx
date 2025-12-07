@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
-import { D3Bindings, type InitialGraphData, type GraphNode, type GraphLink, d3ForceCollide, d3ForceManyBody } from "./force-graph-rewrite/force-graph-d3-bindings";
-import { GraphControllerCanvas2D, type LinkStyle, type NodeStyle } from "./force-graph-rewrite/force-graph-renderer";
+import { D3Bindings, type InitialGraphData, type GraphNode, type GraphLink, d3ForceCollide, d3ForceManyBody } from "./force-graph-rewrite/d3-bindings";
+import { GraphControllerCanvas2D, type LinkStyle, type NodeStyle } from "./force-graph-rewrite/canvas-controller";
 import { GraphController } from "./graph-controller";
 
 type NodeData = {
