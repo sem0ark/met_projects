@@ -46,29 +46,121 @@ Description:
 - Considering that in complex stitches we want to potentially connect multiple places, we need to make an intuitive way of controlling where the sitch goes, better with some kind of pointer. -> just a combination of 2 pointers (end of thread, where to make a sitch)
 - We can differentiate the kinds of stitches, based on the type such as:
 	- Adding a loop on the hook -> `C`
-	- Passing a hook throug an existing part of work -> `X` 
+	- Passing a hook through an existing part of work -> `X` 
 - Based on that we can construct different condigurations with different ends, including complex triples, etc.
 
-### Mouse controls
+
+**Version 2**: entering elements as if crocheting a real thing, but not completely:
+-> z/x/c + insertion selection + space should be enough.
+
+What are the actions we can do with a hook?
+- place a loop from the thread
+- pass hook through/around rl/around lr another stitch and pull out a loop from the thread
+- pull a loop from the thread through a loop already on the hook
+
+
+Description:
+- User will be able to control a pointer with arrows that will basically traverse the graph of the crochet work and also be able to select the types of stitches they can make.
+- Considering that in complex stitches we want to potentially connect multiple places, we need to make an intuitive way of controlling where the sitch goes, better with some kind of pointer. -> just a combination of 2 pointers (end of thread, where to make a sitch)
+- We can differentiate the kinds of stitches, based on the type such as:
+	- Adding a loop on the hook -> `C`
+	- Passing a hook through an existing part of work -> `X` 
+- Based on that we can construct different condigurations with different ends, including complex triples, etc.
+
+
+### Mouse controls (closer to tablet controls)
 Possible implementation will be something like selecting buttons and clicking where each time the crochet should go, but it won't be straightforward to implement intuitive controls for complex stitches, the only idea that comes to mind is making custom configurations in advance, which is complicated.
+
+User should be able to simply "draw" elements with a mouse without using the keyboard too much, just circular menu + Ctrl-Z/Ctrl-Shift-Z + mouse buttons and gestures.
+
+### Graph implementation
+
+Supposed approach for preview (edit view)
+
+- We are using d3's implementation of physics for a graph.
+- Different links will have force value and distance based on its type. -> should be set through a function accessor for force/distance, based on d3 docs.
+- Problem: how should we keep in sync all the information about the graph, while still making sure all the data is in place? Looks like placing all the data in the node looks the most promising, but still annoying in some cases, I suppose making it external should be better...
+
+Implemented something like an "observable graph", which will allow subscribing to the specific changes in the graph.
+
+Process of making a stitch:
+- Simple chain
+	- user clicks a button "Z"
+	- user click a button
+	- create a new node of type chain sticth
+	- add a link between previous start node and new node of transparent type
+	- set new node to be a start node
+
+- N crochet
+	- user clicks a button "C"
+	- create a new node of type single crochet
+	- add a link between previous start node and new node of transparent type
+	- add a link between target node and new node of N crochet type
+
+- multi-N crochet
+	- user clicks a button and keeps target to be the same
+	- create a new node of type single crochet
+	- add a link between previous start node and new node of transparent type
+	- add a link between target node and new node of N crochet type
+	- set new node to be a start node
+
+
+
 
 # Tasks
 - [x] Migrate deps from force-graph to lower the bundle -> reworked some of the dependencies and changed their implementation to lower the amount of downloaded libraries, because multiple deps of force-graph were loading something like preact just for a single utility function.
 
 - [x] Initial POC implementation -> make a graph viz with keyboard controls and just colors as stubs.
-  - [x] Get graph highlight implementation working.
-  - [x] Make a connector of the Graph instance to React through Zustand.
-  - [x] Make highligh movable with keyboard.
-  - [x] Allow multiple pointers, attaching to the graph instance.
+- [x] 	Get graph highlight implementation working.
+- [x] 	Make a connector of the Graph instance to React through Zustand.
+- [x] 	Make highligh movable with keyboard.
+- [x] 	Allow multiple pointers, attaching to the graph instance.
 
-- [ ] Intial implementation
-	- [ ] Change force-graph rendering logic
-		- [ ] Render selection as a separate layer
-	- [ ] Add simple stitches
-	- [ ] Add joined rendering
-	- [ ] Add undo/redo functionality
-	- [ ] Add copy-paste functionality -> copying actions, but applying to different nodes
-	- [ ] Add autorotation, based on center of the work
+- [ ] Initial implementation
+- [x]   Refactor and stabilize force-graph implementation -> removed most of the hooks and niceties and kept only main rendering pipeline and simulation bindings, decouples simulation logic from rendering to later optimize
+- [x] 	Change force-graph rendering logic
+- [x] 		Render selection as a separate layer
+- [x] 	Add simple stitches
+- [x] 	Add joined stitch rendering
+
+- [ ] Physics simulation implementation
+- [ ] 	Check the implementation from crochetPARADE
+- [ ]   Check whether it is possible to integrate standard gauge metric into simulation
+- [ ]   Connect strain simulation to the graph engine and make it iterative + background
+				Forces: top/bottom strain of a stitch, 
+
+Links to check:
+- https://arxiv.org/html/2501.07567v3 (https://arxiv.org/html/2501.07567v1)
+- https://www.researchgate.net/publication/365380334_Topology_based_modelling_of_crochet_structures
+- https://www.researchgate.net/publication/318175297_Computing_Stitches_and_Crocheting_Geometry
+- https://dl.acm.org/doi/pdf/10.1145/3424630.3425409
+- https://www.researchgate.net/publication/366430363_FROM_STITCHES_TO_DIGITS_AND_BACK_COMPUTATIONAL_CROCHETING_OF_BRANCHING_GEOMETRIES
+- https://github.com/virtualtextiles/pytexlib/
+
+
+- [ ] UX improvements
+- [ ] 	Add visual selection of the stich insertion type (crochet-specific)
+				something like https://github.com/9inpachi/react-circular-menu/tree/master/src, but with keyboard controls
+- [ ] 	Add undo/redo functionality
+- [ ] 	Add copy-paste functionality -> copying actions, but applying to different nodes
+- [ ] 	Add autorotation, based on center of the work
+- [ ] 	Add annotations
+- [ ] 		Add "turn" annotation
+- [ ] 		Add knitting direction line and row line
+- [ ]		View modes
+- [ ]			Physical view (use something closer to the bounding box of an element)
+- [ ]			Strain view
+- [ ]			Direction + is face/back of the stitch view
+- [ ]   Color support
+
+- [ ] Experiments/ideas
+- [ ]		Implementing form constraints -> allow the last row's nodes move only along some 1D trail -> should allow testing models of shape support
+- [ ]			Add shape planning/import (on top of standard circle/square/oval/hexagon add clothing piece planning logic, should be something existing, I suppose)
+- [ ]		Moving engine from flat 2D to constrained surface 2D 
+- [ ]		Working in actual 3D is hard, same with 3D knitting (difficult to navigate with just keyboard)
+				-> make something like a pseudo 3D (simulation is still on a curved surface, but user can view 3D form of the work)
+- [ ]		Augment curved surface simulation with 
+
 
 Improving the custom webassembly implementation
 

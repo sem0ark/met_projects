@@ -1,129 +1,184 @@
 import { useCallback, useEffect, useRef } from "react";
-import { D3Bindings, d3ForceManyBody, type InitialGraphData, type GraphNode, type GraphLink } from "./force-graph-rewrite/force-graph-d3-bindings";
-import { GraphControllerCanvas2D } from "./force-graph-rewrite/force-graph-renderer";
+import { D3Bindings, type InitialGraphData, type GraphNode, type GraphLink, d3ForceCollide, d3ForceManyBody } from "./force-graph-rewrite/force-graph-d3-bindings";
+import { GraphControllerCanvas2D, type LinkStyle, type NodeStyle } from "./force-graph-rewrite/force-graph-renderer";
+import { GraphController } from "./graph-controller";
 
-
-const findNeighborsUpToDepth = (
-  startNode: GraphNode,
-  maxDepth: number,
-): Set<GraphNode> => {
-  const visited = new Set<GraphNode>();
-  const queue: { node: GraphNode; depth: number }[] = [
-    { node: startNode, depth: 0 },
-  ];
-
-  visited.add(startNode);
-
-  while (queue.length > 0) {
-    const { node, depth } = queue.shift()!; // Dequeue
-
-    if (depth >= maxDepth) continue;
-
-    for (const neighbor of node.neighbors) {
-      if (!visited.has(neighbor)) {
-        visited.add(neighbor);
-        queue.push({ node: neighbor, depth: depth + 1 });
-      }
-    }
-  }
-
-  visited.delete(startNode);
-  return visited;
+type NodeData = {
+  type: string;
+  radius: number;
+  style: NodeStyle;
+};
+type LinkData = {
+  type: string;
+  strength: number;
+  distance: number;
+  style: LinkStyle;
 };
 
+const BEGIN_NODE: NodeData = {
+  type: "begin",
+  radius: 0,
 
-const stictchDistanceApprox = {
-  direct: 1,
-  chain: 2,
-  crochet: 5,
-  crochetSide: 1,
+  style: {
+    visible: true,
+    color: "black",
+    relSize: 3,
+
+    drawNodeFn: (ctx: CanvasRenderingContext2D, node: GraphNode, style: NodeStyle, globalScale: number) => {
+      const link = node.links.find(link => link.source === node);
+      const rawdx = link ? link.target.x - link.source.x : 5;
+      const rawdy = link ? link.target.y - link.source.y : 0;
+      const dist = Math.sqrt(rawdx * rawdx + rawdy * rawdy);
+
+      const dx = rawdx / dist;
+      const dy = rawdy / dist;
+
+      ctx.beginPath();
+      const r = style.relSize;
+      ctx.moveTo(node.x + dy * r - dx * r, node.y - dx * r - dy * r);
+      ctx.lineTo(node.x - dy * r - dx * r, node.y + dx * r - dy * r);
+      ctx.lineTo(node.x + dx * r * 2, node.y + dy * r * 2);
+
+      ctx.lineWidth = 1 / globalScale;
+      ctx.fillStyle = style.color;
+      ctx.closePath();
+      ctx.fill();
+    }
+  },
 }
 
-class GraphController {
-  public readonly simulation: D3Bindings;
+const DIRECT_LINK: LinkData = {
+  type: "direct",
+  strength: 1,
+  distance: 8,
 
-  constructor(graphSimulation: D3Bindings) {
-    this.simulation = graphSimulation;
-    this.updateLocalNeighborhoods(this.simulation.graph.value.links);
+  style: {
+    visible: true,
+    color: "black",
+    lineDash: [],
+    width: 1,
+    curvature: 0,
 
-    const linkForce = this.simulation.createLinkForce("stitches");
-    linkForce.distance((link) => stictchDistanceApprox[link.type] ?? 1);
-    this.simulation.setForce("charge", d3ForceManyBody().strength(-30))
-  }
+    drawLinkFn(ctx, link, style, globalScale) {
+      const midx = (link.source.x + link.target.x) / 2;
+      const midy = (link.source.y + link.target.y) / 2;
 
-  public getClosestByDirection(currentNode: GraphNode, dirX: number, dirY: number): GraphNode {
-    if (!this.simulation) return currentNode;
-    const neighbors = findNeighborsUpToDepth(currentNode, 4);
-    const directionTolerance = Math.cos(Math.PI / 4);
+      ctx.beginPath();
+      ctx.arc(midx, midy, 2, 0, 2 * Math.PI, false);
+      ctx.fillStyle = style.color;
+      ctx.fill();      
+    },
+  },
+}
 
-    let bestMatch: GraphNode = currentNode;
-    let minDistanceSq: number = Infinity;
+const CHAIN_NODE: NodeData = {
+  type: "chain",
+  radius: 5,
 
-    for (const neighbor of neighbors) {
-      if (neighbor.x !== 0 && !neighbor.x || !neighbor.y) continue;
-      const dx = neighbor.x - currentNode.x;
-      const dy = neighbor.y - currentNode.y;
-      const distanceSq = dx * dx + dy * dy;
+  style: {
+    visible: true,
+    color: "black",
+    relSize: 5,
 
-      if (distanceSq === 0) continue;
-      const dotProduct = dx * dirX + dy * dirY;
-
-      if (dotProduct > directionTolerance * Math.sqrt(distanceSq) && distanceSq < minDistanceSq) {
-        minDistanceSq = distanceSq;
-        bestMatch = neighbor;
-      }
+    drawNodeFn: (ctx: CanvasRenderingContext2D, node: GraphNode, style: NodeStyle, globalScale: number) => {
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI, false);
+      ctx.fillStyle = style.color;
+      ctx.lineWidth = 1 / globalScale;
+      ctx.stroke();
     }
+  },
+}
 
-    return bestMatch;
-  }
+const CHAIN_LINK: LinkData = {
+  type: "chain",
+  strength: 1,
+  distance: 10,
+  style: {
+    visible: false,
+    color: "",
+    lineDash: [],
+    width: 0,
+    curvature: 0,
+  },
+}
 
-  public updateLocalNeighborhoods(links: GraphLink[]) {
-    for(const link of links) {
-      link.source.neighbors = link.source.neighbors ?? [];
-      link.target.neighbors = link.target.neighbors ?? [];
-      link.source.links = link.source.links ?? [];
-      link.target.links = link.target.links ?? [];
+const CROCHET_NODE: NodeData = {
+  type: "crochet",
+  radius: 5,
 
-      link.source.neighbors.push(link.target);
-      link.target.neighbors.push(link.source);
-      link.source.links.push(link);
-      link.target.links.push(link);
+  style: {
+    visible: true,
+    color: "black",
+    relSize: 5,
+
+    drawNodeFn: (ctx: CanvasRenderingContext2D, node: GraphNode, style: NodeStyle, globalScale: number) => {
+      const stem = node.links.find(link => link.source === node);
+      const rawdx = stem ? stem.target.x - stem.source.x : 5;
+      const rawdy = stem ? stem.target.y - stem.source.y : 0;
+      const dist = Math.sqrt(rawdx * rawdx + rawdy * rawdy);
+
+      const dx = rawdx / dist;
+      const dy = rawdy / dist;
+      const r = style.relSize;
+
+      ctx.beginPath();
+      ctx.lineCap = "round";
+      ctx.moveTo(node.x + dy * r, node.y - dx * r);
+      ctx.lineTo(node.x - dy * r, node.y + dx * r);
+
+      ctx.strokeStyle = style.color;
+      ctx.lineWidth = 3 / globalScale;
+      ctx.stroke();
     }
-  }
+  },
+}
 
-  public addLink(linkData: Partial<GraphLink>, nodeFrom: GraphNode, nodeTo: GraphNode): GraphLink {
-    const newLink = {source: nodeFrom.id, target: nodeTo.id, ...linkData} as GraphLink;
-    this.simulation.graph.setFunc((data) => {
-      data.links.push(newLink);
-      return data;
-    });
+const CROCHET_LINK_STEM: LinkData = {
+  type: "crochet-stem",
+  strength: 1,
+  distance: 10,
+  style: {
+    visible: true,
+    color: "black",
+    lineDash: [],
+    width: 3,
+    curvature: 0,
+  },
+}
 
-    this.updateLocalNeighborhoods([newLink]);
-    return newLink;
-  }
-
-  public addNode(nodeData: Partial<GraphNode>): GraphNode {
-    const newId = this.simulation.graph.value.nodes.length;
-    const newNode = {...nodeData, id: newId} as GraphNode;
-
-    this.simulation.graph.setFunc((data) => {
-      data.nodes.push(newNode);
-      return data;
-    });
-
-    return newNode;
-  }
+const CROCHET_LINK_SIDE: LinkData = {
+  type: "crochet-side",
+  strength: 1,
+  distance: 10,
+  style: {
+    visible: false,
+    color: "",
+    lineDash: [],
+    width: 0,
+    curvature: 0,
+  },
 }
 
 class SchemaController {
-  public readonly graphController: GraphController;
+  public readonly graph: GraphController;
   public startStitchFocus: GraphNode;
   public targetStitchFocus: GraphNode;
 
-  constructor(schemaView: GraphController) {
-    this.graphController = schemaView;
-    this.targetStitchFocus = this.graphController.simulation.graph.value.nodes.at(-1)!
-    this.startStitchFocus = this.graphController.simulation.graph.value.nodes.at(-1)!
+  constructor(controller: GraphController) {
+    this.graph = controller;
+    this.targetStitchFocus = controller.simulation.graph.value.nodes.at(-1)!
+    this.startStitchFocus = controller.simulation.graph.value.nodes.at(-1)!
+
+    Object.assign(this.targetStitchFocus, BEGIN_NODE, { neighbors: [], links: [] });
+
+    const linkForce = controller.simulation.createLinkForce("stitches");
+    linkForce
+      .strength((link) => (link as GraphLink & LinkData).strength ?? 1)
+      .distance((link) => (link as GraphLink & LinkData).distance ?? 1);
+
+    controller.simulation.setForce("collision", d3ForceCollide().radius((node) => (node as GraphNode & NodeData).radius))
+    controller.simulation.setForce("charge", d3ForceManyBody().strength(-5).distanceMax(200))
   }
 
   public getStartStitch() {
@@ -140,33 +195,39 @@ class SchemaController {
   }
 
   public addChainStitch() {
-    const newNode = this.graphController.addNode({
-      x: this.startStitchFocus.x + 10,
-      y: this.startStitchFocus.y - 5 + 10 * Math.random(),
+    const newNode = this.graph.addNode({
+      ...CHAIN_NODE,
+      x: this.startStitchFocus.x + 5,
+      y: this.startStitchFocus.y - 1 + 2 * Math.random(),
     });
-    this.graphController.addLink({ type: "chain" }, this.startStitchFocus, newNode);
+    this.graph.addLink({ ...CHAIN_LINK }, this.startStitchFocus, newNode);
     this.setStartStitch(newNode);
   }
 
   public addDirectLinkStitch() {
     if (this.startStitchFocus === this.targetStitchFocus || this.startStitchFocus.links.some(l => l.source === this.targetStitchFocus || l.target === this.targetStitchFocus)) return;
-    this.graphController.addLink({ type: "direct" }, this.startStitchFocus, this.targetStitchFocus);
+    this.graph.addLink({ ...DIRECT_LINK }, this.startStitchFocus, this.targetStitchFocus);
+    this.setStartStitch(this.targetStitchFocus);
   }
 
   public addCrochetStitch() {
-    if (this.startStitchFocus === this.targetStitchFocus || this.startStitchFocus.links.some(l => l.source === this.targetStitchFocus || l.target === this.targetStitchFocus)) return;
-    const newNode = this.graphController.addNode({
-      x: this.startStitchFocus.x + 10,
-      y: this.startStitchFocus.y - 5 + 10 * Math.random(),
+    if (this.startStitchFocus === this.targetStitchFocus) return;
+
+    const newNode = this.graph.addNode({
+      ...CROCHET_NODE,
+      x: this.startStitchFocus.x + 5,
+      y: this.startStitchFocus.y - 1 + 2 * Math.random(),
     });
-    this.graphController.addLink({ type: "crochet" }, newNode, this.targetStitchFocus);
-    this.graphController.addLink({ type: "crochetSide" }, this.startStitchFocus, newNode);
+    this.graph.addLink({ ...CROCHET_LINK_STEM }, newNode, this.targetStitchFocus);
+    this.graph.addLink({ ...CROCHET_LINK_SIDE }, this.startStitchFocus, newNode);
+    this.setStartStitch(newNode);
   }
 }
 
-
 function configureRendering(controller: SchemaController, renderer: GraphControllerCanvas2D) {
   const fg = renderer.foregroundRender;
+  fg.nodeStyle.set(node => (node as GraphNode & NodeData).style)
+  fg.linkStyle.set(node => (node as GraphLink & LinkData).style)
 
   const renderSelectedNodes = () => {
     const ctx = fg.canvasContext.value;
@@ -174,15 +235,15 @@ function configureRendering(controller: SchemaController, renderer: GraphControl
 
     ctx.save();
 
-    for(const [node, color] of [
-      [controller.startStitchFocus, "green"],
-      [controller.targetStitchFocus, "red"],
-    ] as [GraphNode, string][]) {
-
+    for(const [node, color, relSize] of [
+      [controller.startStitchFocus, "green", 1.2],
+      [controller.targetStitchFocus, "red", 1.4],
+    ] as [GraphNode, string, number][]) {
       const style = getStyle(node);
-      if (!style.visible) {
+
+      if (style.visible) {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, style.relSize * 1.4, 0, 2 * Math.PI, false);
+        ctx.arc(node.x, node.y, style.relSize * relSize, 0, 2 * Math.PI, false);
         ctx.strokeStyle = color; 
         ctx.stroke();
       }
@@ -228,7 +289,7 @@ export const EditorCanvas = ({className, inputData}: {
 
   // One-time instantiation and configuration
   useEffect(() => {
-    if (!ref.current) return; // Prevent re-instantiation
+    if (!ref.current || controllerRef.current) return; // Prevent re-instantiation
 
     const simulation = new D3Bindings(inputData);
     const controller = new SchemaController(new GraphController(simulation));
@@ -246,7 +307,7 @@ export const EditorCanvas = ({className, inputData}: {
     // return () => {
     //   container.innerHTML = ""
     // }
-  }, [inputData]);
+  }, [inputData, getSize]);
 
   // Init view configuration
   useEffect(() => {
@@ -262,8 +323,7 @@ export const EditorCanvas = ({className, inputData}: {
       const isChangingTargetStitch = !ev.shiftKey;
       const currentNode = isChangingTargetStitch ? controller.getTargetStitch() : controller.getStartStitch();
       const moveByDirection = (dirX: number, dirY: number) => {
-        const target = controller.graphController.getClosestByDirection(currentNode, dirX, dirY);
-        console.log(dirX, dirY, target === currentNode);
+        const target = controller.graph.getClosestByDirection(currentNode, dirX, dirY);
 
         if (target === currentNode) return false;
         if (isChangingTargetStitch) {
@@ -304,9 +364,13 @@ export const EditorCanvas = ({className, inputData}: {
         controller.addChainStitch()
       }
 
-      // if (ev.key === "l") {
-      //   controller.addLinkStitch()
-      // }
+      if (ev.key === "x") {
+        controller.addDirectLinkStitch()
+      }
+
+      if (ev.key === "v") {
+        controller.addCrochetStitch()
+      }
     },
     [],
   );

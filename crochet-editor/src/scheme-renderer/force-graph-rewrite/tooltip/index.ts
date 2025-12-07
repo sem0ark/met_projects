@@ -2,7 +2,7 @@
 import { select as d3Select, pointer as d3Pointer, type Selection } from "d3-selection";
 
 import "./index.css";
-import { Observable } from "../utils/observable";
+import { Observable } from "../observable";
 
 // Source (MIT, made by vasturiano, changed by sem0ark to remove react/preact deps)
 // https://github.com/vasturiano/float-tooltip/blob/master/src/index.js

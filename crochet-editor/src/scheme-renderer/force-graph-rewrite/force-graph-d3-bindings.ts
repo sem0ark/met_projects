@@ -2,8 +2,7 @@
 import * as d3 from "d3-force";
 import { type Force } from "d3-force";
 
-import { Observable } from "./utils/observable";
-import { debounce } from "./utils/debounce";
+import { Observable } from "./observable";
 
 const noop = () => {}
 
@@ -43,6 +42,7 @@ export type InitialGraphData = {
     [k: string]: any;
   }[]
 };
+
 export type GraphData = {
   nodes: GraphNode[];
   links: GraphLink[];
@@ -87,7 +87,6 @@ export class D3Bindings {
     this.linkForces = [];
     this.graph = new Observable(this, initialGraph as any as GraphData, [
       () => this.update(),
-      // debounce(() => this.update(), 10),
     ]);
 
     this.d3AlphaMin = new Observable(this, 0, [])
@@ -103,6 +102,8 @@ export class D3Bindings {
     this.onFinishUpdate = new Observable(this, noop, [])
     this.onEngineTick = new Observable(this, noop, [])
     this.onEngineStop = new Observable(this, noop, [])
+
+    this.graph.triggerChange()
   }
 
   public getForce(forceName: string) {
@@ -137,11 +138,13 @@ export class D3Bindings {
     this.forceSimulation.alpha(1);
     this.resetCountdown();
   }
+
   public resetCountdown() { // reset cooldown state
     this.cntTicks = 0;
     this.startTickTimeMs = Number(new Date());
     this.engineRunning = true;
   }
+
   public isEngineRunning () {
     return this.engineRunning;
   }

@@ -5,7 +5,7 @@ import { max as d3Max, min as d3Min, sum as d3Sum } from "d3-array";
 
 import { D3Bindings, type GraphData, type GraphLink, type GraphNode } from "./force-graph-d3-bindings";
 import { ColorTracker } from "./color-tracker";
-import { LinkedObservable, Observable } from "./utils/observable";
+import { LinkedObservable, Observable } from "./observable";
 import { throttle } from "./utils/throttle";
 
 import "./force-graph.css";
@@ -148,7 +148,6 @@ export class Canvas2DGraphRender {
   }
   
   private defaultPaintNode(ctx: CanvasRenderingContext2D, node: GraphNode, style: NodeStyle, padding: number) {
-    // Draw logic extracted from the original paintNodes function
     const r = style.relSize + padding;
     ctx.beginPath();
     ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
@@ -174,6 +173,8 @@ export class Canvas2DGraphRender {
     const linksToDraw = this.graph.value.links.filter(link => !isIncorrect(link) && getStyle(link).visible);
 
     ctx.save();
+    ctx.lineCap = "round";
+
     // In this refactored approach, we iterate through links, handling default vs custom drawing per link
     for (const link of linksToDraw) {
         const style = getStyle(link);
@@ -215,7 +216,7 @@ export class Canvas2DGraphRender {
 
 
 export class GraphControllerCanvas2D {
-  private is_initialized: boolean;
+  private isInitialized: boolean;
   private container: HTMLDivElement;
 
   private canvas: HTMLCanvasElement;
@@ -257,7 +258,7 @@ export class GraphControllerCanvas2D {
   public readonly panInteractionEnabled: Observable<boolean, this>;
 
   constructor(graphSimulation: D3Bindings, root: HTMLElement, dimensions: {width: number, height: number}) {
-    this.is_initialized = false;
+    this.isInitialized = false;
     this.needsRedraw = false
 
     // Wipe root DOM element's contents
@@ -268,9 +269,7 @@ export class GraphControllerCanvas2D {
     this.zoom = d3Zoom();
 
     this.mouseControlsEnabled = new Observable(this, true, [
-      () => {
-        this.hoverObject = null;
-      }
+      () => (this.hoverObject = null),
     ]);
 
     this.nodeDragEnabled = new Observable(this, true, []);
@@ -362,7 +361,7 @@ export class GraphControllerCanvas2D {
     ])
 
     this.init();
-    setTimeout(() => this.startRenderCycle(), 10);
+    this.startRenderCycle();
   }
 
   public updateSimulation(cb: (root: D3Bindings) => unknown) {
@@ -468,9 +467,9 @@ export class GraphControllerCanvas2D {
           delete obj.__initialDragPos;
 
           if (this.simulation.d3AlphaTarget.value) {
-            this.simulation
-              .d3AlphaTarget.set(0) // release engine low intensity
-              .resetCountdown(); // let the engine readjust after releasing fixed nodes
+            // release engine low intensity
+            // let the engine readjust after releasing fixed nodes
+            this.simulation.d3AlphaTarget.set(0).resetCountdown();
           }
 
           // drag cursor
@@ -620,7 +619,7 @@ export class GraphControllerCanvas2D {
     //   return false;
     // });
 
-    this.is_initialized = true;
+    this.isInitialized = true;
   }
 
   private startRenderCycle() {
@@ -705,9 +704,7 @@ export class GraphControllerCanvas2D {
   }
 
   private adjustCanvasSize() {
-    if (!this.is_initialized || !this.canvas) {
-      return;
-    }
+    if (!this.isInitialized || !this.canvas) return;
 
     let curWidth = this.canvas.width;
     let curHeight = this.canvas.height;
