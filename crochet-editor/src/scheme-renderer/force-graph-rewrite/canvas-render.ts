@@ -9,7 +9,7 @@ export type NodeStyle = {
   color: string; // Attribute for node color (affects circle color).
   
   // Optional override function to totally replace the rendering logic
-  drawNodeFn?: (ctx: CanvasRenderingContext2D, node: GraphNode, style: NodeStyle, globalScale: number, isShadow: boolean) => void;
+  drawNodeFn?: (ctx: CanvasRenderingContext2D, node: GraphNode, style: NodeStyle, globalScale: number) => void;
 }
 export const defaultNodeStyle: Readonly<NodeStyle> = {
   visible: true,
@@ -28,7 +28,7 @@ export type LinkStyle = {
   // directionalArrowRelPos: number; // value between 0<>1 indicating the relative pos along the (exposed) line
 
   // Optional override function to totally replace the rendering logic
-  drawLinkFn?: (ctx: CanvasRenderingContext2D, link: GraphLink, style: LinkStyle, globalScale: number, isShadow: boolean) => void;
+  drawLinkFn?: (ctx: CanvasRenderingContext2D, link: GraphLink, style: LinkStyle, globalScale: number) => void;
 }
 
 export const defaultLinkStyle: LinkStyle = {
@@ -116,21 +116,21 @@ export class Canvas2DGraphRender {
 
     const getStyle = this.nodeStyle.value;
 
-    ctx.save();
     for (const node of this.graph.value.nodes) {
       const style = getStyle(node);
       if (!style.visible) continue;
 
       // Check if a custom draw function is provided in the style
+      ctx.save();
       if (style.drawNodeFn) {
         // Call the custom function if provided
-        style.drawNodeFn(ctx, node, style, globalScale, this.isShadowCanvas);
+        style.drawNodeFn(ctx, node, style, globalScale);
       } else {
         // Use the default internal drawing function
         this.defaultPaintNode(ctx, node, style, padding);
       }
+      ctx.restore();
     }
-    ctx.restore();
   }
   
   private defaultPaintNode(ctx: CanvasRenderingContext2D, node: GraphNode, style: NodeStyle, padding: number) {

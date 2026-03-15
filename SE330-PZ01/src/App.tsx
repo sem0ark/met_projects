@@ -21,7 +21,6 @@ function BoardWithProvider() {
   const storeName = useCurrentStore();
   return (
     <BoardStoreProvider storeName={storeName}>
-      {/* In order to fully clear out the component with its state, so that we won't cause race condition in  */}
       <BoardInitialized key={storeName} />
     </BoardStoreProvider>
   );

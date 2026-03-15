@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import { D3Bindings, type InitialGraphData, type GraphNode, type GraphLink, d3ForceCollide, d3ForceManyBody } from "./force-graph-rewrite/d3-bindings";
-import { GraphControllerCanvas2D, type LinkStyle, type NodeStyle } from "./force-graph-rewrite/canvas-controller";
+import { GraphControllerCanvas2D } from "./force-graph-rewrite/canvas-controller";
 import { GraphController } from "./graph-controller";
+import type { NodeStyle, LinkStyle } from "./force-graph-rewrite/canvas-render";
 
 type NodeData = {
   type: string;
@@ -50,7 +51,7 @@ const BEGIN_NODE: NodeData = {
 const DIRECT_LINK: LinkData = {
   type: "direct",
   strength: 1,
-  distance: 8,
+  distance: 10,
 
   style: {
     visible: true,
@@ -59,7 +60,7 @@ const DIRECT_LINK: LinkData = {
     width: 1,
     curvature: 0,
 
-    drawLinkFn(ctx, link, style, globalScale) {
+    drawLinkFn: (ctx, link, style) => {
       const midx = (link.source.x + link.target.x) / 2;
       const midy = (link.source.y + link.target.y) / 2;
 
@@ -141,9 +142,25 @@ const CROCHET_LINK_STEM: LinkData = {
   style: {
     visible: true,
     color: "black",
-    lineDash: [],
     width: 3,
-    curvature: 0,
+    
+    drawLinkFn: (ctx: CanvasRenderingContext2D, link: GraphLink, style: LinkStyle, globalScale: number) => {
+      const rawdx = link.target.x - link.source.x;
+      const rawdy = link.target.y - link.source.y;
+      const dist = Math.sqrt(rawdx * rawdx + rawdy * rawdy);
+
+      const dx = rawdx / dist;
+      const dy = rawdy / dist;
+
+      ctx.beginPath();
+      ctx.lineCap = "round";
+      ctx.moveTo(link.source.x, link.source.y);
+      ctx.lineTo(link.source.x + dx * 6, link.source.y + dy * 6);
+
+      ctx.strokeStyle = style.color;
+      ctx.lineWidth = 3 / globalScale;
+      ctx.stroke();
+    }
   },
 }
 
@@ -160,10 +177,94 @@ const CROCHET_LINK_SIDE: LinkData = {
   },
 }
 
+interface Action {
+  execute(): void;
+  undo(): void;
+}
+
+class AddNodeAction implements Action {
+  
+  private graphController: GraphController;
+  private nodeData: Partial<GraphNode>;
+  public createdNode?: GraphNode = undefined;
+
+  constructor(
+    graphController: GraphController,
+    nodeData: Partial<GraphNode>,
+  ) {
+    this.graphController = graphController;
+    this.nodeData = nodeData;
+  }
+
+  execute(): void {
+    this.createdNode = this.graphController.addNode(this.nodeData);
+  }
+
+  undo(): void {
+    if (this.createdNode) {
+      this.graphController.removeNode(this.createdNode.id);
+    }
+  }
+}
+
+class AddLinkAction implements Action {
+  private graphController: GraphController;
+  private linkData: Partial<GraphLink>;
+  private sourceNode: GraphNode;
+  private targetNode: GraphNode;
+  private createdLink?: GraphLink = undefined;
+
+  constructor(
+    graphController: GraphController,
+    linkData: Partial<GraphLink>,
+    sourceNode: GraphNode,
+    targetNode: GraphNode,
+  ) {
+    this.graphController = graphController;
+    this.linkData = linkData;
+    this.sourceNode = sourceNode;
+    this.targetNode = targetNode;
+  }
+
+  execute(): void {
+    this.createdLink = this.graphController.addLink(this.linkData, this.sourceNode, this.targetNode);
+  }
+
+  undo(): void {
+    if (this.createdLink) {
+      this.graphController.removeLink(this.createdLink.id);
+    }
+  }
+}
+
+class CompositeAction implements Action {
+  private actions: Action[] = [];
+
+  addAction(action: Action): CompositeAction {
+    this.actions.push(action);
+    return this;
+  }
+
+  execute(): void {
+    this.actions.forEach(action => action.execute());
+  }
+
+  undo(): void {
+    // Undo in reverse order
+    for (let i = this.actions.length - 1; i >= 0; i--) {
+      this.actions[i].undo();
+    }
+  }
+}
+
 class SchemaController {
   public readonly graph: GraphController;
   public startStitchFocus: GraphNode;
   public targetStitchFocus: GraphNode;
+
+  private startStitchHistory: GraphNode[] = [];
+  private actionHistory: Action[] = [];
+  private redoStack: Action[] = [];
 
   constructor(controller: GraphController) {
     this.graph = controller;
@@ -184,43 +285,113 @@ class SchemaController {
   public getStartStitch() {
     return this.startStitchFocus;
   }
+
   public setStartStitch(node: GraphNode) {
+    this.startStitchHistory.push(this.startStitchFocus);
+    if (this.startStitchHistory.length > 2) {
+      this.startStitchHistory.shift();
+    }
     this.startStitchFocus = node;
   }
+
   public getTargetStitch() {
     return this.targetStitchFocus;
   }
+
   public setTargetStitch(node: GraphNode) {
     this.targetStitchFocus = node;
   }
 
+  private calculateShift() {
+    if (this.startStitchHistory.length < 2) {
+      return { x: 1, y: 0 };
+    }
+
+    const prev1 = this.startStitchHistory.at(-2)!;
+    const prev2 = this.startStitchHistory.at(-1)!;
+    const dx = prev2.x - prev1.x;
+    const dy = prev2.y - prev1.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    return {
+      x: dx / dist,
+      y: dy / dist,
+    };
+  }
+
+  private recordAction(action: Action) {
+    this.actionHistory.push(action);
+    this.redoStack = [];
+  }
+
+  public undoLastAction() {
+    if (this.actionHistory.length === 0) return;
+    const lastAction = this.actionHistory.pop();
+    if (lastAction) {
+      lastAction.undo();
+      this.redoStack.push(lastAction);
+    }
+  }
+
+  public redoLastAction() {
+    if (this.redoStack.length === 0) return;
+    const actionToRedo = this.redoStack.pop();
+    if (actionToRedo) {
+      actionToRedo.execute();
+      this.actionHistory.push(actionToRedo);
+    }
+  }
+
+
   public addChainStitch() {
-    const newNode = this.graph.addNode({
+    const shift = this.calculateShift();
+    const newNodeAction = new AddNodeAction(this.graph, {
       ...CHAIN_NODE,
-      x: this.startStitchFocus.x + 5,
-      y: this.startStitchFocus.y - 1 + 2 * Math.random(),
+      x: this.startStitchFocus.x + shift.x * 5,
+      y: this.startStitchFocus.y + shift.y * 5,
     });
-    this.graph.addLink({ ...CHAIN_LINK }, this.startStitchFocus, newNode);
-    this.setStartStitch(newNode);
+    newNodeAction.execute();
+    const createdNode = newNodeAction.createdNode!;
+
+    const addLinkAction = new AddLinkAction(this.graph, { ...CHAIN_LINK }, this.startStitchFocus, createdNode);
+    addLinkAction.execute()
+
+    this.setStartStitch(createdNode);
+
+    this.recordAction(new CompositeAction().addAction(newNodeAction).addAction(addLinkAction));
   }
 
   public addDirectLinkStitch() {
     if (this.startStitchFocus === this.targetStitchFocus || this.startStitchFocus.links.some(l => l.source === this.targetStitchFocus || l.target === this.targetStitchFocus)) return;
-    this.graph.addLink({ ...DIRECT_LINK }, this.startStitchFocus, this.targetStitchFocus);
+
+    const addLinkAction = new AddLinkAction(this.graph, { ...DIRECT_LINK }, this.startStitchFocus, this.targetStitchFocus);
+    addLinkAction.execute();
+
     this.setStartStitch(this.targetStitchFocus);
+
+    this.recordAction(new CompositeAction().addAction(addLinkAction));
   }
 
   public addCrochetStitch() {
     if (this.startStitchFocus === this.targetStitchFocus) return;
 
-    const newNode = this.graph.addNode({
+    const shift = this.calculateShift();
+    const newNodeAction = new AddNodeAction(this.graph, {
       ...CROCHET_NODE,
-      x: this.startStitchFocus.x + 5,
-      y: this.startStitchFocus.y - 1 + 2 * Math.random(),
+      x: this.startStitchFocus.x + shift.x * 5,
+      y: this.startStitchFocus.y + shift.y * 5,
     });
-    this.graph.addLink({ ...CROCHET_LINK_STEM }, newNode, this.targetStitchFocus);
-    this.graph.addLink({ ...CROCHET_LINK_SIDE }, this.startStitchFocus, newNode);
-    this.setStartStitch(newNode);
+    newNodeAction.execute();
+    const createdNode = newNodeAction.createdNode!;
+
+    const addLinkStemAction = new AddLinkAction(this.graph, { ...CROCHET_LINK_STEM }, createdNode, this.targetStitchFocus);
+    addLinkStemAction.execute()
+    const addLinkSideAction = new AddLinkAction(this.graph, { ...CROCHET_LINK_SIDE }, this.startStitchFocus, createdNode);
+    addLinkSideAction.execute()
+
+    this.setStartStitch(createdNode);
+
+    this.recordAction(new CompositeAction().addAction(newNodeAction).addAction(addLinkStemAction).addAction(addLinkSideAction));
   }
 }
 

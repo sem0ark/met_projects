@@ -319,22 +319,6 @@ export class GraphControllerCanvas2D {
 
     this.adjustCanvasSize();
 
-    this.simulation
-      .onFinishUpdate.set(() => {
-        // re-zoom, if still in default position (not user modified)
-        if (
-          d3ZoomTransform(this.canvas).k === this.lastSetZoom &&
-          this.simulation.graph.value.nodes.length
-        ) {
-          this.zoom.scaleTo(
-            this.zoom.__baseElem,
-            (this.lastSetZoom =
-              ZOOM2NODES_FACTOR / Math.cbrt(this.simulation.graph.value.nodes.length)),
-          );
-          this.needsRedraw = true;
-        }
-      });
-
     // let pointerDownEvent: Event | null = null;
     // Capture pointer coords on move or touchstart
     ["pointermove", "pointerdown"].forEach((evType) =>
