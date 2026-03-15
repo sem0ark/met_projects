@@ -4,15 +4,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import os
-import random
 
-import numpy as np
 import torch
 import torchvision.transforms.functional as TF
 from PIL import Image
 from tqdm import tqdm
 
-from v2.ninasr import ChoppedModel, SelfEnsembleModel, ninasr_b0
+from ninasr import ChoppedModel, SelfEnsembleModel, ninasr_b0
 
 
 def load_model(model_path: str, scale: int, device: str):
@@ -22,7 +20,6 @@ def load_model(model_path: str, scale: int, device: str):
         return model
 
     ck = torch.load(model_path, map_location=device)
-    # checkpoint may be a state_dict or a dict with 'state_dict'
     state_dict = ck.get("state_dict", ck) if isinstance(ck, dict) else ck
     model_dict = model.state_dict()
     matched = {
@@ -88,19 +85,7 @@ if __name__ == "__main__":
         "-m", "--model-path", required=True, help="Path to .pth model checkpoint"
     )
     parser.add_argument(
-        "--device",
-        default=None,
-        help="Device to run on (cpu or cuda). Auto-detect if not set",
-    )
-    parser.add_argument("--seed", type=int, default=None, help="Optional random seed")
-
-    parser.add_argument(
         "--ensemble", action="store_true", help="Enable self-ensemble wrapper"
-    )
-    parser.add_argument(
-        "--median",
-        action="store_true",
-        help="Use median aggregation for self-ensemble (default: mean)",
     )
     parser.add_argument(
         "--chop",
@@ -121,12 +106,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
-    if args.seed is not None:
-        random.seed(args.seed)
-        np.random.seed(args.seed)
-
-    device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     if not os.path.exists(args.source_dir):
         os.makedirs(args.source_dir)
@@ -144,7 +124,7 @@ if __name__ == "__main__":
         model.to(device)
 
     if args.ensemble:
-        model = SelfEnsembleModel(model, median=args.median)
+        model = SelfEnsembleModel(model, median=True)
         model.to(device)
 
     model.eval()
