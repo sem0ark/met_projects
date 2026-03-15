@@ -1,6 +1,12 @@
 data/*
 datasets.zip
 
+*.pt
+*.pth
+!v*.pt
+!v*.pth
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
