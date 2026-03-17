@@ -1,7 +1,7 @@
 import os
 import random
 
-import degradation
+import image_utils as image_utils
 from PIL import Image
 from tqdm import tqdm
 
@@ -57,11 +57,11 @@ def generate_dataset(
                     for i in range(samples_per_image):
                         base_name = f"{os.path.splitext(filename)[0]}_sample_{i}.png"
 
-                        hr_crop = degradation.crop_and_rotate(img, hr_size, scale)
+                        hr_crop = image_utils.crop_and_rotate(img, hr_size, scale)
                         hr_crop.save(os.path.join(output_dir, split, "hr", base_name))
 
-                        lr_crop = degradation.degrade(
-                            degradation.downscale(hr_crop, hr_size, scale)
+                        lr_crop = image_utils.degrade(
+                            image_utils.downscale(hr_crop, hr_size, scale)
                         )
                         lr_crop.save(os.path.join(output_dir, split, "lr", base_name))
                         count += 1

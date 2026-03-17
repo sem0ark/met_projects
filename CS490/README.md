@@ -79,3 +79,4 @@ Compared to standard super reoslution models, which have main goal of generating
 - CS360 Course and tasks
 - **CS375 Course and tasks** - notes on CNN specifically
 - CS420 Course and tasks
+- https://medium.com/data-science/deep-learning-based-super-resolution-without-using-a-gan-11c9bb5b6cd5

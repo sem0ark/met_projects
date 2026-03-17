@@ -3,6 +3,8 @@ import random
 import numpy as np
 from PIL import Image, ImageFilter
 
+import cv2
+
 
 def crop_and_rotate(img: Image.Image, min_size: int, scale=2):
     w, h = img.size
@@ -48,3 +50,15 @@ def degrade(img: Image.Image):
     if random.random() > 0.3:
         img = add_gaussian_noise(img, std=random.uniform(2, 8))
     return img
+
+
+def bileteral_smooth(img: Image.Image):
+    d_val = 7
+    sigma_color = 75
+    sigma_space = 75
+
+    np_img = np.array(img)
+    bgr = cv2.cvtColor(np_img, cv2.COLOR_RGB2BGR)
+    filtered = cv2.bilateralFilter(bgr, d_val, sigma_color, sigma_space)
+    filtered_rgb = cv2.cvtColor(filtered, cv2.COLOR_BGR2RGB)
+    return Image.fromarray(filtered_rgb)

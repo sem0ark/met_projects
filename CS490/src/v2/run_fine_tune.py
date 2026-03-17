@@ -14,11 +14,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from v1.ninasr import ninasr_b0
-from v1.s3_training.dataset import HRLRDataset
+from ninasr import ninasr_b0
+from dataset import HRLRDataset
 
 
-def train_one_epoch(model, loader, optim, device, loss_fns: dict[str, Callable]):
+def train(model, loader, optim, device, loss_fns: dict[str, Callable]):
     model.train()
     total_loss = 0.0
     comps_acc = defaultdict(float)
@@ -112,10 +112,12 @@ def make_edge_loss(
 def _sobel_mag(x: torch.Tensor) -> torch.Tensor:
     gray = _rgb_to_gray(x)
     gx = torch.tensor(
-        [[[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]]], device=gray.device
+        [[[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]]],
+        device=gray.device,
     )
     gy = torch.tensor(
-        [[[-1.0, -2.0, -1.0], [0.0, 0.0, 0.0], [1.0, 2.0, 1.0]]], device=gray.device
+        [[[-1.0, -2.0, -1.0], [0.0, 0.0, 0.0], [1.0, 2.0, 1.0]]],
+        device=gray.device,
     )
     gx = gx.unsqueeze(1)
     gy = gy.unsqueeze(1)
@@ -256,9 +258,7 @@ def main():
 
     for epoch in range(1, args.epochs + 1):
         start = time.time()
-        train_loss, train_comps = train_one_epoch(
-            model, loader, optim, device, loss_fns=loss_fns
-        )
+        train_loss, train_comps = train(model, loader, optim, device, loss_fns=loss_fns)
         val_loss, val_comps = validate(model, val_loader, device, loss_fns=loss_fns)
         elapsed = time.time() - start
 
@@ -278,7 +278,7 @@ def main():
         torch.save(state, args.checkpoint_out)
         if val_loss < best_val:
             best_val = val_loss
-            best_path = os.path.splitext(args.checkpoint_out)[0] + "_best_model.pth"
+            best_path = os.path.splitext(args.checkpoint_out)[0] + "_best_model.pt"
             torch.save(model.state_dict(), best_path)
             print("Saved best model to", best_path)
 

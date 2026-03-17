@@ -2,8 +2,8 @@ import argparse
 import os
 import random
 
-from degradation import degrade, downscale
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from image_utils import degrade, downscale
+from PIL import Image, ImageDraw, ImageFont
 from tqdm import tqdm
 
 FONT_PATHS = [

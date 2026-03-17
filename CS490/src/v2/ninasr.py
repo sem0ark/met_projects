@@ -222,8 +222,10 @@ class NinaSR(nn.Module):
         self.body = NinaSR.make_body(n_resblocks, n_feats, expansion)
         self.tail = NinaSR.make_tail(n_colors, n_feats, scale)
 
+        self.refinement, self.ref_alpha = NinaSR.make_refinement(n_colors, n_feats)
+
     @staticmethod
-    def make_head(n_colors, n_feats):
+    def make_head(n_colors, n_feats) -> nn.Sequential:
         m_head = [
             Rescale(-1),
             nn.Conv2d(n_colors, n_feats, 3, padding=1, bias=False),
@@ -231,7 +233,7 @@ class NinaSR(nn.Module):
         return nn.Sequential(*m_head)
 
     @staticmethod
-    def make_body(n_resblocks, n_feats, expansion):
+    def make_body(n_resblocks, n_feats, expansion) -> nn.Sequential:
         mid_feats = int(n_feats * expansion)
         out_scale = 4 / n_resblocks
         expected_variance = 1.0
@@ -254,6 +256,22 @@ class NinaSR(nn.Module):
         ]
         return nn.Sequential(*m_tail)
 
+    @staticmethod
+    def make_refinement(n_colors, n_feats) -> tuple[nn.Sequential, nn.Parameter]:
+        conv1 = nn.Conv2d(n_colors, max(16, n_feats), 3, padding=1, bias=True)
+        conv2 = nn.Conv2d(max(16, n_feats), n_colors, 3, padding=1, bias=True)
+
+        nn.init.kaiming_normal_(conv1.weight)
+        if conv1.bias is not None:
+            nn.init.zeros_(conv1.bias)
+
+        nn.init.zeros_(conv2.weight)
+        if conv2.bias is not None:
+            nn.init.zeros_(conv2.bias)
+
+        m_refinement = [conv1, nn.ReLU(True), conv2]
+        return nn.Sequential(*m_refinement), nn.Parameter(torch.zeros(1))
+
     def forward(self, x, scale=None):
         if scale is not None and scale != self.scale:
             raise ValueError(f"Network scale is {self.scale}, not {scale}")
@@ -261,6 +279,7 @@ class NinaSR(nn.Module):
         res = self.body(x)
         res += x
         x = self.tail(res)
+        x = x + self.ref_alpha * self.refinement(x)
         return x
 
 

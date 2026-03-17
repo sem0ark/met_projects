@@ -42,7 +42,6 @@ class HRLRDataset(Dataset):
         samples_per_image=20,
         hr_size=256,
         scale=2,
-        regen_if_missing=True,
     ):
         super().__init__()
         self.root = root
