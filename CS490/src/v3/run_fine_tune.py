@@ -15,6 +15,7 @@ import torch.nn.functional as F
 from dataset import HRLRDataset
 from ninasr import ninasr_b0
 from torch.utils.data import DataLoader
+from torchvision.models import VGG16_Weights, vgg16
 
 
 def train(model, loader, optim, device, loss_fns: dict[str, Callable]):
@@ -100,6 +101,8 @@ def make_edge_loss(
     lambda_edge = float(lambda_edge)
 
     def extra_loss(out: torch.Tensor, hr: torch.Tensor):
+        if lambda_edge <= 0:
+            return None
         edge_out = _sobel_mag(out)
         edge_hr = _sobel_mag(hr)
         edge_loss = F.l1_loss(edge_out, edge_hr)
@@ -110,37 +113,128 @@ def make_edge_loss(
 
 def _sobel_mag(x: torch.Tensor) -> torch.Tensor:
     gray = _rgb_to_gray(x)
-    gx = torch.tensor(
-        [[[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]]],
+    kernel_x = torch.tensor(
+        [
+            [-1, -2, 0, 2, 1],
+            [-2, -3, 0, 3, 2],
+            [-3, -5, 0, 5, 3],
+            [-2, -3, 0, 3, 2],
+            [-1, -2, 0, 2, 1],
+        ],
+        dtype=torch.float32,
         device=gray.device,
-    )
-    gy = torch.tensor(
-        [[[-1.0, -2.0, -1.0], [0.0, 0.0, 0.0], [1.0, 2.0, 1.0]]],
-        device=gray.device,
-    )
-    gx = gx.unsqueeze(1)
-    gy = gy.unsqueeze(1)
+    ).view(1, 1, 5, 5)
 
-    grad_x = F.conv2d(gray, gx, padding=1)
-    grad_y = F.conv2d(gray, gy, padding=1)
+    kernel_y = kernel_x.transpose(2, 3)
+
+    grad_x = F.conv2d(gray, kernel_x, padding=2)
+    grad_y = F.conv2d(gray, kernel_y, padding=2)
     mag = torch.sqrt(grad_x * grad_x + grad_y * grad_y + 1e-12)
     return mag
 
 
 def make_bin_loss(
     lambda_bin: float = 0.0,
-    bin_k: float = 50.0,
+    bin_k: float = 20.0,
     bin_thresh: float = 0.1,
 ):
     lambda_bin = float(lambda_bin)
 
     def extra_loss(out: torch.Tensor, hr: torch.Tensor):
+        if lambda_bin <= 0:
+            return None
         out_gray = _rgb_to_gray(out)
         hr_gray = _rgb_to_gray(hr)
         out_bin = _soft_bin(out_gray, bin_k, bin_thresh)
         hr_bin = _soft_bin(hr_gray, bin_k, bin_thresh)
         bin_loss = F.l1_loss(out_bin, hr_bin)
         return bin_loss * lambda_bin
+
+    return extra_loss
+
+
+class PerceptualLoss(nn.Module):
+    def __init__(self, lambda_vgg=0.1):
+        super().__init__()
+        self.lambda_vgg = lambda_vgg
+
+        vgg = vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[:16].eval()
+        for p in vgg.parameters():
+            p.requires_grad = False
+
+        self.vgg = vgg
+        self.register_buffer(
+            "mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
+        )
+        self.register_buffer(
+            "std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
+        )
+
+    def forward(self, x, y):
+        if self.lambda_vgg <= 0:
+            return None
+        x = (x - self.mean) / self.std
+        y = (y - self.mean) / self.std
+        loss = F.l1_loss(self.vgg(x), self.vgg(y))
+        return loss * self.lambda_vgg
+
+
+def gaussian_window(window_size, sigma):
+    gauss = torch.exp(
+        -((torch.arange(window_size).float() - window_size // 2) ** 2) / (2 * sigma**2)
+    )
+    return gauss / gauss.sum()
+
+
+def create_window(window_size, channel):
+    _1D_window = gaussian_window(window_size, 1.5).unsqueeze(1)
+    _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
+    window = _2D_window.expand(channel, 1, window_size, window_size).contiguous()
+    return window
+
+
+def ssim(img1, img2, window_size=11, size_average=True):
+    channel = img1.size(1)
+    window = create_window(window_size, channel).to(img1.device)
+
+    mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
+    mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
+
+    mu1_sq = mu1.pow(2)
+    mu2_sq = mu2.pow(2)
+    mu1_mu2 = mu1 * mu2
+
+    sigma1_sq = (
+        F.conv2d(img1 * img1, window, padding=window_size // 2, groups=channel) - mu1_sq
+    )
+    sigma2_sq = (
+        F.conv2d(img2 * img2, window, padding=window_size // 2, groups=channel) - mu2_sq
+    )
+    sigma12 = (
+        F.conv2d(img1 * img2, window, padding=window_size // 2, groups=channel)
+        - mu1_mu2
+    )
+
+    c1 = 0.01**2
+    c2 = 0.03**2
+
+    ssim_map = ((2 * mu1_mu2 + c1) * (2 * sigma12 + c2)) / (
+        (mu1_sq + mu2_sq + c1) * (sigma1_sq + sigma2_sq + c2)
+    )
+
+    if size_average:
+        return ssim_map.mean()
+    else:
+        return ssim_map.mean(1).mean(1).mean(1)
+
+
+def make_ssim_loss(lambda_ssim=0.1):
+    lambda_ssim = float(lambda_ssim)
+
+    def extra_loss(out, hr):
+        if lambda_ssim <= 0:
+            return None
+        return (1 - ssim(out, hr)) * lambda_ssim
 
     return extra_loss
 
@@ -196,18 +290,18 @@ def main():
     p.add_argument("--scale", type=int, default=2)
 
     p.add_argument(
-        "--lambda-edge", type=float, default=0.5, help="Weight for Sobel edge loss"
+        "--lambda-edge", type=float, default=0.25, help="Weight for Sobel edge loss"
     )
     p.add_argument(
         "--lambda-bin",
         type=float,
-        default=0.25,
+        default=0.1,
         help="Weight for soft-binarization hole-avoidance loss",
     )
     p.add_argument(
         "--bin-k",
         type=float,
-        default=50.0,
+        default=15.0,
         help="Sharpness for soft binarization (sigmoid)",
     )
     p.add_argument(
@@ -215,6 +309,18 @@ def main():
         type=float,
         default=0.1,
         help="Threshold for soft binarization (in image scale)",
+    )
+    p.add_argument(
+        "--lambda-vgg",
+        type=float,
+        default=0.2,
+        help="Weight for VGG perceptual loss",
+    )
+    p.add_argument(
+        "--lambda-ssim",
+        type=float,
+        default=0.2,
+        help="Weight for SSIM structural loss",
     )
 
     args = p.parse_args()
@@ -229,6 +335,8 @@ def main():
         "bin": make_bin_loss(
             lambda_bin=args.lambda_bin, bin_k=args.bin_k, bin_thresh=args.bin_thresh
         ),
+        "vgg": PerceptualLoss(lambda_vgg=args.lambda_vgg).to(device),
+        "ssim": make_ssim_loss(lambda_ssim=args.lambda_ssim),
     }
 
     if args.pretrained_path:

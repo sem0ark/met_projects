@@ -34,8 +34,19 @@ def add_gaussian_noise(image, std):
 
 def downscale(img: Image.Image, min_size: int, scale=2):
     lr_size = min_size // scale
-    img = img.resize((lr_size, lr_size), resample=Image.Resampling.BICUBIC)
 
+    resample_methods = [
+        Image.Resampling.BICUBIC,
+        Image.Resampling.LANCZOS,
+        Image.Resampling.BILINEAR,
+        Image.Resampling.BOX,
+    ]
+    method = random.choice(resample_methods)
+
+    if random.random() < 0.3:
+        img = img.filter(ImageFilter.GaussianBlur(radius=random.uniform(0.2, 0.7)))
+
+    img = img.resize((lr_size, lr_size), resample=method)
     return img
 
 
