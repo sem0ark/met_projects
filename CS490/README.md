@@ -73,6 +73,12 @@ The results now seem more clear now, compared to the orignal model, which marks 
 # (V2) Transforming the model from smoothing to edge intensification
 Compared to standard super reoslution models, which have main goal of generating a context-relevant texture + smoothing, our use case is mainly edge and object detection, improving and completing the diagrams, which implies improving and keeping edges and lines + avoiding smoothing in case of ambiguity.
 
+![x2 Upscaled with finetuned model v3](images/upscale_x2_v3.jpg)
+
+x2 Upscaled with finetuned model v3 (20 epoch runs with VGG, SMIM and edge loss)
+
+Addition of more loss functions - edge, bin, smim and vgg - did improve the quality of the output, but the training was now starting to take around 2 hours per epoch.
+
 
 # References and literature:
 - https://github.com/Coloquinte/torchSR/tree/main
